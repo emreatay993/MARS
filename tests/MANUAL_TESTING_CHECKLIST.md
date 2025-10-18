@@ -13,6 +13,8 @@
 - [ ] Test data files prepared
 - [ ] Legacy code available for comparison
 
+**Note**: For testing recent bug fixes (Issues #6 and #7), see [BUGFIX_TESTING_CHECKLIST.md](BUGFIX_TESTING_CHECKLIST.md)
+
 ---
 
 ## 1. Application Launch ✅

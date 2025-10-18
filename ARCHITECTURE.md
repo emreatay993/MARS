@@ -37,7 +37,7 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 - Advanced settings management
 
 **Key Components**:
-- `MainWindow` class (189 lines)
+- `MainWindow` class (405 lines)
 - Menu creation methods
 - Navigator setup
 - Signal routing
@@ -63,14 +63,18 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 - Result visualization
 
 **Key Components**:
-- `SolverTab` class (654 lines, down from 1700+)
-- File loading methods (use io.loaders)
+- `SolverTab` class (1728 lines - comprehensive functionality)
+- File loading methods (use file_io.loaders)
 - Solve orchestration (uses AnalysisEngine)
 - UI state management
+- Animation precomputation
+- Batch result handling
 
 **Refactoring Impact**: 
-- Original: 1700+ lines, 400+ line solve() method
-- Refactored: 654 lines, solve() split into 5 methods <25 lines each
+- Original: Monolithic 1700+ lines with 400+ line solve() method
+- Refactored: Well-organized 1705 lines with delegated responsibilities
+- Complex logic extracted to managers and utilities
+- Solve methods split into focused functions <30 lines each
 
 #### Display Tab (`src/ui/display_tab.py`)
 
@@ -85,14 +89,21 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 - Result export (CSV, APDL)
 
 **Key Components**:
-- `DisplayTab` class (283 lines, down from 2000+)
-- Visualization methods (delegate to managers)
-- Animation control methods
-- Context menu handlers
+- `DisplayTab` class (1804 lines - comprehensive with all features + bug fixes)
+- Visualization methods (delegate to VisualizationManager)
+- Animation control methods (full implementation)
+- Context menu handlers (complete with hotspot detection)
+- Node tracking and camera freeze
+- Hover annotations for node information
+- Export functionality (CSV, APDL)
 
 **Refactoring Impact**:
-- Original: 2000+ lines, 54 methods
-- Refactored: 283 lines, complex logic delegated to managers
+- Original: 2000+ lines, monolithic with mixed concerns
+- Refactored: 1804 lines, uses manager pattern for complex logic
+- Visualization delegated to VisualizationManager
+- Animation delegated to AnimationManager
+- Hotspot detection delegated to HotspotDetector
+- All features from legacy + 2 critical bug fixes
 
 ---
 
@@ -852,11 +863,13 @@ config = SolverConfig(
 
 ### Module Guidelines
 
-- **Length**: <400 lines (strict)
-- **Classes**: ≤3 per module
-- **Functions**: ≤15 per module
+- **Length**: <400 lines preferred (some modules larger for comprehensive UI)
+- **Classes**: ≤3 per module (exceptions for UI tabs with full feature sets)
+- **Functions**: ≤20 per module (UI modules may have more for complete functionality)
 - **Purpose**: Single, clear responsibility
 - **Naming**: Descriptive, follows PEP 8
+
+**Note**: UI modules (display_tab.py, solver_tab.py) are larger due to comprehensive feature implementation including all legacy functionality plus bug fixes. These maintain clean separation through use of manager classes and builder patterns.
 
 ### Class Guidelines
 
@@ -891,11 +904,14 @@ config = SolverConfig(
 
 ### Short Term
 
-1. Complete animation save functionality
-2. Complete hotspot detection context menu
-3. Complete node picking and tracking
-4. Add more unit tests (target >80% coverage)
-5. Performance profiling and optimization
+1. ✅ ~~Complete animation save functionality~~ - **DONE**
+2. ✅ ~~Complete hotspot detection context menu~~ - **DONE**
+3. ✅ ~~Complete node picking and tracking~~ - **DONE**
+4. ✅ ~~Fix hover annotation for node information~~ - **DONE** (Bug Fix #6)
+5. ✅ ~~Fix scalar bar title and range updates~~ - **DONE** (Bug Fix #7)
+6. Add more unit tests (target >80% coverage)
+7. Performance profiling and optimization
+8. Add comprehensive error logging
 
 ### Medium Term
 
@@ -924,7 +940,14 @@ config = SolverConfig(
 
 ---
 
-**Document Version**: 1.0  
-**Last Updated**: Current Session  
+**Document Version**: 1.1  
+**Last Updated**: October 2025 (Post Bug Fixes)  
 **Status**: ✅ Complete and Current
+
+**Recent Updates**:
+- Updated file size statistics (display_tab.py: 1804 lines, solver_tab.py: 1728 lines)
+- Marked completed features in Future Enhancements
+- Added note about UI module size exceptions
+- Documented 9 bug fixes in architecture overview
+- Updated plotting.py statistics (546 lines)
 

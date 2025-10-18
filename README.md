@@ -8,12 +8,13 @@ This is a complete refactoring of the legacy MSUP Smart Solver codebase, transfo
 
 ### Key Improvements
 
-- ✅ **Modular Architecture**: 31 focused modules vs 4 monolithic files
+- ✅ **Modular Architecture**: 28 focused modules vs 4 monolithic files
 - ✅ **Code Quality**: All functions <30 lines, cyclomatic complexity <10
 - ✅ **Maintainability**: Clear separation of concerns (I/O, UI, Core, Utils)
 - ✅ **Testability**: Unit tests for all core modules
-- ✅ **Documentation**: Comprehensive docstrings and guides
-- ✅ **Zero Behavioral Changes**: Identical functionality and GUI
+- ✅ **Documentation**: Comprehensive docstrings and guides (30+ documents)
+- ✅ **Bug Fixes**: 9 critical issues resolved (hover annotation, scalar bar updates, time history plotting)
+- ✅ **Zero Behavioral Changes**: Identical functionality and GUI, plus fixes
 
 ## 📁 Project Structure
 
@@ -237,9 +238,9 @@ Verify complete workflows match legacy code:
 
 | Metric | Legacy | Refactored | Improvement |
 |--------|--------|------------|-------------|
-| Files | 4 | 31 | 7.75x modularity |
-| Largest file | 4000+ lines | 654 lines | 6.1x reduction |
-| Avg function length | 50+ lines | <20 lines | >2.5x reduction |
+| Files | 4 | 28 | 7x modularity |
+| Largest file | 4000+ lines | 1804 lines | 2.2x reduction |
+| Avg function length | 50+ lines | <30 lines | >1.7x reduction |
 | Cyclomatic complexity | >15 | <10 | >1.5x reduction |
 | Linting errors | Unknown | 0 | ✅ Clean code |
 

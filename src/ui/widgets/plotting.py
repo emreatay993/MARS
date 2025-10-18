@@ -234,7 +234,7 @@ class MatplotlibWidget(QWidget):
             
             max_y_value = np.max(y['Magnitude'])
             time_of_max = x[np.argmax(y['Magnitude'])]
-            textstr = f'Max Magnitude: {max_y_value:.4f}\\nTime of Max: {time_of_max:.5f} s'
+            textstr = f'Max Magnitude: {max_y_value:.4f}\nTime of Max: {time_of_max:.5f} s'
         
         # Handle array data (single component)
         else:
@@ -263,7 +263,7 @@ class MatplotlibWidget(QWidget):
                 if len(y) > 0 and np.any(y):
                     max_y_value = np.max(y)
                     time_of_max = x[np.argmax(y)]
-                    textstr = f'Max Magnitude: {max_y_value:.4f}\\nTime of Max: {time_of_max:.5f} s'
+                    textstr = f'Max Magnitude: {max_y_value:.4f}\nTime of Max: {time_of_max:.5f} s'
         
         # Apply common styling
         self.ax.set_xlabel('Time [seconds]', fontsize=8)

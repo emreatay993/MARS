@@ -639,6 +639,18 @@ class SolverTab(QWidget):
             is_velocity=config.calculate_velocity,
             is_acceleration=config.calculate_acceleration
         )
+        
+        # Ensure the time history plot tab is visible
+        plot_tab_index = self.show_output_tab_widget.indexOf(self.plot_single_node_tab)
+        if plot_tab_index >= 0:
+            self.show_output_tab_widget.setTabVisible(plot_tab_index, True)
+            # Switch to the plot tab to show the results
+            self.show_output_tab_widget.setCurrentIndex(plot_tab_index)
+        
+        # Log completion
+        self.console_textbox.append(
+            f"\n✓ Time history plot updated for Node {result.node_id}\n"
+        )
     
     def _handle_batch_results(self, config):
         """Handle results from batch analysis."""
@@ -1083,37 +1095,48 @@ class SolverTab(QWidget):
         """
         Handle node selection from display tab or manual entry.
         
+        Triggers time history calculation for the selected node.
+        
         Args:
             node_id: Node ID to handle.
         """
         try:
             # Validate node exists
-            if node_id not in self.stress_data.node_ids:
+            if not self.stress_data or node_id not in self.stress_data.node_ids:
                 QMessageBox.warning(
                     self, "Node Not Found",
                     f"Node ID {node_id} not found in loaded data."
                 )
                 return
             
+            # Validate that at least one output is selected
+            if not any([
+                self.max_principal_stress_checkbox.isChecked(),
+                self.min_principal_stress_checkbox.isChecked(),
+                self.von_mises_checkbox.isChecked(),
+                self.deformation_checkbox.isChecked(),
+                self.velocity_checkbox.isChecked(),
+                self.acceleration_checkbox.isChecked()
+            ]):
+                QMessageBox.warning(
+                    self, "No Output Selected",
+                    "Please select at least one output type (Von Mises, Principal Stress, "
+                    "Deformation, Velocity, or Acceleration) before computing time history."
+                )
+                return
+            
             # Log selection
-            self.console_textbox.append(f"Selected Node ID: {node_id}")
+            self.console_textbox.append(
+                f"\n{'='*60}\n"
+                f"Computing time history for Node ID: {node_id}\n"
+                f"{'='*60}"
+            )
             self.console_textbox.verticalScrollBar().setValue(
                 self.console_textbox.verticalScrollBar().maximum()
             )
             
-            # Update placeholder plot
-            x_data = [1, 2, 3, 4, 5]
-            y_data = [0, 0, 0, 0, 0]
-            
-            self.plot_single_node_tab.update_plot(
-                x_data, y_data, node_id,
-                is_max_principal_stress=self.max_principal_stress_checkbox.isChecked(),
-                is_min_principal_stress=self.min_principal_stress_checkbox.isChecked(),
-                is_von_mises=self.von_mises_checkbox.isChecked(),
-                is_deformation=self.deformation_checkbox.isChecked(),
-                is_velocity=self.velocity_checkbox.isChecked(),
-                is_acceleration=self.acceleration_checkbox.isChecked()
-            )
+            # Trigger solve with time history mode for this node
+            self.solve(force_time_history_for_node_id=node_id)
             
         except Exception as e:
             QMessageBox.critical(

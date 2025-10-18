@@ -12,6 +12,7 @@ import gc
 import numpy as np
 import pandas as pd
 import pyvista as pv
+import vtk
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
 from PyQt5.QtWidgets import QFileDialog, QInputDialog, QMessageBox, QWidget
@@ -66,6 +67,8 @@ class DisplayTab(QWidget):
         self.camera_widget = None
         self.hover_annotation = None
         self.hover_observer = None
+        self.last_hover_time = 0  # For frame rate throttling
+        self.data_column = "Result"  # Track current data column name
         self.anim_timer = None
         self.time_text_actor = None
         self.current_anim_time = 0.0
@@ -285,6 +288,7 @@ class DisplayTab(QWidget):
                 mesh = self.viz_manager.update_mesh_scalars(
                     mesh, scalar_data, scalar_name
                 )
+                self.data_column = scalar_name
             
             self.current_mesh = mesh
             self.file_path.setText(filename)
@@ -305,6 +309,10 @@ class DisplayTab(QWidget):
         # Clear existing actors
         self.plotter.clear()
         
+        # Update data column name from active scalars
+        if self.current_mesh.active_scalars_name:
+            self.data_column = self.current_mesh.active_scalars_name
+        
         # Add mesh to plotter
         self.current_actor = self.plotter.add_mesh(
             self.current_mesh,
@@ -316,7 +324,7 @@ class DisplayTab(QWidget):
             below_color='gray',
             above_color='magenta',
             scalar_bar_args={
-                'title': self.current_mesh.active_scalars_name,
+                'title': self.data_column,
                 'fmt': '%.4f',
                 'position_x': 0.04,  # Left edge (5% from left)
                 'position_y': 0.35,  # Vertical position (35% from bottom)
@@ -337,14 +345,76 @@ class DisplayTab(QWidget):
                 self.scalar_max_spin.value()
             )
         
+        # Setup hover annotation
+        self._setup_hover_annotation()
+        
+        # Add camera widget if not present
+        if not self.camera_widget:
+            self.camera_widget = self.plotter.add_camera_orientation_widget()
+            self.camera_widget.EnabledOn()
+        
         self.plotter.reset_camera()
+    
+    def _setup_hover_annotation(self):
+        """Set up hover callback to display node ID and value."""
+        if not self.current_mesh or 'NodeID' not in self.current_mesh.array_names:
+            return
+        
+        # Clean up previous hover elements
+        self._clear_hover_elements()
+        
+        # Create new annotation
+        self.hover_annotation = self.plotter.add_text(
+            "", position='upper_right', font_size=8,
+            color='black', name='hover_annotation'
+        )
+        
+        # Create picker and callback with throttling
+        picker = vtk.vtkPointPicker()
+        picker.SetTolerance(0.01)
+        
+        def hover_callback(obj, event):
+            now = time.time()
+            if (now - self.last_hover_time) < 0.033:  # 30 FPS throttle
+                return
+            
+            iren = obj
+            pos = iren.GetEventPosition()
+            picker.Pick(pos[0], pos[1], 0, self.plotter.renderer)
+            point_id = picker.GetPointId()
+            
+            if point_id != -1 and point_id < self.current_mesh.n_points:
+                node_id = self.current_mesh['NodeID'][point_id]
+                value = self.current_mesh[self.data_column][point_id]
+                self.hover_annotation.SetText(2, f"Node ID: {node_id}\n{self.data_column}: {value:.5f}")
+            else:
+                self.hover_annotation.SetText(2, "")
+            
+            iren.GetRenderWindow().Render()
+            self.last_hover_time = now
+        
+        # Add and track new observer
+        self.hover_observer = self.plotter.iren.add_observer('MouseMoveEvent', hover_callback)
+    
+    def _clear_hover_elements(self):
+        """Dedicated hover element cleanup."""
+        if self.hover_annotation:
+            self.plotter.remove_actor(self.hover_annotation)
+            self.hover_annotation = None
+        
+        if self.hover_observer:
+            self.plotter.iren.remove_observer(self.hover_observer)
+            self.hover_observer = None
     
     def update_point_size(self):
         """Update the point size of the displayed mesh."""
         if self.current_actor is not None:
+            # Clear and re-setup hover annotation for updated point size
+            self._clear_hover_elements()
             self.current_actor.GetProperty().SetPointSize(
                 self.point_size.value()
             )
+            self._setup_hover_annotation()
             self.plotter.render()
     
     def _update_scalar_range(self):
@@ -1194,12 +1264,25 @@ class DisplayTab(QWidget):
             data_min: Minimum data value.
             data_max: Maximum data value.
         """
+        # Update current mesh and data column
         self.current_mesh = mesh
-        self.scalar_min_spin.setRange(data_min * 0.9, data_max * 1.1)
-        self.scalar_max_spin.setRange(data_min * 0.9, data_max * 1.1)
+        self.data_column = scalar_bar_title
+        
+        # Update scalar range spin boxes
+        self.scalar_min_spin.blockSignals(True)
+        self.scalar_max_spin.blockSignals(True)
+        self.scalar_min_spin.setRange(data_min, data_max)
+        self.scalar_max_spin.setRange(data_min, 1e30)
         self.scalar_min_spin.setValue(data_min)
         self.scalar_max_spin.setValue(data_max)
+        self.scalar_min_spin.blockSignals(False)
+        self.scalar_max_spin.blockSignals(False)
+        
+        # Update the visualization
         self.update_visualization()
+        
+        # Clear file path since this is computed data, not loaded from file
+        self.file_path.clear()
         
         # Show IC export button if velocity components are present
         if all(key in mesh.array_names for key in ['vel_x', 'vel_y', 'vel_z']):
@@ -1232,49 +1315,85 @@ class DisplayTab(QWidget):
         self.anim_manager.is_deformation_included = is_deformation_included
         self.is_deformation_included_in_anim = is_deformation_included
         
-        # Re-create tracked node markers if needed
-        if self.target_node_index is not None:
-            try:
-                point_coords = (precomputed_coords[self.target_node_index, :, 0] 
-                               if precomputed_coords is not None 
-                               else self.current_mesh.points[self.target_node_index])
-                
-                import pyvista as pv
-                self.marker_poly = pv.PolyData([point_coords])
-                self.target_node_marker_actor = self.plotter.add_points(
-                    self.marker_poly,
-                    color='black',
-                    point_size=self.point_size.value() * 2,
-                    render_points_as_spheres=True,
-                    opacity=0.3
-                )
-                
-                self.label_point_data = pv.PolyData([point_coords])
-                self.target_node_label_actor = self.plotter.add_point_labels(
-                    self.label_point_data, [f"Node {self.target_node_id}"],
-                    name="target_node_label",
-                    font_size=16, text_color='red',
-                    always_visible=True, show_points=False
-                )
-                
-                # Hide if frozen
-                if self.freeze_tracked_node:
-                    if self.target_node_marker_actor:
-                        self.target_node_marker_actor.SetVisibility(False)
-                    if self.target_node_label_actor:
-                        self.target_node_label_actor.SetVisibility(False)
-                    self.plotter.render()
-                    
-            except IndexError:
-                print("Warning: Could not re-create tracked node marker.")
-                self._clear_goto_node_markers()
+        # Update data column for scalar bar title and hover annotation
+        self.data_column = data_column_name
         
-        # Start animation playback
+        # Update scalar range spinboxes based on precomputed data
+        data_min = np.min(precomputed_scalars)
+        data_max = np.max(precomputed_scalars)
+        self.scalar_min_spin.blockSignals(True)
+        self.scalar_max_spin.blockSignals(True)
+        self.scalar_min_spin.setRange(data_min, data_max)
+        self.scalar_max_spin.setRange(data_min, 1e30)
+        self.scalar_min_spin.setValue(data_min)
+        self.scalar_max_spin.setValue(data_max)
+        self.scalar_min_spin.blockSignals(False)
+        self.scalar_max_spin.blockSignals(False)
+        
+        # Update the current mesh with first frame data and rebuild visualization
+        # This ensures scalar bar title and range are updated
         self.current_anim_frame_index = 0
         self.animation_paused = False
         
         try:
-            self._animate_frame(update_index=False)  # Render first frame
+            # Get first frame data
+            scalars, coords, time_val = self.anim_manager.get_frame_data(0)
+            
+            # Update mesh scalars
+            if self.current_mesh is not None:
+                self.current_mesh[data_column_name] = scalars
+                self.current_mesh.set_active_scalars(data_column_name)
+                
+                # Update coordinates if deformation is included
+                if coords is not None:
+                    self.current_mesh.points = coords.copy()
+                    try:
+                        self.current_mesh.points_modified()
+                    except AttributeError:
+                        self.current_mesh.GetPoints().Modified()
+                
+                # Rebuild visualization with new scalar bar title and range
+                self.update_visualization()
+            
+            # Re-create tracked node markers AFTER update_visualization (which clears the plotter)
+            if self.target_node_index is not None:
+                try:
+                    point_coords = (precomputed_coords[self.target_node_index, :, 0] 
+                                   if precomputed_coords is not None 
+                                   else self.current_mesh.points[self.target_node_index])
+                    
+                    import pyvista as pv
+                    self.marker_poly = pv.PolyData([point_coords])
+                    self.target_node_marker_actor = self.plotter.add_points(
+                        self.marker_poly,
+                        color='black',
+                        point_size=self.point_size.value() * 2,
+                        render_points_as_spheres=True,
+                        opacity=0.3
+                    )
+                    
+                    self.label_point_data = pv.PolyData([point_coords])
+                    self.target_node_label_actor = self.plotter.add_point_labels(
+                        self.label_point_data, [f"Node {self.target_node_id}"],
+                        name="target_node_label",
+                        font_size=16, text_color='red',
+                        always_visible=True, show_points=False
+                    )
+                    
+                    # Hide if frozen
+                    if self.freeze_tracked_node:
+                        if self.target_node_marker_actor:
+                            self.target_node_marker_actor.SetVisibility(False)
+                        if self.target_node_label_actor:
+                            self.target_node_label_actor.SetVisibility(False)
+                        self.plotter.render()
+                        
+                except IndexError:
+                    print("Warning: Could not re-create tracked node marker.")
+                    self._clear_goto_node_markers()
+            
+            # Now render the first frame with the time text
+            self._animate_frame(update_index=False)
         except Exception as e:
             QMessageBox.critical(
                 self, "Animation Error",
@@ -1652,6 +1771,9 @@ class DisplayTab(QWidget):
         """Properly clear existing visualization."""
         self.stop_animation()
         
+        # Clear hover elements
+        self._clear_hover_elements()
+        
         # Clear box widget
         if self.box_widget:
             self.box_widget.Off()
@@ -1679,4 +1801,3 @@ class DisplayTab(QWidget):
             self.anim_timer.stop()
         if hasattr(self, 'plotter'):
             self.plotter.close()
-
