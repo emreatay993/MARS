@@ -659,15 +659,29 @@ class DisplayTab(QWidget):
         
         # Gather UI selections
         main_tab = self.window().solver_tab
-        if not any([
+
+        # Count selected outputs
+        selected_outputs = [
             main_tab.von_mises_checkbox.isChecked(),
             main_tab.max_principal_stress_checkbox.isChecked(),
             main_tab.min_principal_stress_checkbox.isChecked(),
             main_tab.deformation_checkbox.isChecked(),
             main_tab.velocity_checkbox.isChecked(),
             main_tab.acceleration_checkbox.isChecked()
-        ]):
+        ]
+        num_selected = sum(selected_outputs)
+
+        if num_selected == 0:
             QMessageBox.warning(self, "No Selection", "No valid output is selected for animation.")
+            self.play_button.setEnabled(True)
+            return
+        elif num_selected > 1:
+            QMessageBox.warning(
+                self, "Error - Multiple Selections",
+                "Please select only one output type for animation playback.\n\n"
+                "Animation currently supports displaying one output at a time for clarity.\n"
+                "You can switch between different outputs using the checkboxes and run separate animations."
+            )
             self.play_button.setEnabled(True)
             return
         
