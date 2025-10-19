@@ -5,25 +5,18 @@ This module provides the main application window with menu bar, navigator,
 and tab widgets for solver and display functionality.
 """
 
-import os
-import subprocess
-import traceback
-from tempfile import NamedTemporaryFile
-
-import numpy as np
-import torch
-import plotly.io as pio
-
-from PyQt5.QtCore import Qt, QDir, QUrl
+from PyQt5.QtCore import Qt, QDir
 from PyQt5.QtWidgets import (
-    QAction, QDockWidget, QFileDialog, QFileSystemModel,
+    QAction, QDockWidget, QFileSystemModel,
     QMainWindow, QMenuBar, QMessageBox, QTabWidget, QTreeView
 )
 
 from ui.solver_tab import SolverTab
 from ui.display_tab import DisplayTab
 from ui.widgets.dialogs import AdvancedSettingsDialog
-import solver.engine as solver_engine
+from ui.handlers.plotting_handler import PlottingHandler
+from ui.handlers.settings_handler import SettingsHandler
+from ui.handlers.navigator_handler import NavigatorHandler
 
 
 class ApplicationController(QMainWindow):
@@ -38,19 +31,18 @@ class ApplicationController(QMainWindow):
     def __init__(self):
         """Initialize the application controller."""
         super().__init__()
-        
-        # State
-        self.temp_files = []
-        self.project_directory = None
-        
+
+        # Handlers
+        self.plotting_handler = PlottingHandler()
+
         # Window configuration
         self.setWindowTitle('MSUP Smart Solver - v2.0.0 (Modular)')
         self.setGeometry(40, 40, 600, 800)
         
         # Create UI components (order matters - navigator before menu bar)
+        self._create_tabs()
         self._create_navigator()
         self._create_menu_bar()
-        self._create_tabs()
         self._connect_signals()
     
     def _create_menu_bar(self):
@@ -96,7 +88,9 @@ class ApplicationController(QMainWindow):
         # File menu
         file_menu = self.menu_bar.addMenu("File")
         select_dir_action = QAction("Select Project Directory", self)
-        select_dir_action.triggered.connect(self.select_project_directory)
+        select_dir_action.triggered.connect(
+            lambda: self.navigator_handler.select_project_directory(self)
+        )
         file_menu.addAction(select_dir_action)
         
         # View menu
@@ -130,7 +124,6 @@ class ApplicationController(QMainWindow):
         # Tree view
         self.tree_view = QTreeView()
         self.tree_view.setModel(self.file_model)
-        self.tree_view.doubleClicked.connect(self.open_navigator_file)
         self.tree_view.setHeaderHidden(False)
         self.tree_view.setMinimumWidth(240)
         self.tree_view.setSortingEnabled(True)
@@ -156,6 +149,10 @@ class ApplicationController(QMainWindow):
         # Set widget
         self.navigator_dock.setWidget(self.tree_view)
         self.addDockWidget(Qt.LeftDockWidgetArea, self.navigator_dock)
+
+        # Create handler and connect the signal to the handler
+        self.navigator_handler = NavigatorHandler(self.file_model, self.tree_view, self.solver_tab)
+        self.tree_view.doubleClicked.connect(self.navigator_handler.open_navigator_file)
     
     def _apply_navigator_styles(self):
         """Apply styles to navigator components."""
@@ -241,7 +238,8 @@ class ApplicationController(QMainWindow):
         # Create tabs
         self.solver_tab = SolverTab()
         self.display_tab = DisplayTab()
-        self.display_tab.main_window = self
+
+        self.display_tab.set_plotting_handler(self.plotting_handler) #TODO: Add this plotting handler method inside Display tab
         
         self.tab_widget.addTab(self.solver_tab, "Main Window")
         self.tab_widget.addTab(self.display_tab, "Display")
@@ -271,121 +269,21 @@ class ApplicationController(QMainWindow):
         self.display_tab.animation_precomputation_requested.connect(
             self.solver_tab.request_animation_precomputation
         )
-    
-    
-    def select_project_directory(self):
-        """Open dialog to select project directory."""
-        dir_path = QFileDialog.getExistingDirectory(
-            self, "Select Project Directory"
-        )
-        if dir_path:
-            self.project_directory = dir_path
-            print(f"Project directory selected: {self.project_directory}")
-            
-            # Update solver tab's project directory
-            self.solver_tab.project_directory = self.project_directory
-            
-            # Update navigator
-            self.file_model.setRootPath(self.project_directory)
-            self.tree_view.setRootIndex(
-                self.file_model.index(self.project_directory)
-            )
-    
-    def open_navigator_file(self, index):
-        """Open file from navigator in default application."""
-        if self.file_model.isDir(index):
-            return
-        
-        file_path = self.file_model.filePath(index)
-        
-        try:
-            subprocess.run(['cmd', '/c', 'start', '/max', '', file_path], shell=True)
-        except Exception as e:
-            print(f"Error opening file '{file_path}': {e}")
-    
-    def load_fig_to_webview(self, fig, web_view):
-        """Load Plotly figure into web view widget."""
-        try:
-            # Handle FigureResampler if passed
-            plotly_fig = fig.figure if hasattr(fig, 'figure') else fig
-            
-            html_content = pio.to_html(
-                plotly_fig,
-                full_html=True,
-                include_plotlyjs=True,
-                config={'responsive': True}
-            )
-            
-            with NamedTemporaryFile(
-                mode='w', suffix='.html', delete=False, encoding='utf-8'
-            ) as tmp_file:
-                tmp_file.write(html_content)
-                file_path = tmp_file.name
-                self.temp_files.append(file_path)
-            
-            web_view.setUrl(QUrl.fromLocalFile(file_path))
-            web_view.show()
-            
-        except Exception as e:
-            print(f"Error loading figure to webview: {e}")
-            traceback.print_exc()
-            error_html = (
-                f"<html><body><h1>Error loading plot</h1>"
-                f"<pre>{e}</pre><pre>{traceback.format_exc()}</pre></body></html>"
-            )
-            try:
-                web_view.setHtml(error_html)
-            except Exception:
-                pass
-    
+
     def open_advanced_settings(self):
         """Open advanced settings dialog."""
         dialog = AdvancedSettingsDialog(self)
         if dialog.exec_() == AdvancedSettingsDialog.Accepted:
             settings = dialog.get_settings()
-            self._apply_advanced_settings(settings)
+            self.settings_handler.apply_advanced_settings(settings)
             QMessageBox.information(
                 self, "Settings Applied",
                 "New advanced settings have been applied.\n"
                 "They will be used for the next solve operation."
             )
     
-    def _apply_advanced_settings(self, settings):
-        """Apply advanced settings to solver engine."""
-        # Update global settings in solver engine
-        solver_engine.RAM_PERCENT = settings["ram_percent"]
-        solver_engine.DEFAULT_PRECISION = settings["precision"]
-        solver_engine.IS_GPU_ACCELERATION_ENABLED = settings["gpu_acceleration"]
-        
-        # Update derived precision variables
-        if solver_engine.DEFAULT_PRECISION == 'Single':
-            solver_engine.NP_DTYPE = np.float32
-            solver_engine.TORCH_DTYPE = torch.float32
-            solver_engine.RESULT_DTYPE = 'float32'
-        elif solver_engine.DEFAULT_PRECISION == 'Double':
-            solver_engine.NP_DTYPE = np.float64
-            solver_engine.TORCH_DTYPE = torch.float64
-            solver_engine.RESULT_DTYPE = 'float64'
-        
-        print("\n--- Advanced settings updated ---")
-        print(f"  RAM Allocation: {solver_engine.RAM_PERCENT * 100:.0f}%")
-        print(f"  Solver Precision: {solver_engine.DEFAULT_PRECISION}")
-        print(f"  GPU Acceleration: "
-              f"{'Enabled' if solver_engine.IS_GPU_ACCELERATION_ENABLED else 'Disabled'}")
-        print("---------------------------------")
-    
     def closeEvent(self, event):
         """Clean up temporary files on application close."""
-        self._cleanup_temp_files()
+        self.plotting_handler.cleanup_temp_files()
         event.accept()
-    
-    def _cleanup_temp_files(self):
-        """Remove temporary files created during session."""
-        for temp_file in self.temp_files:
-            try:
-                if os.path.exists(temp_file):
-                    os.remove(temp_file)
-            except Exception as e:
-                print(f"Error removing temp file {temp_file}: {e}")
-        self.temp_files.clear()
 

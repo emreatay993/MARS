@@ -4,14 +4,46 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Refactoring for SolverTab.">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Changed the name of the main_window.py into application_controller.py">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/.pylintrc" beforeDir="false" afterPath="$PROJECT_DIR$/src/.pylintrc" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/computation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/computation.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/data_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/data_models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/visualization.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/exporters.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/exporters.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/fea_utilities.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/fea_utilities.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/loaders.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/validators.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/validators.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/solver/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/solver/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/solver/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/solver/engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/application_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/application_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/builders/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/builders/display_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/display_ui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/display_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/display_tab.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/file_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/log_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/log_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/main_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.csv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.dat" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/solver_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/solver_tab.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.csv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/console.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/console.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/plotting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/plotting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/__init__.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/constants.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/file_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/file_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/node_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/node_utils.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -51,7 +83,7 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.main.executor": "Run",
+    "Python.main.executor": "Debug",
     "Python.main_app.executor": "Run",
     "Python.solver_tab.executor": "Debug",
     "Python.ui_state_handler.executor": "Debug",
@@ -139,13 +171,31 @@
       <option name="project" value="LOCAL" />
       <updated>1760891633438</updated>
     </task>
-    <option name="localTasksCounter" value="5" />
+    <task id="LOCAL-00005" summary="Bug fix for Update and Play buttons in Display Tab">
+      <option name="closed" value="true" />
+      <created>1760895104162</created>
+      <option name="number" value="00005" />
+      <option name="presentableId" value="LOCAL-00005" />
+      <option name="project" value="LOCAL" />
+      <updated>1760895104162</updated>
+    </task>
+    <task id="LOCAL-00006" summary="Changed the name of the main_window.py into application_controller.py">
+      <option name="closed" value="true" />
+      <created>1760895637146</created>
+      <option name="number" value="00006" />
+      <option name="presentableId" value="LOCAL-00006" />
+      <option name="project" value="LOCAL" />
+      <updated>1760895637146</updated>
+    </task>
+    <option name="localTasksCounter" value="7" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Created file" />
     <MESSAGE value="Bug fixes." />
     <MESSAGE value="Refactoring for SolverTab." />
-    <option name="LAST_COMMIT_MESSAGE" value="Refactoring for SolverTab." />
+    <MESSAGE value="Bug fix for Update and Play buttons in Display Tab" />
+    <MESSAGE value="Changed the name of the main_window.py into application_controller.py" />
+    <option name="LAST_COMMIT_MESSAGE" value="Changed the name of the main_window.py into application_controller.py" />
   </component>
 </project>

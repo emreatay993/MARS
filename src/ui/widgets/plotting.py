@@ -384,7 +384,7 @@ class PlotlyWidget(QWidget):
         
         # Display
         main_win = self.window()
-        main_win.load_fig_to_webview(resampler_fig, self.web_view)
+        main_win.plotting_handler.load_fig_to_webview(resampler_fig, self.web_view)
     
     def clear_plot(self):
         """Clear the plot."""
@@ -497,7 +497,7 @@ class PlotlyMaxWidget(QWidget):
         
         # Display
         main_win = self.window()
-        main_win.load_fig_to_webview(resfig, self.web_view)
+        main_win.plotting_handler.load_fig_to_webview(resfig, self.web_view)
         
         # Populate table
         headers = ["Time [s]"] + [trace['name'] for trace in traces]

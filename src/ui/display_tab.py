@@ -132,6 +132,10 @@ class DisplayTab(QWidget):
         self.save_anim_button = self.components['save_anim_button']
         self.anim_group = self.components['anim_group']
     
+    def set_plotting_handler(self, plotting_handler):
+        """Set the plotting handler for this display tab."""
+        self.plotting_handler = plotting_handler
+
     def _connect_signals(self):
         """Connect UI signals to their handlers."""
         # File controls
