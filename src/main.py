@@ -8,7 +8,7 @@ import sys
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
-from ui.main_window import MainWindow
+from ui.application_controller import ApplicationController
 
 
 def main():
@@ -29,7 +29,7 @@ def main():
     """)
     
     # Create and show main window
-    main_window = MainWindow()
+    main_window = ApplicationController()
     main_window.showMaximized()
     
     # Run application
