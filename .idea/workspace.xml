@@ -4,14 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Bug fixes.">
-      <change afterPath="$PROJECT_DIR$/.idea/MARS_.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/Project_Default.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/display_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/display_tab.py" afterDir="false" />
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Refactoring for SolverTab.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/main_window.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/main_window.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.csv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.dat" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/solver_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/solver_tab.py" afterDir="false" />
@@ -57,6 +52,7 @@
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.main.executor": "Run",
+    "Python.main_app.executor": "Run",
     "Python.solver_tab.executor": "Debug",
     "Python.ui_state_handler.executor": "Debug",
     "RunOnceActivity.ShowReadmeOnStart": "true",
@@ -135,12 +131,21 @@
       <option name="project" value="LOCAL" />
       <updated>1760827997491</updated>
     </task>
-    <option name="localTasksCounter" value="4" />
+    <task id="LOCAL-00004" summary="Refactoring for SolverTab.">
+      <option name="closed" value="true" />
+      <created>1760891633438</created>
+      <option name="number" value="00004" />
+      <option name="presentableId" value="LOCAL-00004" />
+      <option name="project" value="LOCAL" />
+      <updated>1760891633438</updated>
+    </task>
+    <option name="localTasksCounter" value="5" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
     <MESSAGE value="Created file" />
     <MESSAGE value="Bug fixes." />
-    <option name="LAST_COMMIT_MESSAGE" value="Bug fixes." />
+    <MESSAGE value="Refactoring for SolverTab." />
+    <option name="LAST_COMMIT_MESSAGE" value="Refactoring for SolverTab." />
   </component>
 </project>

@@ -274,18 +274,18 @@ class MainWindow(QMainWindow):
     def _handle_time_point_request(self, selected_time, options):
         """
         Handle time point calculation request from display tab.
-        
+
         Forward the request to solver tab for computation.
         """
-        self.solver_tab.perform_time_point_calculation(selected_time, options)
+        self.solver_tab.request_time_point_calculation(selected_time, options)
     
     def _handle_animation_request(self, params):
         """
         Handle animation precomputation request from display tab.
-        
+
         Forward the request to solver tab for computation.
         """
-        self.solver_tab.perform_animation_precomputation(params)
+        self.solver_tab.request_animation_precomputation(params)
     
     def select_project_directory(self):
         """Open dialog to select project directory."""

@@ -417,7 +417,7 @@ class SolverTab(QWidget):
     def handle_dropped_file(self, target_widget, file_path):
         """
         Handle dropped file based on target widget.
-        
+
         Args:
             target_widget: Widget where file was dropped.
             file_path: Path to the dropped file.
@@ -431,4 +431,31 @@ class SolverTab(QWidget):
             self._load_deformation_file(file_path)
         elif target_widget == self.steady_state_file_path:
             self._load_steady_state_file(file_path)
+
+    # ========== External Request Interface ==========
+
+    def request_time_point_calculation(self, selected_time, options):
+        """
+        Handle external request for time point calculation.
+
+        This is the public interface method that external components (like main_window)
+        should call to request time point calculations. It delegates to the analysis handler.
+
+        Args:
+            selected_time: Time value requested by user.
+            options: Dict with calculation options (compute_von_mises, scale_factor, etc.).
+        """
+        self.analysis_handler.perform_time_point_calculation(selected_time, options)
+
+    def request_animation_precomputation(self, params):
+        """
+        Handle external request for animation precomputation.
+
+        This is the public interface method that external components (like main_window)
+        should call to request animation precomputations. It delegates to the analysis handler.
+
+        Args:
+            params: Dict with animation parameters (compute flags, indices, etc.).
+        """
+        self.analysis_handler.perform_animation_precomputation(params)
 
