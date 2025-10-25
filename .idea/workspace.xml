@@ -4,20 +4,23 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Multiple output check for play button.">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Centralized styling.">
+      <change afterPath="$PROJECT_DIR$/.gitignore" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/application_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/application_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/builders/display_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/display_ui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/display_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/display_tab.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/main_window.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/file_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.csv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/solver_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/solver_tab.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.csv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/console.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/console.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/constants.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/plotting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/plotting.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -186,7 +189,15 @@
       <option name="project" value="LOCAL" />
       <updated>1760903217530</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Centralized styling.">
+      <option name="closed" value="true" />
+      <created>1761391886298</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1761391886298</updated>
+    </task>
+    <option name="localTasksCounter" value="11" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -197,7 +208,8 @@
     <MESSAGE value="Changed the name of the main_window.py into application_controller.py" />
     <MESSAGE value="Refactoring general" />
     <MESSAGE value="Multiple output check for play button." />
-    <option name="LAST_COMMIT_MESSAGE" value="Multiple output check for play button." />
+    <MESSAGE value="Centralized styling." />
+    <option name="LAST_COMMIT_MESSAGE" value="Centralized styling." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

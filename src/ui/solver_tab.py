@@ -9,7 +9,7 @@ import os
 import sys
 
 import numpy as np
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import QMessageBox, QWidget
 
@@ -45,6 +45,7 @@ class SolverTab(QWidget):
     initial_data_loaded = pyqtSignal(object)
     time_point_result_ready = pyqtSignal(object, str, float, float)
     animation_data_ready = pyqtSignal(object)
+    animation_precomputation_failed = pyqtSignal(str)
     
     def __init__(self, parent=None):
         """Initialize the Solver Tab."""
@@ -314,6 +315,7 @@ class SolverTab(QWidget):
             )
             self.initial_data_loaded.emit(initial_data)
 
+    @pyqtSlot(int)
     def update_progress_bar(self, value):
         """
         Update progress bar value.
@@ -326,6 +328,7 @@ class SolverTab(QWidget):
     
     # ========== Plot Management Methods ==========
 
+    @pyqtSlot()
     def on_node_entered(self):
         """Handle Enter key press in node ID field."""
         try:
@@ -346,6 +349,7 @@ class SolverTab(QWidget):
                 f"Error processing entered Node ID: {e}"
             )
     
+    @pyqtSlot(int)
     def handle_node_selection(self, node_id):
         """
         Handle node selection from display tab or manual entry.
@@ -434,6 +438,7 @@ class SolverTab(QWidget):
 
     # ========== External Request Interface ==========
 
+    @pyqtSlot(float, object)
     def request_time_point_calculation(self, selected_time, options):
         """
         Handle external request for time point calculation.
@@ -447,6 +452,7 @@ class SolverTab(QWidget):
         """
         self.analysis_handler.perform_time_point_calculation(selected_time, options)
 
+    @pyqtSlot(object)
     def request_animation_precomputation(self, params):
         """
         Handle external request for animation precomputation.

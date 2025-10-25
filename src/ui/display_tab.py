@@ -244,7 +244,8 @@ class DisplayTab(QWidget):
             self.deformation_scale_edit.setEnabled(False)
             self.deformation_scale_edit.setText("0")
     
-    def load_file(self):
+    @pyqtSlot(bool)
+    def load_file(self, checked=False):
         """Open file dialog and load visualization file."""
         file_name, _ = QFileDialog.getOpenFileName(
             self, 'Open Visualization File', '', 'CSV Files (*.csv)'
@@ -411,7 +412,8 @@ class DisplayTab(QWidget):
             self.plotter.iren.remove_observer(self.hover_observer)
             self.hover_observer = None
     
-    def update_point_size(self):
+    @pyqtSlot(int)
+    def update_point_size(self, value):
         """Update the point size of the displayed mesh."""
         if self.current_actor is not None:
             # Clear and re-setup hover annotation for updated point size
@@ -422,7 +424,8 @@ class DisplayTab(QWidget):
             self._setup_hover_annotation()
             self.plotter.render()
     
-    def _update_scalar_range(self):
+    @pyqtSlot(float)
+    def _update_scalar_range(self, value):
         """Update the scalar range of the color map."""
         if self.current_actor is not None:
             self.current_actor.mapper.scalar_range = (
@@ -431,6 +434,7 @@ class DisplayTab(QWidget):
             )
             self.plotter.render()
     
+    @pyqtSlot()
     def _validate_deformation_scale(self):
         """Validate deformation scale factor input."""
         text = self.deformation_scale_edit.text()
@@ -443,14 +447,17 @@ class DisplayTab(QWidget):
                 str(self.last_valid_deformation_scale)
             )
     
+    @pyqtSlot(float)
     def _update_anim_range_min(self, value):
         """Ensure animation end time is not less than start time."""
         self.anim_end_spin.setMinimum(value)
     
+    @pyqtSlot(float)
     def _update_anim_range_max(self, value):
         """Ensure animation start time does not exceed end time."""
         self.anim_start_spin.setMaximum(value)
     
+    @pyqtSlot(str)
     def _update_step_spinbox_state(self, text):
         """Toggle between custom and actual time step modes."""
         if text == "Custom Time Step":
@@ -460,7 +467,8 @@ class DisplayTab(QWidget):
             self.custom_step_spin.setVisible(False)
             self.actual_interval_spin.setVisible(True)
     
-    def update_time_point_results(self):
+    @pyqtSlot(bool)
+    def update_time_point_results(self, checked=False):
         """Request time point calculation and update visualization."""
         # Get main tab (solver tab) to check which outputs are selected
         main_tab = self.window().solver_tab
@@ -491,7 +499,8 @@ class DisplayTab(QWidget):
         print(f"DisplayTab: Requesting time point update for time {selected_time}")
         self.time_point_update_requested.emit(selected_time, options)
     
-    def save_time_point_results(self):
+    @pyqtSlot(bool)
+    def save_time_point_results(self, checked=False):
         """Save currently displayed results to CSV."""
         if self.current_mesh is None:
             QMessageBox.warning(self, "No Data", "No visualization data to save.")
@@ -529,7 +538,8 @@ class DisplayTab(QWidget):
                     f"An error occurred while saving the file: {e}"
                 )
     
-    def extract_initial_conditions(self):
+    @pyqtSlot(bool)
+    def extract_initial_conditions(self, checked=False):
         """Extract velocity initial conditions and export to APDL format."""
         # Check if velocity data is available in the current mesh
         if self.current_mesh is None:
@@ -584,7 +594,8 @@ class DisplayTab(QWidget):
                     f"Failed to export initial conditions:\n{str(e)}"
                 )
     
-    def start_animation(self):
+    @pyqtSlot(bool)
+    def start_animation(self, checked=False):
         """Start animation playback or resume if paused."""
         if self.current_mesh is None:
             QMessageBox.warning(
@@ -816,7 +827,8 @@ class DisplayTab(QWidget):
         
         return total_ram_bytes / (1024 ** 3)
     
-    def pause_animation(self):
+    @pyqtSlot(bool)
+    def pause_animation(self, checked=False):
         """Pause animation playback."""
         if self.anim_timer is not None and self.anim_timer.isActive():
             self.anim_timer.stop()
@@ -836,7 +848,8 @@ class DisplayTab(QWidget):
         else:
             print("\nPause command ignored: Animation timer not active.")
     
-    def stop_animation(self):
+    @pyqtSlot(bool)
+    def stop_animation(self, checked=False):
         """Stop animation, release precomputed data, and reset state."""
         # Check if there's anything to stop
         is_stoppable = (self.anim_timer is not None or 
@@ -897,6 +910,7 @@ class DisplayTab(QWidget):
         if is_stoppable:
             print("\nAnimation stopped.")
     
+    @pyqtSlot()
     def _animate_frame(self, update_index=True):
         """Update display using next precomputed animation frame."""
         if (self.anim_manager.precomputed_scalars is None or 
@@ -993,7 +1007,8 @@ class DisplayTab(QWidget):
             print(f"Error updating mesh for frame {frame_index}: {e}")
             return False
     
-    def save_animation(self):
+    @pyqtSlot(bool)
+    def save_animation(self, checked=False):
         """Save animation to file (MP4 or GIF)."""
         if self.anim_manager.precomputed_scalars is None:
             QMessageBox.warning(
@@ -1134,6 +1149,7 @@ class DisplayTab(QWidget):
         self.freeze_tracked_node = False
         self.freeze_baseline = None
     
+    @pyqtSlot('QPoint')
     def show_context_menu(self, position):
         """Create and display the right-click context menu."""
         if self.current_mesh is None:
@@ -1245,6 +1261,7 @@ class DisplayTab(QWidget):
         
         context_menu.exec_(self.plotter.mapToGlobal(position))
     
+    @pyqtSlot(object, str, float, float)
     def update_view_with_results(self, mesh, scalar_bar_title, data_min, data_max):
         """
         Update visualization with computed results.
@@ -1403,7 +1420,8 @@ class DisplayTab(QWidget):
         self.stop_button.setEnabled(True)
         self.save_anim_button.setEnabled(True)
     
-    def toggle_selection_box(self):
+    @pyqtSlot(bool)
+    def toggle_selection_box(self, checked=False):
         """Add or remove the box widget from the plotter."""
         if self.box_widget is None:
             import vtk
@@ -1427,6 +1445,7 @@ class DisplayTab(QWidget):
         """Do-nothing callback for box widget."""
         pass
     
+    @pyqtSlot(bool)
     def toggle_point_picking_mode(self, checked):
         """Toggle point picking mode on the plotter."""
         self.is_point_picking_active = checked
@@ -1481,7 +1500,8 @@ class DisplayTab(QWidget):
         self.plotter.render()
         self.toggle_point_picking_mode(False)
     
-    def _find_hotspots_on_view(self):
+    @pyqtSlot(bool)
+    def _find_hotspots_on_view(self, checked=False):
         """Find hotspots on currently visible points."""
         if not self.current_mesh:
             QMessageBox.warning(
@@ -1550,7 +1570,8 @@ class DisplayTab(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Failed to find hotspots: {e}")
     
-    def find_hotspots_in_box(self):
+    @pyqtSlot(bool)
+    def find_hotspots_in_box(self, checked=False):
         """Clip mesh to box bounds and run hotspot analysis."""
         if self.box_widget is None:
             return
@@ -1563,8 +1584,10 @@ class DisplayTab(QWidget):
         clipped_mesh = self.current_mesh.clip_box(bounds, invert=False)
         self._find_and_show_hotspots(clipped_mesh)
     
+    @pyqtSlot(int)
     def _highlight_and_focus_on_node(self, node_id):
         """Highlight and focus camera on specific node."""
+        # This method is already decorated above
         if self.current_mesh is None:
             QMessageBox.warning(self, "No Mesh", "Cannot highlight node - no mesh loaded.")
             return
@@ -1602,8 +1625,10 @@ class DisplayTab(QWidget):
                 f"Could not highlight node {node_id}: {e}"
             )
     
+    @pyqtSlot()
     def _cleanup_hotspot_analysis(self):
         """Remove highlight labels and re-enable box widget."""
+        # This method is already decorated above
         if hasattr(self, 'highlight_actor') and self.highlight_actor:
             self.plotter.remove_actor("hotspot_label", reset_camera=False)
             self.highlight_actor = None
@@ -1616,7 +1641,8 @@ class DisplayTab(QWidget):
         self.hotspot_dialog = None
         self.plotter.render()
     
-    def enable_time_history_picking(self):
+    @pyqtSlot(bool)
+    def enable_time_history_picking(self, checked=False):
         """Activate point-history plotting."""
         # Offer tracked node if available
         if self.target_node_index is not None and self.target_node_id is not None:
@@ -1674,7 +1700,8 @@ class DisplayTab(QWidget):
         else:
             print("Picking cancelled or missed the mesh.")
     
-    def go_to_node(self):
+    @pyqtSlot(bool)
+    def go_to_node(self, checked=False):
         """Prompt for Node ID and fly camera to it."""
         if not self.current_mesh or 'NodeID' not in self.current_mesh.array_names:
             QMessageBox.warning(
@@ -1728,6 +1755,7 @@ class DisplayTab(QWidget):
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Could not go to node {node_id}: {e}")
     
+    @pyqtSlot(bool)
     def toggle_freeze_node(self, checked):
         """Toggle freeze node tracking for animation."""
         if self.target_node_index is None or self.current_mesh is None:

@@ -5,7 +5,7 @@ This module contains various dialog windows used throughout the application,
 including settings dialogs and result display dialogs.
 """
 
-from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtCore import pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QFont, QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import (
     QAbstractItemView, QCheckBox, QComboBox, QDialog, QDialogButtonBox,
@@ -202,6 +202,7 @@ class HotspotDialog(QDialog):
         
         self.table_view.resizeColumnsToContents()
     
+    @pyqtSlot('QModelIndex')
     def _on_row_clicked(self, index):
         """
         Handle row click event - emit signal with selected node ID.

@@ -40,17 +40,15 @@ class SolverUIHandler:
             if not deformations_enabled:
                 cb.setChecked(False)
 
-    def toggle_steady_state_stress_inputs(self):
+    def toggle_steady_state_stress_inputs(self, is_checked):
         """Show/hide steady-state stress file controls."""
-        is_checked = self.tab.steady_state_checkbox.isChecked()
         self.tab.steady_state_file_button.setVisible(is_checked)
         self.tab.steady_state_file_path.setVisible(is_checked)
         if not is_checked:
             self.tab.steady_state_file_path.clear()
 
-    def toggle_deformations_inputs(self):
+    def toggle_deformations_inputs(self, is_checked):
         """Show/hide deformation file controls."""
-        is_checked = self.tab.deformations_checkbox.isChecked()
         self.tab.deformations_file_button.setVisible(is_checked)
         self.tab.deformations_file_path.setVisible(is_checked)
         self.update_output_checkboxes_state()
@@ -58,9 +56,11 @@ class SolverUIHandler:
             self.tab.deformations_file_path.clear()
             self.tab.deformation_loaded = False
 
-    def toggle_damage_index_checkbox_visibility(self):
+    def toggle_damage_index_checkbox_visibility(self, is_checked=None):
         """Show/hide damage index checkbox based on von Mises selection."""
-        if self.tab.von_mises_checkbox.isChecked():
+        if is_checked is None:
+            is_checked = self.tab.von_mises_checkbox.isChecked()
+        if is_checked:
             self.tab.damage_index_checkbox.setVisible(True)
         else:
             self.tab.damage_index_checkbox.setVisible(False)
@@ -69,9 +69,8 @@ class SolverUIHandler:
         """Show/hide fatigue parameters group."""
         self.tab.fatigue_params_group.setVisible(checked)
 
-    def toggle_single_node_solution_group(self):
+    def toggle_single_node_solution_group(self, is_checked):
         """Show/hide single node selection group."""
-        is_checked = self.tab.time_history_checkbox.isChecked()
         try:
             if is_checked:
                 # Connect exclusive handlers
@@ -113,7 +112,7 @@ class SolverUIHandler:
                 checkbox.setChecked(False)
                 checkbox.blockSignals(False)
 
-    def _update_damage_index_state(self):
+    def _update_damage_index_state(self, checked=False):
         """Update damage index checkbox state."""
         is_time_history_checked = self.tab.time_history_checkbox.isChecked()
         is_von_mises_checked = self.tab.von_mises_checkbox.isChecked()
@@ -140,7 +139,7 @@ class SolverUIHandler:
         y = np.zeros(100)
         self.tab.plot_single_node_tab.update_plot(x, y)
 
-    def update_single_node_plot_based_on_checkboxes(self):
+    def update_single_node_plot_based_on_checkboxes(self, checked=False):
         """Update plot based on checkbox states."""
         try:
             x_data = [1, 2, 3, 4, 5]
@@ -158,7 +157,7 @@ class SolverUIHandler:
         except Exception as e:
             print(f"Error updating plot based on checkbox states: {e}")
 
-    def _update_max_min_plots(self):
+    def _update_max_min_plots(self, checked=False):
         """
         Update max/min over time plots when checkboxes are toggled.
 

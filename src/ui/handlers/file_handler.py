@@ -29,7 +29,7 @@ class SolverFileHandler:
 
     # --- Modal Coordinate File ---
 
-    def select_coord_file(self):
+    def select_coord_file(self, checked=False):
         """Open file dialog for modal coordinate file."""
         file_name, _ = QFileDialog.getOpenFileName(
             self.tab, 'Open Modal Coordinate File', '',
@@ -61,7 +61,7 @@ class SolverFileHandler:
 
     # --- Modal Stress File ---
 
-    def select_stress_file(self):
+    def select_stress_file(self, checked=False):
         """Open file dialog for modal stress file."""
         file_name, _ = QFileDialog.getOpenFileName(
             self.tab, 'Open Modal Stress File', '', 'CSV Files (*.csv)'
@@ -92,7 +92,7 @@ class SolverFileHandler:
 
     # --- Modal Deformations File ---
 
-    def select_deformations_file(self):
+    def select_deformations_file(self, checked=False):
         """Open file dialog for modal deformations file."""
         file_name, _ = QFileDialog.getOpenFileName(
             self.tab, 'Open Modal Deformations File', '', 'CSV Files (*.csv)'
@@ -127,7 +127,7 @@ class SolverFileHandler:
 
     # --- Steady-State Stress File ---
 
-    def select_steady_state_file(self):
+    def select_steady_state_file(self, checked=False):
         """Open file dialog for steady-state stress file."""
         file_name, _ = QFileDialog.getOpenFileName(
             self.tab, 'Open Steady-State Stress File', '', 'Text Files (*.txt)'

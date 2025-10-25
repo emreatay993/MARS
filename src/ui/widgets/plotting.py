@@ -6,7 +6,7 @@ displaying analysis results in various formats.
 """
 
 import numpy as np
-from PyQt5.QtCore import Qt, QTimer
+from PyQt5.QtCore import Qt, QTimer, pyqtSlot
 from PyQt5.QtGui import QKeySequence, QStandardItem, QStandardItemModel
 from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QShortcut, QSizePolicy,
@@ -295,6 +295,7 @@ class MatplotlibWidget(QWidget):
         self.canvas.draw()
         QTimer.singleShot(0, self.adjust_splitter_size)
     
+    @pyqtSlot()
     def copy_selection(self):
         """Copy selected cells to clipboard as TSV."""
         sel = self.table.selectedIndexes()
@@ -514,6 +515,7 @@ class PlotlyMaxWidget(QWidget):
         self.table.resizeColumnsToContents()
         QTimer.singleShot(0, self.adjust_splitter_size)
     
+    @pyqtSlot()
     def copy_selection(self):
         """Copy selected cells to clipboard as TSV."""
         sel = self.table.selectedIndexes()

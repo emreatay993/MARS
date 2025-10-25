@@ -5,7 +5,7 @@ This module provides the main application window with menu bar, navigator,
 and tab widgets for solver and display functionality.
 """
 
-from PyQt5.QtCore import Qt, QDir
+from PyQt5.QtCore import Qt, QDir, pyqtSlot
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import (
     QAction, QDockWidget, QFileSystemModel,
@@ -165,6 +165,9 @@ class ApplicationController(QMainWindow):
         self.solver_tab.animation_data_ready.connect(
             self.display_tab.on_animation_data_ready
         )
+        self.solver_tab.animation_precomputation_failed.connect(
+            self._on_animation_precomputation_failed
+        )
         
         # Connect display tab to solver tab
         self.display_tab.node_picked_signal.connect(
@@ -177,7 +180,20 @@ class ApplicationController(QMainWindow):
             self.solver_tab.request_animation_precomputation
         )
 
-    def open_advanced_settings(self):
+    @pyqtSlot(str)
+    def _on_animation_precomputation_failed(self, message: str):
+        """Show failure message for animation precomputation and reset UI controls."""
+        try:
+            from PyQt5.QtWidgets import QMessageBox
+            QMessageBox.warning(self, "Animation Cancelled", message)
+            # Enable play button on display tab if available
+            if hasattr(self.display_tab, 'play_button'):
+                self.display_tab.play_button.setEnabled(True)
+        except Exception:
+            pass
+
+    @pyqtSlot(bool)
+    def open_advanced_settings(self, checked=False):
         """Open advanced settings dialog."""
         dialog = AdvancedSettingsDialog(self)
         if dialog.exec_() == AdvancedSettingsDialog.Accepted:

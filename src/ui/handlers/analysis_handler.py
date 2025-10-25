@@ -13,6 +13,7 @@ import traceback
 import  gc
 import psutil
 from datetime import datetime
+from PyQt5.QtCore import pyqtSlot
 import numpy as np
 from PyQt5.QtWidgets import QMessageBox, QApplication
 import pyvista as pv
@@ -34,6 +35,7 @@ class SolverAnalysisHandler:
         """
         self.tab = tab
 
+    @pyqtSlot()
     def solve(self, force_time_history_for_node_id=None):
         """
         Main solve method - orchestrates the analysis.
@@ -673,6 +675,53 @@ class SolverAnalysisHandler:
             print(f"ERROR during time point calculation: {e}")
             traceback.print_exc()
 
+    def _validate_animation_request(self, params):
+        """
+        Validate core and request-specific preconditions for animation.
+
+        Returns:
+            (bool, str): Tuple of ok flag and error message (if not ok).
+        """
+        # Core data requirements
+        if not (self.tab.coord_loaded and self.tab.stress_loaded):
+            return False, "Core data files are not loaded."
+
+        # Frames to compute
+        anim_indices = params.get('anim_indices', [])
+        if len(anim_indices) == 0:
+            return False, "No animation frames to compute."
+
+        # At least one output selected
+        if not any([
+            params.get('compute_von_mises', False),
+            params.get('compute_max_principal', False),
+            params.get('compute_min_principal', False),
+            params.get('compute_deformation_contour', False),
+            params.get('compute_velocity', False),
+            params.get('compute_acceleration', False)
+        ]):
+            return False, "No valid output selected for animation."
+
+        # Deformation dependency
+        if params.get('compute_deformation_anim', False) and not self.tab.deformation_data:
+            return False, (
+                "Deformation animation is selected but deformation data is not loaded.\n\n"
+                "Please either:\n"
+                "• Load a deformation file using the 'Modal Deformations File' button\n"
+                "• Or uncheck 'Include Deformations' in the solver tab"
+            )
+
+        # Steady-state dependency
+        if params.get('include_steady', False) and not self.tab.steady_state_data:
+            return False, (
+                "Steady-state inclusion is selected but steady-state data is not loaded.\n\n"
+                "Please either:\n"
+                "• Load a steady-state stress file using the 'Read Full Stress Tensor File (.txt)' button\n"
+                "• Or uncheck 'Include Steady-State' in the solver tab"
+            )
+
+        return True, ""
+
     def perform_animation_precomputation(self, params):
         """
         Precompute animation frames and emit results.
@@ -687,11 +736,19 @@ class SolverAnalysisHandler:
             # Get display tab for helper methods
             display_tab = self.tab.window().display_tab
 
-            # Validate data loaded (all 'self.' -> 'self.tab.')
-            if not (self.tab.coord_loaded and self.tab.stress_loaded):
-                QMessageBox.warning(self.tab, "Missing Data", "Core data files are not loaded.")
+            # Validate core and request-specific preconditions
+            ok, error_msg = self._validate_animation_request(params)
+            if not ok:
+                # Emit failure and let UI decide how to present the error
                 QApplication.restoreOverrideCursor()
+                # Emit explicit failure signal with message
+                try:
+                    self.tab.animation_precomputation_failed.emit(error_msg)
+                except Exception:
+                    pass
                 self.tab.animation_data_ready.emit(None)
+                # Log to console
+                print(f"Animation cancelled: {error_msg}")
                 return
 
             # Get animation indices
@@ -706,28 +763,8 @@ class SolverAnalysisHandler:
             num_anim_steps = len(anim_times)
             print(f"Precomputing {num_anim_steps} animation frames...")
 
-            # Validate at least one output selected
-            if not any([
-                params.get('compute_von_mises', False),
-                params.get('compute_max_principal', False),
-                params.get('compute_min_principal', False),
-                params.get('compute_deformation_contour', False),
-                params.get('compute_velocity', False),
-                params.get('compute_acceleration', False)
-            ]):
-                QMessageBox.warning(self.tab, "No Selection", "No valid output selected for animation.")
-                QApplication.restoreOverrideCursor()
-                self.tab.animation_data_ready.emit(None)
-                return
-
-            # Check deformation
+            # Deformation usage for RAM estimate
             compute_deformation_anim = params.get('compute_deformation_anim', False)
-            if compute_deformation_anim and not self.tab.deformation_data:
-                QMessageBox.warning(
-                    self.tab, "Deformation Error",
-                    "Deformation is checked, but deformation data is not loaded."
-                )
-                compute_deformation_anim = False
 
             # RAM check
             num_nodes = self.tab.stress_data.num_nodes

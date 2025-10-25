@@ -6,7 +6,7 @@ with buffered updates for better performance.
 """
 
 import sys
-from PyQt5.QtCore import QObject, QTimer
+from PyQt5.QtCore import QObject, QTimer, pyqtSlot
 from PyQt5.QtGui import QTextCursor
 
 
@@ -49,6 +49,7 @@ class Logger(QObject):
         # Append the message to the buffer
         self.log_buffer += message
     
+    @pyqtSlot()
     def flush_buffer(self):
         """Flush the buffered messages to the text edit widget."""
         if self.log_buffer:

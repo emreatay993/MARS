@@ -1,4 +1,4 @@
-# MSUP Smart Solver v2.0 (Modular Architecture)
+# MARS: Modal Analysis Response Solver v2.0 (Modular Architecture)
 
 A refactored, modular implementation of the MSUP Smart Solver for transient structural analysis using the Mode Superposition (MSUP) method.
 
