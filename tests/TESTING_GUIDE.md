@@ -1,8 +1,8 @@
-# MSUP Smart Solver - Testing Guide
+# MARS: Modal Analysis Response Solver - Testing Guide
 
 ## Overview
 
-This guide provides comprehensive testing procedures for the refactored MSUP Smart Solver. Testing is divided into three levels: unit tests, integration tests, and manual GUI testing.
+This guide provides comprehensive testing procedures for MARS (the refactored MSUP Smart Solver). Testing is divided into three levels: unit tests, integration tests, and manual GUI testing.
 
 ## Unit Tests
 

@@ -1,7 +1,7 @@
 """
-File utility functions for the MSUP Smart Solver.
+File utility helpers for MARS (Modal Analysis Response Solver).
 
-This module contains helper functions for file manipulation and processing.
+Provides helpers for manipulating modal coordinate files and related assets.
 """
 
 
@@ -106,4 +106,3 @@ def unwrap_mcf_file(input_file, output_file):
             f.write(line + "\n")
     
     return final_lines
-

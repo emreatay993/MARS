@@ -1,8 +1,7 @@
 """
-MSUP Smart Solver - Modular Architecture
+MARS: Modal Analysis Response Solver
 
-A refactored version of the MSUP Smart Solver for transient structural analysis.
+Modernised successor to the legacy MSUP Smart Solver for transient structural analysis.
 """
 
 __version__ = "2.0.0"
-

@@ -1,8 +1,7 @@
 """
-Global constants, configuration settings, and UI styles for the MSUP Smart Solver.
+Global constants, configuration settings, and UI styles for MARS (Modal Analysis Response Solver).
 
-This module centralizes all configuration constants and UI stylesheets that are
-used throughout the application.
+Centralises configuration values and Qt styles used across the application.
 """
 
 import os
@@ -61,4 +60,3 @@ DEFAULT_BACKGROUND_COLOR = "#FFFFFF"
 
 DEFAULT_ANIMATION_INTERVAL_MS = 100
 """Default animation frame interval in milliseconds."""
-

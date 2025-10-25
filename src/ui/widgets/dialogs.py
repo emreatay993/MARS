@@ -1,8 +1,7 @@
 """
-Dialog widgets for the MSUP Smart Solver.
+Dialog widgets for MARS (Modal Analysis Response Solver).
 
-This module contains various dialog windows used throughout the application,
-including settings dialogs and result display dialogs.
+Contains dialog windows used throughout the application, including settings and result displays.
 """
 
 from PyQt5.QtCore import pyqtSignal, pyqtSlot
@@ -218,4 +217,3 @@ class HotspotDialog(QDialog):
             node_id = int(float(node_id_item.text()))
             # Emit the signal with the node ID
             self.node_selected.emit(node_id)
-

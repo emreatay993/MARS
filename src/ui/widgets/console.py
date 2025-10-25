@@ -1,8 +1,7 @@
 """
-Console logger widget for the MSUP Smart Solver.
+Console logger widget for MARS (Modal Analysis Response Solver).
 
-This module contains the Logger class that redirects stdout to a QTextEdit widget
-with buffered updates for better performance.
+Provides a Logger class that redirects stdout to a QTextEdit widget with buffered updates.
 """
 
 import sys
@@ -63,4 +62,3 @@ class Logger(QObject):
     def flush(self):
         """Flush the buffer (called by sys.stdout.flush())."""
         self.flush_buffer()
-

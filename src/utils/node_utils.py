@@ -1,7 +1,7 @@
 """
-Node-related utility functions for the MSUP Smart Solver.
+Node-related utility helpers for MARS (Modal Analysis Response Solver).
 
-This module contains helper functions for node ID mapping and manipulation.
+Provides helper functions for node ID mapping and manipulation.
 """
 
 import numpy as np
@@ -24,4 +24,3 @@ def get_node_index_from_id(node_id, node_ids):
     except IndexError:
         print(f"Node ID {node_id} not found in the list of nodes.")
         return None
-

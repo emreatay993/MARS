@@ -1,4 +1,6 @@
-# MSUP Smart Solver Modularization - Final Project State
+# MARS Modularization – Final Project State (Historical Checkpoint)
+
+> **Note:** This snapshot reflects an intermediate assessment taken before the remaining visualization work was completed. The refactor has since shipped as MARS; see `FINAL_DELIVERY_SUMMARY.md` for the up-to-date overview.
 
 **Status**: **90% COMPLETE - Production Ready for Core Workflows**  
 **Date**: Current Session  

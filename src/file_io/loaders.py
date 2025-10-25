@@ -1,8 +1,8 @@
 """
-File loading functions for the MSUP Smart Solver.
+File loading helpers for MARS (Modal Analysis Response Solver).
 
-This module contains functions for loading various input files and converting
-them into structured data models.
+Provides functions for loading input files and converting them into structured
+data models.
 """
 
 import os
@@ -195,4 +195,3 @@ def load_steady_state_stress(filename: str) -> SteadyStateData:
         steady_syz=steady_syz,
         steady_sxz=steady_sxz
     )
-

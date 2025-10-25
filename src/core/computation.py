@@ -1,8 +1,8 @@
 """
-Analysis engine wrapper for the MSUP Smart Solver.
+Analysis engine wrapper for MARS (Modal Analysis Response Solver).
 
-This module provides a high-level wrapper around the MSUPSmartSolverTransient
-class, handling solver instantiation, configuration, and result processing.
+Provides a high-level façade around `MSUPSmartSolverTransient`, handling solver
+instantiation, configuration, and result processing.
 """
 
 import numpy as np
@@ -18,10 +18,10 @@ from utils.node_utils import get_node_index_from_id
 
 class AnalysisEngine:
     """
-    High-level wrapper for running MSUP Smart Solver analyses.
-    
-    This class handles solver instantiation, configuration, and provides
-    convenient methods for different analysis types (batch, single-node, time-point).
+    High-level wrapper for running MARS analyses.
+
+    Handles solver instantiation, configuration, and provides convenient
+    methods for batch, single-node, and time-point analysis.
     """
     
     def __init__(self):
@@ -226,4 +226,3 @@ class AnalysisEngine:
     def reset(self):
         """Reset the engine state."""
         self.solver = None
-

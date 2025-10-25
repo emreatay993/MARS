@@ -1,8 +1,8 @@
 """
-Refactored Solver Tab for MSUP Smart Solver.
+Solver tab implementation for MARS (Modal Analysis Response Solver).
 
-This module provides the main solver interface that has been refactored from
-MSUPSmartSolverGUI to use UI builders, data models, and the AnalysisEngine.
+Refactored from the legacy MSUPSmartSolverGUI to use UI builders, data models,
+and the AnalysisEngine facade.
 """
 
 import os
@@ -29,12 +29,11 @@ from core.data_models import (
 
 class SolverTab(QWidget):
     """
-    Refactored Solver Tab for MSUP transient analysis.
-    
-    This class manages file loading, solver configuration, and analysis execution.
-    It has been refactored to use UI builders, data models, and delegate
-    computation to the AnalysisEngine.
-    
+    Solver tab for MARS transient analysis.
+
+    Manages file loading, solver configuration, and analysis execution using UI
+    builders, data models, and the AnalysisEngine.
+
     Signals:
         initial_data_loaded: Emitted when initial data is loaded
         time_point_result_ready: Emitted when time point results are ready
@@ -464,4 +463,3 @@ class SolverTab(QWidget):
             params: Dict with animation parameters (compute flags, indices, etc.).
         """
         self.analysis_handler.perform_animation_precomputation(params)
-

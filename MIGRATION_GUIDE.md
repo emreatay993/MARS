@@ -1,12 +1,12 @@
-# Migration Guide: Legacy to Modular MSUP Smart Solver
+# Migration Guide: Legacy MSUP Smart Solver to MARS
 
-This guide helps developers transition from the legacy codebase to the new modular architecture.
+Use this guide to transition legacy MSUP Smart Solver integrations to the refactored MARS (Modal Analysis Response Solver) architecture.
 
 ---
 
 ## 📋 Quick Reference
 
-### Import Changes
+### Import Changes (new modular locations)
 
 | Legacy | Modular |
 |--------|---------|
@@ -16,7 +16,7 @@ This guide helps developers transition from the legacy codebase to the new modul
 | Global `RAM_PERCENT` | `from utils.constants import RAM_PERCENT` |
 | Global `unwrap_mcf_file()` | `from utils.file_utils import unwrap_mcf_file` |
 
-### Class Name Changes
+### Class Name Changes / Equivalents
 
 | Legacy | Modular |
 |--------|---------|

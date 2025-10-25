@@ -1,4 +1,4 @@
-# Manual GUI Testing Checklist
+# MARS: Manual GUI Testing Checklist
 
 **Version**: 2.0.0 (Modular)  
 **Date**: ___________  
@@ -21,7 +21,7 @@
 
 - [ ] Application starts without errors
 - [ ] Main window appears maximized
-- [ ] Title shows "MSUP Smart Solver - v2.0.0 (Modular)"
+- [ ] Title shows "MARS: Modal Analysis Response Solver - v1.0.0 (Modular)"
 - [ ] Two tabs visible: "Main Window" and "Display"
 - [ ] Navigator dock visible on left
 - [ ] Menu bar shows: File, View, Settings

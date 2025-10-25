@@ -717,7 +717,7 @@ class SolverAnalysisHandler:
                 "Steady-state inclusion is selected but steady-state data is not loaded.\n\n"
                 "Please either:\n"
                 "• Load a steady-state stress file using the 'Read Full Stress Tensor File (.txt)' button\n"
-                "• Or uncheck 'Include Steady-State' in the solver tab"
+                "• Or uncheck 'Include Steady-State Stress Field' in the solver tab"
             )
 
         return True, ""

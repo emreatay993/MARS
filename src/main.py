@@ -1,7 +1,7 @@
 """
-Entry point for the MSUP Smart Solver application.
+Entry point for the MARS: Modal Analysis Response Solver application.
 
-This script initializes the Qt application and launches the main window.
+Initialises the Qt application and launches the main window.
 """
 
 import sys
@@ -33,4 +33,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

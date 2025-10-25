@@ -1,4 +1,6 @@
-# MSUP Smart Solver - Refactoring Progress
+# MARS Refactoring Progress (Historical Log)
+
+> **Note:** This log captures the phased plan and in-flight updates recorded while converting the legacy MSUP Smart Solver into MARS. The activities listed below were completed during the refactor; consult `ARCHITECTURE.md` for the final structure.
 
 ## Overview
 This document tracks the progress of modularizing the legacy MSUP Smart Solver codebase.

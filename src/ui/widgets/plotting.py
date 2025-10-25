@@ -1,8 +1,7 @@
 """
-Plotting widgets for the MSUP Smart Solver.
+Plotting widgets for MARS (Modal Analysis Response Solver).
 
-This module contains matplotlib and plotly-based plotting widgets for
-displaying analysis results in various formats.
+Contains matplotlib- and plotly-based widgets for displaying analysis results.
 """
 
 import numpy as np
@@ -545,4 +544,3 @@ class PlotlyMaxWidget(QWidget):
         self.web_view.setHtml("")
         self.model.removeRows(0, self.model.rowCount())
         self.model.setHorizontalHeaderLabels(["Time [s]", "Data Value"])
-

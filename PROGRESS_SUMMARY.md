@@ -1,4 +1,6 @@
-# MSUP Smart Solver Refactoring - Progress Summary
+# MARS Refactoring Progress Summary (Historical)
+
+> **Note:** This summary reflects the project status midway through the transition from the MSUP Smart Solver to MARS. It is retained for context; the refactor is now complete.
 
 ## 🎯 Overall Progress: 44% Complete (4 of 9 phases)
 

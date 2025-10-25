@@ -1,286 +1,142 @@
-# Complete File Index - MSUP Smart Solver Modular Architecture
+# File Index – MARS: Modal Analysis Response Solver
 
-This document provides a complete index of all files created during the refactoring project.
+This reference lists every Python module and key testing asset that makes up the current codebase. It reflects the post-handler refactor captured in the `src/` directory.
 
----
+## Snapshot (April 2026)
 
-## 📦 Source Code (31 files)
-
-### Core Package (4 files - 745 lines)
-
-| File | Lines | Classes | Functions | Description |
-|------|-------|---------|-----------|-------------|
-| `src/core/__init__.py` | 1 | 0 | 0 | Package initialization |
-| `src/core/data_models.py` | 172 | 7 | 0 | Data structures (ModalData, SolverConfig, etc.) |
-| `src/core/visualization.py` | 345 | 3 | 0 | Managers (VisualizationManager, AnimationManager, HotspotDetector) |
-| `src/core/computation.py` | 228 | 1 | 0 | AnalysisEngine wrapper for solver |
-
-### File I/O Package (5 files - 535 lines)
-
-| File | Lines | Classes | Functions | Description |
-|------|-------|---------|-----------|-------------|
-| `src/file_io/__init__.py` | 1 | 0 | 0 | Package initialization |
-| `src/file_io/validators.py` | 165 | 0 | 4 | File validators (MCF, stress, deformation, steady-state) |
-| `src/file_io/loaders.py` | 186 | 0 | 4 | File loaders returning data models |
-| `src/file_io/exporters.py` | 143 | 0 | 7 | Result exporters (CSV, APDL, mesh) |
-| `src/file_io/fea_utilities.py` | 41 | 0 | 1 | Legacy FEA utilities (preserved) |
-
-### UI Package (14 files - 3,099 lines)
-
-#### Main UI Files (3 files)
-
-| File | Lines | Classes | Methods | Description |
-|------|-------|---------|---------|-------------|
-| `src/ui/__init__.py` | 1 | 0 | 0 | Package initialization |
-| `src/ui/main_window.py` | 189 | 1 | 12 | Main application window |
-| `src/ui/solver_tab.py` | 654 | 1 | 45 | Solver interface (refactored from MSUPSmartSolverGUI) |
-| `src/ui/display_tab.py` | 283 | 1 | 28 | 3D visualization (refactored, uses managers) |
-
-#### Widgets Sub-package (4 files)
-
-| File | Lines | Classes | Description |
-|------|-------|---------|-------------|
-| `src/ui/widgets/__init__.py` | 1 | 0 | Package initialization |
-| `src/ui/widgets/console.py` | 64 | 1 | Logger widget for console output |
-| `src/ui/widgets/plotting.py` | 482 | 3 | MatplotlibWidget, PlotlyWidget, PlotlyMaxWidget |
-| `src/ui/widgets/dialogs.py` | 225 | 2 | AdvancedSettingsDialog, HotspotDialog |
-
-#### Builders Sub-package (3 files)
-
-| File | Lines | Classes | Methods | Description |
-|------|-------|---------|---------|-------------|
-| `src/ui/builders/__init__.py` | 1 | 0 | 0 | Package initialization |
-| `src/ui/builders/solver_ui.py` | 392 | 1 | 8 | SolverTabUIBuilder (builds solver UI) |
-| `src/ui/builders/display_ui.py` | 271 | 1 | 6 | DisplayTabUIBuilder (builds display UI) |
-
-### Utils Package (4 files - 278 lines)
-
-| File | Lines | Classes | Functions | Description |
-|------|-------|---------|-----------|-------------|
-| `src/utils/__init__.py` | 1 | 0 | 0 | Package initialization |
-| `src/utils/constants.py` | 139 | 0 | 0 | Global configuration and UI styles |
-| `src/utils/file_utils.py` | 115 | 0 | 1 | File manipulation utilities (unwrap_mcf_file) |
-| `src/utils/node_utils.py` | 24 | 0 | 1 | Node mapping utilities (get_node_index_from_id) |
-
-### Solver Package (2 files - 1,019 lines)
-
-| File | Lines | Classes | Description |
-|------|-------|---------|-------------|
-| `src/solver/__init__.py` | 1 | 0 | Package initialization |
-| `src/solver/engine.py` | 1,019 | 1 | MSUPSmartSolverTransient (minimal changes from legacy) |
-
-### Entry Point (1 file - 45 lines)
-
-| File | Lines | Functions | Description |
-|------|-------|-----------|-------------|
-| `src/main.py` | 45 | 1 | Application entry point |
-
-**Source Code Total**: 31 files, ~6,000 lines
+- 37 Python modules under `src/`
+- 8,643 lines of Python code (`wc -l src/**/*.py`)
+- UI layer spans 20 modules (6,063 lines) divided into controller, tabs, builders, handlers, styles, and widgets
+- Automated test suite: 4 Python modules backed by 3 detailed testing guides
 
 ---
 
-## 🧪 Test Suite (6 files)
+## Root Modules (2 files – 44 lines)
 
-| File | Lines | Tests | Description |
-|------|-------|-------|-------------|
-| `tests/__init__.py` | 1 | - | Package initialization |
-| `tests/test_validators.py` | 95 | 8 | Validator function tests |
-| `tests/test_data_models.py` | 125 | 8 | Data model class tests |
-| `tests/test_file_utils.py` | 75 | 3 | File utility tests |
-| `tests/test_node_utils.py` | 80 | 5 | Node utility tests |
-| `tests/TESTING_GUIDE.md` | 450 | - | Comprehensive testing guide |
-| `tests/MANUAL_TESTING_CHECKLIST.md` | 550 | ~200 | Manual GUI testing checklist |
-
-**Test Total**: 6 files, 24 unit tests, ~200 manual test items
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/main.py` | 36 | Application entry point bootstrapping Qt and the main window |
+| `src/__init__.py` | 8 | Package marker for the application namespace |
 
 ---
 
-## 📚 Documentation (8 files)
+## Core Package (4 files – 750 lines)
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `README.md` | 420 | Main project documentation, quick start |
-| `ARCHITECTURE.md` | 750 | Technical architecture deep dive |
-| `MIGRATION_GUIDE.md` | 450 | Legacy to modular transition guide |
-| `requirements.txt` | 40 | Python dependencies |
-| `REFACTORING_PROGRESS.md` | 280 | Detailed phase-by-phase progress |
-| `PROGRESS_SUMMARY.md` | 320 | High-level overview and impact |
-| `STATUS_REPORT.md` | 420 | Comprehensive technical status |
-| `PROJECT_COMPLETE.md` | 380 | Final completion summary |
-| `FILE_INDEX.md` | 145 | This file - complete file inventory |
-
-**Documentation Total**: 9 files, ~3,200 lines
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/core/computation.py` | 229 | High-level orchestration around `AnalysisEngine` |
+| `src/core/data_models.py` | 186 | Structured data classes for solver configuration and results |
+| `src/core/visualization.py` | 333 | Visualization, animation, and hotspot managers |
+| `src/core/__init__.py` | 2 | Package initializer |
 
 ---
 
-## 📦 Package Distribution
+## File I/O Package (5 files – 571 lines)
 
-### By Package
-
-| Package | Files | Lines | Purpose |
-|---------|-------|-------|---------|
-| `core/` | 4 | 745 | Business logic & data models |
-| `io/` | 5 | 535 | File I/O operations |
-| `ui/` | 14 | 3,099 | User interface components |
-| `utils/` | 4 | 278 | Utilities & configuration |
-| `solver/` | 2 | 1,019 | Computation engine |
-| `tests/` | 6 | 1,375+ | Test suite |
-| Root | 9 | 3,200+ | Documentation |
-
-**Total**: 44 new files, ~10,000 lines (code + docs)
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/file_io/exporters.py` | 158 | Result exporters (CSV, APDL, mesh snapshots) |
+| `src/file_io/fea_utilities.py` | 40 | Legacy finite-element helpers retained for compatibility |
+| `src/file_io/loaders.py` | 198 | Modal data loaders returning typed models |
+| `src/file_io/validators.py` | 168 | Input validation for modal coordinate, stress, deformation, and steady-state files |
+| `src/file_io/__init__.py` | 7 | Package initializer |
 
 ---
 
-## 🔍 Quick File Finder
+## UI Shell (4 files – 2,503 lines)
 
-### "I need to..."
-
-**...load a file**
-- Validation: `src/file_io/validators.py`
-- Loading: `src/file_io/loaders.py`
-- UI handler: `src/ui/solver_tab.py`
-
-**...export results**
-- Exporters: `src/file_io/exporters.py`
-- CSV export: `export_to_csv()`
-- APDL export: `export_apdl_ic()`
-
-**...change UI appearance**
-- Styles: `src/utils/constants.py`
-- Builders: `src/ui/builders/`
-
-**...modify solver behavior**
-- Engine: `src/solver/engine.py`
-- Wrapper: `src/core/computation.py`
-
-**...add visualization feature**
-- Manager: `src/core/visualization.py`
-- UI: `src/ui/display_tab.py`
-
-**...configure application**
-- Constants: `src/utils/constants.py`
-- Settings dialog: `src/ui/widgets/dialogs.py`
-
-**...understand architecture**
-- Start: `README.md`
-- Deep dive: `ARCHITECTURE.md`
-- Code structure: `src/` directory
-
-**...run tests**
-- Unit tests: `tests/test_*.py`
-- Test guide: `tests/TESTING_GUIDE.md`
-- Manual checklist: `tests/MANUAL_TESTING_CHECKLIST.md`
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/ui/application_controller.py` | 212 | Top-level Qt `QMainWindow` orchestration and menu/navigation wiring |
+| `src/ui/display_tab.py` | 1,822 | Display tab view logic, PyVista integration, animation control |
+| `src/ui/solver_tab.py` | 467 | Solver tab view class delegating heavy logic to handlers |
+| `src/ui/__init__.py` | 2 | Package initializer |
 
 ---
 
-## 📈 File Size Distribution
+## UI Builders (3 files – 685 lines)
 
-### By Size Category
-
-| Category | File Count | Description |
-|----------|------------|-------------|
-| Tiny (<50 lines) | 10 | Init files, entry point, simple utilities |
-| Small (50-150 lines) | 8 | Validators, exporters, dialogs, data models |
-| Medium (150-400 lines) | 10 | Loaders, builders, managers, tabs |
-| Large (400-700 lines) | 2 | SolverTab, plotting widgets |
-| X-Large (>700 lines) | 1 | Solver engine (preserved from legacy) |
-
-**Average file size**: ~195 lines (excluding docs and legacy)
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/ui/builders/display_ui.py` | 304 | Layout builder for the display/visualization tab |
+| `src/ui/builders/solver_ui.py` | 379 | Layout builder for the solver tab |
+| `src/ui/builders/__init__.py` | 2 | Package initializer |
 
 ---
 
-## 🎯 Maintainability Index
+## UI Handlers (7 files – 1,614 lines)
 
-### Code Organization
-
-```
-31 source files organized in 6 packages
-  ↓
-Average 5 files per package
-  ↓
-Average ~195 lines per file
-  ↓
-Average ~15 lines per function
-  ↓
-= Highly maintainable structure
-```
-
-### Complexity Metrics
-
-```
-All 150+ functions <30 lines
-  ↓
-All functions cyclomatic complexity <10
-  ↓
-All modules <400 lines
-  ↓
-= Low complexity, high readability
-```
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/ui/handlers/analysis_handler.py` | 916 | Executes analyses, builds solver configs, orchestrates logging, and channels results to the UI |
+| `src/ui/handlers/file_handler.py` | 154 | Encapsulates file dialogs and modal data loading callbacks |
+| `src/ui/handlers/log_handler.py` | 75 | Formats console output for solver operations |
+| `src/ui/handlers/navigator_handler.py` | 54 | Handles project navigator tree interactions |
+| `src/ui/handlers/plotting_handler.py` | 63 | Shares plotting widgets and routines across tabs |
+| `src/ui/handlers/settings_handler.py` | 38 | Applies advanced solver settings to engine globals |
+| `src/ui/handlers/ui_state_handler.py` | 314 | Manages checkbox state, visibility, and plot refresh logic |
 
 ---
 
-## 🚀 Deployment Checklist
+## UI Styles (2 files – 424 lines)
 
-### Pre-Deployment
-- [x] All source files created
-- [x] All tests created
-- [x] All documentation written
-- [x] All TODOs completed
-- [x] No linting errors
-- [x] No known bugs
-
-### Deployment Preparation
-- [ ] Run full test suite
-- [ ] Execute manual testing checklist
-- [ ] Compare outputs with legacy
-- [ ] Performance testing
-- [ ] User acceptance testing
-
-### Deployment
-- [ ] Create production release branch
-- [ ] Tag version v2.0.0
-- [ ] Deploy to production environment
-- [ ] Monitor for issues
-- [ ] Gather user feedback
-
-### Post-Deployment
-- [ ] Update documentation based on feedback
-- [ ] Address any issues found
-- [ ] Plan next iteration
-- [ ] Archive legacy code
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/ui/styles/style_constants.py` | 418 | Centralized stylesheet strings matching the legacy PyQt look and feel |
+| `src/ui/styles/__init__.py` | 6 | Package initializer |
 
 ---
 
-## 📞 File Navigation Quick Reference
+## UI Widgets (4 files – 837 lines)
 
-```
-src/
-├── main.py ← START HERE (application entry)
-├── core/ ← Business logic
-│   ├── computation.py ← Analysis orchestration
-│   ├── data_models.py ← Data structures
-│   └── visualization.py ← Visualization logic
-├── io/ ← File operations
-│   ├── validators.py ← Input validation
-│   ├── loaders.py ← File loading
-│   └── exporters.py ← Result export
-├── ui/ ← User interface
-│   ├── main_window.py ← Application window
-│   ├── solver_tab.py ← Main solver interface
-│   ├── display_tab.py ← 3D visualization
-│   ├── widgets/ ← Reusable UI components
-│   └── builders/ ← UI construction logic
-├── utils/ ← Utilities
-│   ├── constants.py ← Configuration (EDIT THIS for settings)
-│   ├── file_utils.py ← File operations
-│   └── node_utils.py ← Node operations
-└── solver/ ← Computation engine
-    └── engine.py ← Core solver (minimal changes)
-```
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/ui/widgets/console.py` | 66 | QTextEdit-based console widget |
+| `src/ui/widgets/dialogs.py` | 221 | Advanced settings and hotspot dialogs |
+| `src/ui/widgets/plotting.py` | 548 | Matplotlib and Plotly helper widgets |
+| `src/ui/widgets/__init__.py` | 2 | Package initializer |
 
 ---
 
-**Document Version**: 1.0  
-**Completeness**: 100%  
-**Status**: ✅ Complete and Accurate
+## Utils Package (4 files – 202 lines)
 
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/utils/constants.py` | 64 | Global configuration values and runtime toggles |
+| `src/utils/file_utils.py` | 109 | File manipulation helpers (e.g., unwrap `.mcf`) |
+| `src/utils/node_utils.py` | 27 | Node lookup helpers |
+| `src/utils/__init__.py` | 2 | Package initializer |
+
+---
+
+## Solver Package (2 files – 1,013 lines)
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/solver/engine.py` | 1,011 | Modal analysis engine (thinly wrapped legacy solver) |
+| `src/solver/__init__.py` | 2 | Package initializer |
+
+---
+
+## Test Assets
+
+| File | Type | Description |
+|------|------|-------------|
+| `tests/test_data_models.py` | Unit test | Validates core data model behaviour |
+| `tests/test_file_utils.py` | Unit test | Covers utility helpers for file transformations |
+| `tests/test_node_utils.py` | Unit test | Exercises node lookup helpers |
+| `tests/test_validators.py` | Unit test | Regression coverage for file validators |
+| `tests/TESTING_GUIDE.md` | Documentation | End-to-end testing procedures |
+| `tests/MANUAL_TESTING_CHECKLIST.md` | Documentation | ~250-point GUI regression checklist |
+| `tests/BUGFIX_TESTING_CHECKLIST.md` | Documentation | Targeted validation for post-refactor fixes |
+| `tests/__init__.py` | Package marker | Allows `pytest` discovery within the directory |
+
+---
+
+## Totals
+
+- **Source totals**: 37 Python files, 8,643 lines
+- **UI footprint**: 20 modules, 6,063 lines (tabs + builders + handlers + styles + widgets)
+- **Testing footprint**: 4 automated test files + 3 living checklists
+
+This index will remain the source of truth for module counts whenever new files are added to `src/`.

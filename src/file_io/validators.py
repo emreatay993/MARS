@@ -1,8 +1,7 @@
 """
-File validation functions for the MSUP Smart Solver.
+File validation helpers for MARS (Modal Analysis Response Solver).
 
-This module contains validators for checking the format and content of input files
-before loading them.
+Validators check input file format and content before loading.
 """
 
 import os
@@ -165,4 +164,3 @@ def validate_steady_state_file(filename: str) -> Tuple[bool, Optional[str]]:
         
     except Exception as e:
         return False, str(e)
-

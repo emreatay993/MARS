@@ -1,2 +1,2 @@
-"""Unit tests for MSUP Smart Solver."""
+"""Unit tests for MARS: Modal Analysis Response Solver."""
 

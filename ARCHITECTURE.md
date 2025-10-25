@@ -1,8 +1,8 @@
-# MSUP Smart Solver - Architecture Documentation
+# MARS: Modal Analysis Response Solver - Architecture Documentation
 
 ## Overview
 
-This document provides a comprehensive guide to the MSUP Smart Solver's modular architecture, design decisions, and implementation details.
+This document provides a comprehensive guide to the MARS application's modular architecture, design decisions, and implementation details.
 
 ---
 
@@ -24,25 +24,23 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 
 ---
 
-### Layer 2: Main Window (`src/ui/main_window.py`)
+### Layer 2: Application Controller (`src/ui/application_controller.py`)
 
-**Purpose**: Top-level application window
+**Purpose**: Top-level application window and mediator between tabs and handlers
 
 **Responsibilities**:
-- Menu bar management (File, View, Settings)
-- File navigator (project directory browsing)
-- Tab management (Solver tab, Display tab)
-- Inter-tab signal routing
-- Temporary file cleanup
-- Advanced settings management
+- Configure menu bar (File, View, Settings) and advanced settings dialog
+- Host the project navigator dock through `NavigatorHandler`
+- Instantiate solver and display tabs plus their shared plotting handler
+- Route signals between tabs (`time_point_result_ready`, `animation_data_ready`, etc.)
+- Surface warnings (e.g., animation precomputation failures) and restore UI state
 
 **Key Components**:
-- `MainWindow` class (405 lines)
-- Menu creation methods
-- Navigator setup
-- Signal routing
+- `ApplicationController` class (~212 lines)
+- `NavigatorHandler`, `SettingsHandler`, and `PlottingHandler` collaborators
+- Dock widget and menu construction helpers
 
-**Design Pattern**: Facade (simple interface to complex tab interactions)
+**Design Pattern**: Mediator/Facade (centralises cross-tab coordination while delegating specialised logic to handlers)
 
 ---
 
@@ -63,18 +61,17 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 - Result visualization
 
 **Key Components**:
-- `SolverTab` class (1728 lines - comprehensive functionality)
-- File loading methods (use file_io.loaders)
-- Solve orchestration (uses AnalysisEngine)
-- UI state management
-- Animation precomputation
-- Batch result handling
+- `SolverTab` class (~467 lines) focused on UI wiring and signal emission
+- `SolverAnalysisHandler` (executes solves, builds configurations, logs progress)
+- `SolverFileHandler` (file dialogs and modal data life cycle)
+- `SolverUIHandler` (checkbox state, visibility, and plot refresh)
+- Integration with `file_io` loaders and `core` managers
 
 **Refactoring Impact**: 
-- Original: Monolithic 1700+ lines with 400+ line solve() method
-- Refactored: Well-organized 1705 lines with delegated responsibilities
-- Complex logic extracted to managers and utilities
-- Solve methods split into focused functions <30 lines each
+- Original: Monolithic 1,700+ line widget with deeply nested handler logic
+- Refactored: View class trimmed to ~467 lines; long-running flows moved into dedicated handler modules
+- Solve orchestration consolidated inside `SolverAnalysisHandler`
+- UI state changes captured in `SolverUIHandler` for easier testing and reuse
 
 #### Display Tab (`src/ui/display_tab.py`)
 
@@ -89,7 +86,7 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 - Result export (CSV, APDL)
 
 **Key Components**:
-- `DisplayTab` class (1804 lines - comprehensive with all features + bug fixes)
+- `DisplayTab` class (1,822 lines - comprehensive with all features + bug fixes)
 - Visualization methods (delegate to VisualizationManager)
 - Animation control methods (full implementation)
 - Context menu handlers (complete with hotspot detection)
@@ -99,7 +96,7 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 
 **Refactoring Impact**:
 - Original: 2000+ lines, monolithic with mixed concerns
-- Refactored: 1804 lines, uses manager pattern for complex logic
+- Refactored: 1,822 lines, uses manager pattern for complex logic
 - Visualization delegated to VisualizationManager
 - Animation delegated to AnimationManager
 - Hotspot detection delegated to HotspotDetector
@@ -114,17 +111,17 @@ This document provides a comprehensive guide to the MSUP Smart Solver's modular 
 **Purpose**: Reusable UI components
 
 **Modules**:
-1. `console.py` - Logger widget (64 lines)
+1. `console.py` - Logger widget (66 lines)
    - Redirects stdout to QTextEdit
    - Buffers output for performance
    - Auto-scrolling
 
-2. `plotting.py` - Plot widgets (482 lines)
+2. `plotting.py` - Plot widgets (548 lines)
    - MatplotlibWidget: Interactive plots with tables
    - PlotlyWidget: Modal coordinate visualization
    - PlotlyMaxWidget: Multi-trace plots
 
-3. `dialogs.py` - Dialog windows (225 lines)
+3. `dialogs.py` - Dialog windows (221 lines)
    - AdvancedSettingsDialog: Solver configuration
    - HotspotDialog: Hotspot analysis results
 

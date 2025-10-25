@@ -1,8 +1,8 @@
 """
-Visualization management classes for the MSUP Smart Solver.
+Visualization management classes for MARS (Modal Analysis Response Solver).
 
-This module contains manager classes that handle complex visualization tasks,
-separating business logic from UI code.
+Contains manager classes that handle complex visualisation tasks, separating
+business logic from UI code.
 """
 
 import numpy as np
@@ -330,4 +330,3 @@ class HotspotDetector:
             raise ValueError(f"Invalid mode: {mode}. Use 'above' or 'below'.")
         
         return scalar_data[mask], node_ids[mask]
-

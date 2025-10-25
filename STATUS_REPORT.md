@@ -1,4 +1,6 @@
-# MSUP Smart Solver Refactoring - Status Report
+# MARS Refactoring Status Report (Historical Snapshot)
+
+> **Note:** This report captures the mid-project state during the transition from the legacy MSUP Smart Solver to MARS. For the final state of the codebase, refer to `FINAL_SUMMARY.md` or `ARCHITECTURE.md`.
 
 **Date**: Current Session  
 **Overall Progress**: 44% Complete (4 of 9 Phases)  

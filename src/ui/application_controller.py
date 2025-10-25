@@ -1,8 +1,8 @@
 """
-Main window for the MSUP Smart Solver application.
+Main window for the MARS: Modal Analysis Response Solver application.
 
-This module provides the main application window with menu bar, navigator,
-and tab widgets for solver and display functionality.
+Provides the main application window with menu bar, navigator, and tab widgets
+for solver and display functionality.
 """
 
 from PyQt5.QtCore import Qt, QDir, pyqtSlot
@@ -25,10 +25,9 @@ from ui.styles.style_constants import (
 
 class ApplicationController(QMainWindow):
     """
-    Main application controller for MSUP Smart Solver.
+    Main application controller for MARS.
 
-    This class serves as the central coordinator for the entire application,
-    managing tabs, signal connections between components, and application-level
+    Coordinates tabs, signal connections between components, and application-level
     state and navigation.
     """
     
@@ -45,7 +44,7 @@ class ApplicationController(QMainWindow):
         self.plotting_handler = PlottingHandler()
 
         # Window configuration
-        self.setWindowTitle('MARS: Modal Analysis Response Solver  - v1.0.0 (Modular)')
+        self.setWindowTitle('MARS: Modal Analysis Response Solver - v1.0.0 (Modular)')
         self.setGeometry(40, 40, 600, 800)
         
         # Create UI components (order matters - navigator before menu bar)
@@ -209,4 +208,3 @@ class ApplicationController(QMainWindow):
         """Clean up temporary files on application close."""
         self.plotting_handler.cleanup_temp_files()
         event.accept()
-

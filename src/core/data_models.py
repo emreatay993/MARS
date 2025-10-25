@@ -1,8 +1,7 @@
 """
-Data models for the MSUP Smart Solver.
+Data models for MARS (Modal Analysis Response Solver).
 
-This module defines dataclasses and structures to hold various types of
-analysis data in a structured and type-safe manner.
+Defines dataclasses and structures to hold analysis data in a structured and type-safe manner.
 """
 
 from dataclasses import dataclass, field
@@ -183,4 +182,3 @@ class AnalysisResult:
     result_type: str = "unknown"
     node_id: Optional[int] = None
     metadata: dict = field(default_factory=dict)
-
