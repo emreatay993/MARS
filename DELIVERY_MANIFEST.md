@@ -11,13 +11,13 @@
 | Package / File           | Contents & Notes |
 |--------------------------|------------------|
 | `src/main.py`            | Qt entry point with high-DPI setup and `ApplicationController` launch |
-| `src/ui/`                | `application_controller.py`, `solver_tab.py`, `display_tab.py`, builders, widgets |
+| `src/ui/`                | `application_controller.py`, `solver_tab.py`, `display_tab.py`, builders, handlers, widgets, styles |
 | `src/core/`              | `computation.py` (AnalysisEngine), `visualization.py` (managers), `data_models.py` |
 | `src/file_io/`           | Validators, loaders, exporters, legacy FEA utilities |
-| `src/utils/`             | Styling constants and helper utilities |
+| `src/utils/`             | Solver configuration constants and helper utilities (Qt styling lives in `ui/styles/`) |
 | `src/solver/engine.py`   | Preserved `MSUPSmartSolverTransient` implementation |
 
-Total Python modules under `src/`: **37** (includes package initialisers).
+Total Python files under `src/`: **45** (36 implementation modules + 9 package initialisers).
 
 ---
 
@@ -60,4 +60,3 @@ pytest tests/ -v
 ---
 
 This manifest captures the artefacts delivered with the MARS refactor. All components are aligned with the new branding and ready for distribution.
-

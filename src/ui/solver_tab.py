@@ -9,9 +9,9 @@ import os
 import sys
 
 import numpy as np
-from PyQt5.QtCore import pyqtSignal, pyqtSlot
+from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
 from PyQt5.QtGui import QPalette, QColor
-from PyQt5.QtWidgets import QMessageBox, QWidget
+from PyQt5.QtWidgets import QMessageBox, QWidget, QDialog, QVBoxLayout
 
 # Import builders and managers
 from ui.builders.solver_ui import SolverTabUIBuilder
@@ -20,6 +20,7 @@ from ui.handlers.ui_state_handler import SolverUIHandler
 from ui.handlers.analysis_handler import SolverAnalysisHandler
 from ui.handlers.log_handler import SolverLogHandler
 from ui.widgets.console import Logger
+from ui.widgets.plotting import MatplotlibWidget
 from core.computation import AnalysisEngine
 from core.data_models import (
     ModalData, ModalStressData, DeformationData, 
@@ -350,57 +351,108 @@ class SolverTab(QWidget):
     
     @pyqtSlot(int)
     def handle_node_selection(self, node_id):
-        """
-        Handle node selection from display tab or manual entry.
-        
-        Triggers time history calculation for the selected node.
-        
-        Args:
-            node_id: Node ID to handle.
-        """
+        """Handle node selection from within the solver tab."""
         try:
-            # Validate node exists
-            if not self.stress_data or node_id not in self.stress_data.node_ids:
-                QMessageBox.warning(
-                    self, "Node Not Found",
-                    f"Node ID {node_id} not found in loaded data."
-                )
-                return
-            
-            # Validate that at least one output is selected
-            if not any([
-                self.max_principal_stress_checkbox.isChecked(),
-                self.min_principal_stress_checkbox.isChecked(),
-                self.von_mises_checkbox.isChecked(),
-                self.deformation_checkbox.isChecked(),
-                self.velocity_checkbox.isChecked(),
-                self.acceleration_checkbox.isChecked()
-            ]):
-                QMessageBox.warning(
-                    self, "No Output Selected",
-                    "Please select at least one output type (Von Mises, Principal Stress, "
-                    "Deformation, Velocity, or Acceleration) before computing time history."
-                )
-                return
-            
-            # Log selection
-            self.console_textbox.append(
-                f"\n{'='*60}\n"
-                f"Computing time history for Node ID: {node_id}\n"
-                f"{'='*60}"
-            )
-            self.console_textbox.verticalScrollBar().setValue(
-                self.console_textbox.verticalScrollBar().maximum()
-            )
-            
-            # Trigger solve with time history mode for this node
-            self.analysis_handler.solve(force_time_history_for_node_id=node_id)
-            
+            self._compute_time_history_for_node(node_id, require_single_output=True)
         except Exception as e:
             QMessageBox.critical(
                 self, "Error",
                 f"An error occurred while selecting node: {e}"
             )
+
+    @pyqtSlot(int)
+    def plot_history_for_node(self, node_id):
+        """Trigger time history calculation and show results in a dialog."""
+        try:
+            result = self._compute_time_history_for_node(node_id, require_single_output=True)
+            if result is not None:
+                self._show_plot_in_new_dialog(result)
+        except Exception as e:
+            QMessageBox.critical(
+                self, "Plot Error",
+                f"Failed to plot time history for node {node_id}: {e}"
+            )
+
+    def _compute_time_history_for_node(self, node_id, require_single_output=True):
+        """Validate selection and run time-history analysis."""
+        if not self.stress_data or node_id not in self.stress_data.node_ids:
+            QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in loaded data.")
+            return None
+
+        outputs = {
+            'Von-Mises Stress': self.von_mises_checkbox.isChecked(),
+            'Max Principal Stress': self.max_principal_stress_checkbox.isChecked(),
+            'Min Principal Stress': self.min_principal_stress_checkbox.isChecked(),
+            'Deformation': self.deformation_checkbox.isChecked(),
+            'Velocity': self.velocity_checkbox.isChecked(),
+            'Acceleration': self.acceleration_checkbox.isChecked(),
+        }
+
+        selected = [name for name, is_checked in outputs.items() if is_checked]
+
+        if not selected:
+            QMessageBox.warning(self, "No Output Selected",
+                                "Select an output (Von Mises, Principal Stress, Deformation, Velocity, or Acceleration) before plotting time history.")
+            return None
+
+        if require_single_output and len(selected) > 1:
+            QMessageBox.warning(
+                self,
+                "Multiple Outputs Selected",
+                "Select only one output before plotting time history."
+            )
+            return None
+
+        needs_deformation = any(outputs[name] for name in ['Deformation', 'Velocity', 'Acceleration'])
+        if needs_deformation and not self.deformation_loaded:
+            QMessageBox.warning(
+                self,
+                "Missing Deformation Data",
+                "Plotting deformation, velocity, or acceleration requires the modal deformations file."
+            )
+            return None
+
+        self.console_textbox.append(
+            f"\n{'=' * 60}\nComputing time history for Node ID: {node_id}\nSelected Output: {selected[0]}\n{'=' * 60}"
+        )
+        self.console_textbox.verticalScrollBar().setValue(
+            self.console_textbox.verticalScrollBar().maximum()
+        )
+
+        result = self.analysis_handler.solve(force_time_history_for_node_id=node_id)
+        return result
+
+    def _show_plot_in_new_dialog(self, result):
+        """Display the time-history result in a Matplotlib dialog."""
+        if self.plot_dialog:
+            self.plot_dialog.close()
+
+        dialog = QDialog(self)
+        dialog.setWindowTitle(f"Time History for Node {result.node_id}")
+        dialog.resize(900, 600)
+
+        widget = MatplotlibWidget()
+        widget.update_plot(
+            result.time_values,
+            result.stress_values,
+            node_id=result.node_id,
+            is_max_principal_stress=(result.result_type == 'max_principal'),
+            is_min_principal_stress=(result.result_type == 'min_principal'),
+            is_von_mises=(result.result_type == 'von_mises'),
+            is_deformation=(result.result_type == 'deformation'),
+            is_velocity=(result.result_type == 'velocity'),
+            is_acceleration=(result.result_type == 'acceleration')
+        )
+
+        layout = QVBoxLayout(dialog)
+        layout.addWidget(widget)
+
+        flags = dialog.windowFlags()
+        flags |= Qt.WindowMinimizeButtonHint | Qt.WindowMaximizeButtonHint
+        dialog.setWindowFlags(flags)
+
+        dialog.show()
+        self.plot_dialog = dialog
     
     # ========== Drag and Drop Support ==========
 

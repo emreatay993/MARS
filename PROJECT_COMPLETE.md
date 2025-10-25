@@ -34,8 +34,8 @@
 
 ## 📊 Confirmed Metrics
 
-- **Python modules:** 37 files under `src/` (including package initialisers).
-- **Key module sizes:** `solver_tab.py` 467 lines, `application_controller.py` 212 lines, `core/computation.py` 229 lines, `core/visualization.py` 333 lines, `display_tab.py` 1,822 lines (with supporting managers handling heavy logic).
+- **Python modules:** 45 files under `src/` (36 implementation modules + 9 package markers).
+- **Key module sizes:** `ui/handlers/analysis_handler.py` 871 lines, `ui/display_tab.py` 596 lines (plus ~2,100 lines across display handlers), `ui/solver_tab.py` 517 lines, `ui/application_controller.py` 210 lines, `core/computation.py` 228 lines, `core/visualization.py` 332 lines, `solver/engine.py` 1,011 lines.
 - **Test suite:** 4 unit-test modules covering validators, data models, file utilities, and node utilities plus detailed manual QA checklist.
 - **Documentation:** 20+ Markdown guides refreshed or annotated to reflect the MARS naming and structure.
 - **Bug fixes retained:** Hover annotations, scalar bar refresh, time-history plotting stability, and other previously tracked fixes remain in place.
@@ -56,4 +56,3 @@
 1. Run `python src/main.py` to validate the GUI end-to-end with your datasets.
 2. Execute `pytest tests/ -v` before releases; extend coverage as new utilities and handlers land.
 3. Capture future enhancements (e.g., trimming `display_tab.py`) as separate tasks now that supporting infrastructure is in place.
-

@@ -8,13 +8,12 @@ This codebase refactors the original MSUP Smart Solver into a clean, maintainabl
 
 ### Key Improvements
 
-- ✅ **Modular Architecture**: 37 focused modules vs 4 monolithic files
-- ✅ **Code Quality**: All functions <30 lines, cyclomatic complexity <10
-- ✅ **Maintainability**: Clear separation of concerns (I/O, UI, Core, Utils)
-- ✅ **Testability**: Unit tests for all core modules
-- ✅ **Documentation**: Comprehensive docstrings and guides (30+ documents)
-- ✅ **Bug Fixes**: 9 critical issues resolved (hover annotation, scalar bar updates, time history plotting)
-- ✅ **Zero Behavioral Changes**: Identical functionality and GUI, plus fixes
+- ✅ **Modular Architecture**: 36 focused modules (45 Python files including package initialisers) organised into `core/`, `file_io/`, `solver/`, `ui/`, and `utils/`
+- ✅ **UI Separation**: Solver and display workflows delegate heavy lifting to 15 handler modules, builders, and specialised PyVista managers
+- ✅ **Legacy Solver Preserved**: `MSUPSmartSolverTransient` remains in `src/solver/engine.py` (1011 lines) with a lightweight orchestration layer
+- ✅ **Targeted Testing**: Unit coverage for validators, data models, and utilities plus structured manual GUI checklists
+- ✅ **Documentation Refresh**: README, architecture, migration, and testing guides align with the current package layout
+- ✅ **Bug Fixes Retained**: Hover annotations, scalar bar refresh, time-history plotting, and related stability fixes remain in place
 
 ## 📁 Project Structure
 
@@ -34,13 +33,20 @@ src/
 │   ├── display_tab.py          - 3D visualization workflows
 │   ├── solver_tab.py           - Solver interface (delegates to handlers)
 │   ├── handlers/               - Modular UI logic managers
-│   │   ├── analysis_handler.py     - Execute analyses and logging
-│   │   ├── file_handler.py         - File selection & loading
-│   │   ├── log_handler.py          - Console formatting utilities
-│   │   ├── navigator_handler.py    - Project tree interactions
-│   │   ├── plotting_handler.py     - Plotter sharing between tabs
-│   │   ├── settings_handler.py     - Advanced settings application
-│   │   └── ui_state_handler.py     - Checkbox and control state coordination
+│   │   ├── analysis_handler.py         - Execute analyses, logging, plotting
+│   │   ├── ui_state_handler.py         - Solver tab checkbox/state coordination
+│   │   ├── file_handler.py             - Solver tab file selection & loading
+│   │   ├── log_handler.py              - Console formatting utilities
+│   │   ├── navigator_handler.py        - Project tree interactions
+│   │   ├── plotting_handler.py         - Shared matplotlib/plotly helpers
+│   │   ├── settings_handler.py         - Advanced solver options
+│   │   ├── display_file_handler.py     - Visualization CSV loading
+│   │   ├── display_visualization_handler.py - PyVista rendering helpers
+│   │   ├── display_animation_handler.py     - Animation precomputation & playback
+│   │   ├── display_interaction_handler.py   - Hotspot and node picking tools
+│   │   ├── display_results_handler.py       - Apply solver outputs to meshes
+│   │   ├── display_export_handler.py        - Export snapshots and animations
+│   │   └── display_state.py                - Shared state container for handlers
 │   ├── builders/               - UI construction logic
 │   │   ├── display_ui.py          - Display tab layout
 │   │   └── solver_ui.py           - Solver tab layout
@@ -51,7 +57,7 @@ src/
 │       ├── dialogs.py             - Advanced settings & dialogs
 │       └── plotting.py            - Matplotlib/Plotly widgets
 ├── utils/                 # Utilities
-│   ├── constants.py          - Global configuration & styles
+│   ├── constants.py          - Global configuration & runtime defaults
 │   ├── file_utils.py         - File manipulation utilities
 │   └── node_utils.py         - Node mapping functions
 ├── solver/                # Computation engine
@@ -242,26 +248,22 @@ Verify complete workflows match legacy code:
 # See tests/TESTING_GUIDE.md for procedures
 ```
 
-## 📊 Complexity Metrics
+## 📊 Code Size Snapshot
 
-### Before vs After
+- **Source modules:** 36 Python modules (45 files including package initialisers) under `src/`
+- **Largest preserved component:** `src/solver/engine.py` at 1011 lines (legacy solver retained for numerical parity)
+- **Solver workflow:** `src/ui/solver_tab.py` (517 lines) focuses on UI wiring while `src/ui/handlers/analysis_handler.py` (871 lines) manages validation, configuration, solves, and logging
+- **Display workflow:** `src/ui/display_tab.py` (596 lines) delegates to six display handler modules for PyVista rendering, animation control, exporting, and interaction logic (~2,100 lines combined)
+- **Supporting UI packages:** builders (2 files, 683 lines), widgets (3 files, 829 lines), styles (1 file, 418 lines)
+- **Core & file I/O layers:** 7 modules across `core/` (744 lines) and `file_io/` (561 lines) provide data models, analysis orchestration, visualisation managers, validators, loaders, and exporters
 
-| Metric | Legacy | Refactored | Improvement |
-|--------|--------|------------|-------------|
-| Files | 4 | 37 | 9x modularity |
-| Largest file | 4000+ lines | 1822 lines | 2.2x reduction |
-| Avg function length | 50+ lines | <30 lines | >1.7x reduction |
-| Cyclomatic complexity | >15 | <10 | >1.5x reduction |
-| Linting errors | Unknown | 0 | ✅ Clean code |
+### Current Strengths
 
-### Quality Metrics Achieved
-
-- ✅ Core computation and file I/O functions remain under 30 lines
-- ✅ Cyclomatic complexity stays <10 across computation and file I/O layers
-- ✅ High-complexity UI flows isolated in dedicated handler modules
-- ✅ 0 linting errors
-- ✅ All code has type hints
-- ✅ All code has docstrings
+- ✅ Heavy Qt logic extracted into dedicated handlers, keeping the tab widgets focused on wiring and signals
+- ✅ All user-facing flows (batch solve, time history, animation, hotspot detection, exports) ported with parity
+- ✅ Documentation, migration notes, and testing guides point directly to the modular structure
+- ✅ Automated tests cover validators, data models, and utility helpers with manual GUI checklists for regression coverage
+- ✅ Configuration constants and UI styling are centralised, streamlining future adjustments
 
 ## 🔧 Development Guide
 
@@ -320,7 +322,7 @@ Or use **Settings → Advanced** menu at runtime (doesn't persist).
 
 ### UI Customization
 
-All UI styles centralized in `utils/constants.py`:
+All UI styles are centralized in `src/ui/styles/style_constants.py`:
 
 ```python
 BUTTON_STYLE = "..."       # Button appearance

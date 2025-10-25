@@ -19,7 +19,7 @@
 
 | Category            | Contents                                                                                   |
 |---------------------|--------------------------------------------------------------------------------------------|
-| Source code         | 37 Python modules organised across `core/`, `file_io/`, `ui/`, `utils/`, `solver/`, and `main.py` |
+| Source code         | 45 Python files (36 implementation modules + 9 package markers) organised across `core/`, `file_io/`, `ui/`, `utils/`, `solver/`, and `main.py` |
 | User interface      | Application controller, solver tab, display tab, widget library, and builder utilities     |
 | Core logic          | `AnalysisEngine` facade, visualisation managers, typed data models                         |
 | File operations     | Validators/loaders/exporters for modal coordinates, stresses, deformations, and steady state |
@@ -30,13 +30,15 @@
 
 ## 📊 Current Metrics
 
-- **Module footprint:** 37 Python files (including package initialisers) with clear separation of concerns.
+- **Module footprint:** 45 Python files (36 implementation modules + 9 package markers) with clear separation of concerns.
 - **Key module sizes:**  
-  - `ui/solver_tab.py` — 467 lines (UI wiring + handler orchestration)  
-  - `ui/application_controller.py` — 212 lines (window controller & navigation)  
-  - `core/computation.py` — 229 lines (AnalysisEngine wrapper)  
-  - `core/visualization.py` — 333 lines (VisualizationManager, AnimationManager, HotspotDetector)  
-  - `ui/display_tab.py` — 1,822 lines (retains complex 3D workflows; backed by managers for heavy lifting)
+  - `ui/handlers/analysis_handler.py` — 871 lines (solver orchestration, logging, plotting)  
+  - `ui/display_tab.py` — 596 lines (view) plus ~2,100 lines across display handlers for file loading, rendering, animation, exports, and hotspots  
+  - `ui/solver_tab.py` — 517 lines (UI wiring + console integration)  
+  - `ui/application_controller.py` — 210 lines (window controller & navigation)  
+  - `core/computation.py` — 228 lines (AnalysisEngine wrapper)  
+  - `core/visualization.py` — 332 lines (VisualizationManager, AnimationManager, HotspotDetector)  
+  - `solver/engine.py` — 1,011 lines (legacy solver binding)
 - **Testing suite:** 4 unit test modules + manual checklist; executable with `pytest tests/ -v`.
 - **Documentation refresh:** 20+ Markdown files reviewed, updated, or annotated to reference MARS naming, current structure, and modern workflows.
 
@@ -52,7 +54,9 @@ src/
 │   ├── solver_tab.py
 │   ├── display_tab.py
 │   ├── builders/
-│   └── widgets/
+│   ├── handlers/
+│   ├── widgets/
+│   └── styles/
 ├── core/
 │   ├── computation.py          # AnalysisEngine facade
 │   ├── visualization.py        # Mesh/animation/hotspot managers
@@ -72,7 +76,7 @@ src/
 | Monolithic GUI files                   | Split into controller, tabs, builders, widgets, and handlers                |
 | Inline CSV/TXT parsing                 | Validators and loaders return typed data models                             |
 | Hard-to-test business logic            | Extracted into `AnalysisEngine` and visualisation managers                  |
-| Scattered styles and constants         | Centralised in `utils/constants.py`                                         |
+| Scattered styles and constants         | Configuration in `utils/constants.py`; Qt theming in `ui/styles/style_constants.py` |
 | Limited documentation                  | Comprehensive guides aligned with new structure and naming                  |
 
 ---
@@ -86,4 +90,3 @@ src/
 ---
 
 Thank you for entrusting the modernisation of the MSUP Smart Solver. MARS is ready for production use and future iteration.
-

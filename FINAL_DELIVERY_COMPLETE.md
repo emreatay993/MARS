@@ -8,7 +8,7 @@
 
 ## 📦 Deliverable Summary
 
-- Complete MARS source tree under `src/`, featuring modular packages for UI, core, file I/O, solver integration, and utilities.
+- Complete MARS source tree under `src/`, featuring 36 implementation modules (45 Python files including package markers) across UI, core, file I/O, solver integration, and utilities.
 - Updated Qt application entry point (`src/main.py`) launching the refactored `ApplicationController`.
 - Solver workflows retained through `SolverTab`, `AnalysisEngine`, and file loader/validator pipeline.
 - Display workflows maintained, including time-point visualisation, animation controls, and hotspot tooling backed by dedicated managers.
@@ -27,7 +27,9 @@ src/
 │   ├── solver_tab.py
 │   ├── display_tab.py
 │   ├── builders/
-│   └── widgets/
+│   ├── handlers/
+│   ├── widgets/
+│   └── styles/
 ├── core/
 │   ├── computation.py
 │   ├── visualization.py
@@ -69,4 +71,3 @@ Tests and docs live under `tests/` and the project root, respectively.
 ## 🙌 Thank You
 
 The MSUP Smart Solver refactor is now fully represented by MARS. The codebase, tests, and documentation are aligned with the new branding and ready for ongoing enhancements.
-

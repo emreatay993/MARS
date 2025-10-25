@@ -1,56 +1,56 @@
 # File Index – MARS: Modal Analysis Response Solver
 
-This reference lists every Python module and key testing asset that makes up the current codebase. It reflects the post-handler refactor captured in the `src/` directory.
+This reference captures every Python module that ships with the refactored MARS codebase. Line counts were refreshed from the current `src/` tree to help you find the right file quickly.
 
-## Snapshot (April 2026)
+## Snapshot (Current)
 
-- 37 Python modules under `src/`
-- 8,643 lines of Python code (`wc -l src/**/*.py`)
-- UI layer spans 20 modules (6,063 lines) divided into controller, tabs, builders, handlers, styles, and widgets
-- Automated test suite: 4 Python modules backed by 3 detailed testing guides
-
----
-
-## Root Modules (2 files – 44 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/main.py` | 36 | Application entry point bootstrapping Qt and the main window |
-| `src/__init__.py` | 8 | Package marker for the application namespace |
+- 36 Python modules (45 Python files including package initialisers) live under `src/`
+- ~9,100 lines of implementation code (9,093 excluding `__init__.py` markers)
+- UI layer spans 24 Python files (~6,546 lines) split across controller/tab views, builders, 15 handler modules, widgets, and centralised style constants
+- Automated tests: 4 unit-test modules plus 3 living guides in `tests/`
 
 ---
 
-## Core Package (4 files – 750 lines)
+## Root Modules (2 files – 42 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/core/computation.py` | 229 | High-level orchestration around `AnalysisEngine` |
-| `src/core/data_models.py` | 186 | Structured data classes for solver configuration and results |
-| `src/core/visualization.py` | 333 | Visualization, animation, and hotspot managers |
-| `src/core/__init__.py` | 2 | Package initializer |
+| `src/main.py` | 35 | Application entry point bootstrapping Qt, DPI tweaks, and the `ApplicationController` |
+| `src/__init__.py` | 7 | Package marker |
 
 ---
 
-## File I/O Package (5 files – 571 lines)
+## Core Package (4 files – 746 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/file_io/exporters.py` | 158 | Result exporters (CSV, APDL, mesh snapshots) |
-| `src/file_io/fea_utilities.py` | 40 | Legacy finite-element helpers retained for compatibility |
-| `src/file_io/loaders.py` | 198 | Modal data loaders returning typed models |
-| `src/file_io/validators.py` | 168 | Input validation for modal coordinate, stress, deformation, and steady-state files |
-| `src/file_io/__init__.py` | 7 | Package initializer |
+| `src/core/computation.py` | 228 | `AnalysisEngine` facade that configures the solver, applies mode skipping, and runs batch/time-history flows |
+| `src/core/data_models.py` | 184 | Dataclasses for modal data, stresses, deformations, steady-state inputs, solver configuration, and results |
+| `src/core/visualization.py` | 332 | `VisualizationManager`, `AnimationManager`, and `HotspotDetector` helpers for PyVista operations |
+| `src/core/__init__.py` | 2 | Package initialiser |
 
 ---
 
-## UI Shell (4 files – 2,503 lines)
+## File I/O Package (5 files – 568 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/application_controller.py` | 212 | Top-level Qt `QMainWindow` orchestration and menu/navigation wiring |
-| `src/ui/display_tab.py` | 1,822 | Display tab view logic, PyVista integration, animation control |
-| `src/ui/solver_tab.py` | 467 | Solver tab view class delegating heavy logic to handlers |
-| `src/ui/__init__.py` | 2 | Package initializer |
+| `src/file_io/exporters.py` | 157 | CSV exports, APDL initial-condition writer, and mesh/point-data exporters |
+| `src/file_io/fea_utilities.py` | 41 | Legacy finite-element helper preserved for compatibility |
+| `src/file_io/loaders.py` | 197 | Loaders that return typed data models after validation |
+| `src/file_io/validators.py` | 166 | Validators for modal coordinate, stress, deformation, and steady-state inputs |
+| `src/file_io/__init__.py` | 7 | Package initialiser |
+
+---
+
+## UI Shell (4 files – 1,325 lines)
+
+| File | Lines | Description |
+|------|-------|-------------|
+| `src/ui/application_controller.py` | 210 | Main window controller managing menus, navigator dock, and cross-tab signal wiring |
+| `src/ui/display_tab.py` | 596 | Display tab view constructing widgets and delegating to specialised handlers |
+| `src/ui/solver_tab.py` | 517 | Solver tab view handling UI wiring, signal emission, and console integration |
+| `src/ui/__init__.py` | 2 | Package docstring / marker |
 
 ---
 
@@ -58,23 +58,31 @@ This reference lists every Python module and key testing asset that makes up the
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/builders/display_ui.py` | 304 | Layout builder for the display/visualization tab |
-| `src/ui/builders/solver_ui.py` | 379 | Layout builder for the solver tab |
-| `src/ui/builders/__init__.py` | 2 | Package initializer |
+| `src/ui/builders/display_ui.py` | 304 | Builder for display tab layouts (file controls, PyVista panel, time-point, animation groups) |
+| `src/ui/builders/solver_ui.py` | 379 | Builder for solver tab layouts (file inputs, output toggles, fatigue params, plots, progress) |
+| `src/ui/builders/__init__.py` | 2 | Package initialiser |
 
 ---
 
-## UI Handlers (7 files – 1,614 lines)
+## UI Handlers (15 files – 3,293 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/handlers/analysis_handler.py` | 916 | Executes analyses, builds solver configs, orchestrates logging, and channels results to the UI |
-| `src/ui/handlers/file_handler.py` | 154 | Encapsulates file dialogs and modal data loading callbacks |
-| `src/ui/handlers/log_handler.py` | 75 | Formats console output for solver operations |
-| `src/ui/handlers/navigator_handler.py` | 54 | Handles project navigator tree interactions |
-| `src/ui/handlers/plotting_handler.py` | 63 | Shares plotting widgets and routines across tabs |
-| `src/ui/handlers/settings_handler.py` | 38 | Applies advanced solver settings to engine globals |
-| `src/ui/handlers/ui_state_handler.py` | 314 | Manages checkbox state, visibility, and plot refresh logic |
+| `src/ui/handlers/analysis_handler.py` | 871 | Validates inputs, builds `SolverConfig`, orchestrates solves, logging, progress, and plotting |
+| `src/ui/handlers/display_animation_handler.py` | 554 | Precomputes animation frames, manages timers, playback, and export hooks |
+| `src/ui/handlers/display_base_handler.py` | 26 | Shared base utilities for display handlers (state sync helpers) |
+| `src/ui/handlers/display_export_handler.py` | 103 | Save-as flows for CSV snapshots, APDL exports, and animation writers |
+| `src/ui/handlers/display_file_handler.py` | 102 | CSV ingestion for the display tab with mesh creation and scalar binding |
+| `src/ui/handlers/display_interaction_handler.py` | 558 | Hover annotations, hotspot detection, node picking, tracking, and camera controls |
+| `src/ui/handlers/display_results_handler.py` | 107 | Loads solver-generated arrays (memmap) and applies them to the active mesh |
+| `src/ui/handlers/display_state.py` | 50 | Dataclass capturing shared display state (mesh, camera, animation, selection) |
+| `src/ui/handlers/display_visualization_handler.py` | 218 | PyVista rendering pipeline, scalar updates, deformation scaling, hover observers |
+| `src/ui/handlers/file_handler.py` | 155 | Solver tab file dialogs, validation hand-off, and modal data lifecycle management |
+| `src/ui/handlers/log_handler.py` | 76 | Routes solver text output to the embedded console widget |
+| `src/ui/handlers/navigator_handler.py` | 55 | Project tree double-click handling and drag-and-drop integration |
+| `src/ui/handlers/plotting_handler.py` | 64 | Shares matplotlib/plotly widgets across tabs and cleans up temp files |
+| `src/ui/handlers/settings_handler.py` | 39 | Applies advanced solver settings (RAM usage, precision, GPU toggle) |
+| `src/ui/handlers/ui_state_handler.py` | 315 | Manages solver tab checkbox logic, fatigue controls, and plot updates |
 
 ---
 
@@ -82,30 +90,30 @@ This reference lists every Python module and key testing asset that makes up the
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/styles/style_constants.py` | 418 | Centralized stylesheet strings matching the legacy PyQt look and feel |
-| `src/ui/styles/__init__.py` | 6 | Package initializer |
+| `src/ui/styles/style_constants.py` | 418 | Centralised Qt stylesheet strings and colour palette matching the legacy UI |
+| `src/ui/styles/__init__.py` | 6 | Package initialiser |
 
 ---
 
-## UI Widgets (4 files – 837 lines)
+## UI Widgets (4 files – 831 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/widgets/console.py` | 66 | QTextEdit-based console widget |
-| `src/ui/widgets/dialogs.py` | 221 | Advanced settings and hotspot dialogs |
-| `src/ui/widgets/plotting.py` | 548 | Matplotlib and Plotly helper widgets |
-| `src/ui/widgets/__init__.py` | 2 | Package initializer |
+| `src/ui/widgets/console.py` | 64 | QTextEdit-based logger with auto-scroll and clipboard support |
+| `src/ui/widgets/dialogs.py` | 219 | Advanced settings dialog, hotspot dialog, and supporting UI helpers |
+| `src/ui/widgets/plotting.py` | 546 | Matplotlib and Plotly widgets with interactive legends, tables, and resampling |
+| `src/ui/widgets/__init__.py` | 2 | Package initialiser |
 
 ---
 
-## Utils Package (4 files – 202 lines)
+## Utils Package (4 files – 198 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/utils/constants.py` | 64 | Global configuration values and runtime toggles |
-| `src/utils/file_utils.py` | 109 | File manipulation helpers (e.g., unwrap `.mcf`) |
-| `src/utils/node_utils.py` | 27 | Node lookup helpers |
-| `src/utils/__init__.py` | 2 | Package initializer |
+| `src/utils/constants.py` | 62 | Solver configuration, dtype selection, environment flags, and display defaults |
+| `src/utils/file_utils.py` | 108 | File manipulation helpers (e.g., unwrap `.mcf` archives) |
+| `src/utils/node_utils.py` | 26 | Node ID lookup helper |
+| `src/utils/__init__.py` | 2 | Package initialiser |
 
 ---
 
@@ -113,8 +121,8 @@ This reference lists every Python module and key testing asset that makes up the
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/solver/engine.py` | 1,011 | Modal analysis engine (thinly wrapped legacy solver) |
-| `src/solver/__init__.py` | 2 | Package initializer |
+| `src/solver/engine.py` | 1,011 | Legacy `MSUPSmartSolverTransient` implementation retained for numerical parity |
+| `src/solver/__init__.py` | 2 | Package initialiser |
 
 ---
 
@@ -122,21 +130,21 @@ This reference lists every Python module and key testing asset that makes up the
 
 | File | Type | Description |
 |------|------|-------------|
-| `tests/test_data_models.py` | Unit test | Validates core data model behaviour |
-| `tests/test_file_utils.py` | Unit test | Covers utility helpers for file transformations |
+| `tests/test_data_models.py` | Unit test | Validates data model properties and helper methods |
+| `tests/test_file_utils.py` | Unit test | Covers unwrap utilities and helper functions |
 | `tests/test_node_utils.py` | Unit test | Exercises node lookup helpers |
-| `tests/test_validators.py` | Unit test | Regression coverage for file validators |
+| `tests/test_validators.py` | Unit test | Regression coverage for modal/stress/deformation validators |
 | `tests/TESTING_GUIDE.md` | Documentation | End-to-end testing procedures |
 | `tests/MANUAL_TESTING_CHECKLIST.md` | Documentation | ~250-point GUI regression checklist |
-| `tests/BUGFIX_TESTING_CHECKLIST.md` | Documentation | Targeted validation for post-refactor fixes |
-| `tests/__init__.py` | Package marker | Allows `pytest` discovery within the directory |
+| `tests/BUGFIX_TESTING_CHECKLIST.md` | Documentation | Targeted validation for refactor bug fixes |
+| `tests/__init__.py` | Package marker | Enables `pytest` discovery |
 
 ---
 
 ## Totals
 
-- **Source totals**: 37 Python files, 8,643 lines
-- **UI footprint**: 20 modules, 6,063 lines (tabs + builders + handlers + styles + widgets)
-- **Testing footprint**: 4 automated test files + 3 living checklists
+- **Source totals**: 45 Python files (36 modules + 9 package markers), 9,125 lines overall (9,093 excluding `__init__.py`)
+- **UI footprint**: 24 files, ~6,546 lines (controllers/tabs, builders, 15 handlers, widgets, styles)
+- **Testing footprint**: 4 automated test modules plus 3 living guides/checklists
 
-This index will remain the source of truth for module counts whenever new files are added to `src/`.
+Keep this index handy whenever new files are added—updating the counts here keeps the documentation trustworthy.

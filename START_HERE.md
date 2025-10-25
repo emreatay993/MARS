@@ -10,12 +10,12 @@ This document is your starting point for understanding and using the refactored 
 
 Your legacy MSUP Smart Solver codebase now lives on as **MARS: Modal Analysis Response Solver**, built on a clean, modular architecture:
 
-- ✅ **37 focused modules** (was 4 giant files)
-- ✅ **Zero linting errors** (perfect code quality)
-- ✅ **All features preserved** (works exactly the same)
-- ✅ **Identical GUI** (no learning curve)
-- ✅ **9 critical bugs fixed** (hover annotation, scalar bar updates, time history plotting)
-- ✅ **10x more maintainable** (easier to modify)
+- ✅ **Modular packages**: 36 Python modules (45 files including package initialisers) organised by responsibility
+- ✅ **Handler-driven UI**: 15 handler modules manage solver orchestration, state, PyVista rendering, animation, and exports
+- ✅ **Legacy solver preserved**: Numerical core remains in `src/solver/engine.py` (1011 lines) for parity with the original engine
+- ✅ **All features preserved**: Identical workflows for batch solves, time history, visualisation, hotspots, and exports
+- ✅ **Documentation & testing refreshed**: README, architecture, migration, and testing guides align with the latest `src/` layout
+- ✅ **Bug fixes retained**: Hover annotation, scalar bar refresh, and time-history stability improvements remain in place
 
 **Bottom line**: Same functionality you relied on, better code, with additional bug fixes!
 
@@ -120,9 +120,9 @@ That's it! The application launches exactly as before.
 
 ### For You (Developer)
 - ✅ **Find code in seconds** (clear structure)
-- ✅ **Understand code quickly** (short functions)
+- ✅ **Understand code quickly** (handlers isolate responsibilities)
 - ✅ **Modify code safely** (changes isolated)
-- ✅ **Test code easily** (pure functions)
+- ✅ **Test code easily** (pure functions in core/file I/O layers)
 
 ### For Users
 - ✅ **Same exact interface** (no changes)
@@ -140,19 +140,19 @@ That's it! The application launches exactly as before.
 ## 🎓 What Changed?
 
 ### Code Structure
-- **Before**: 4 files, largest 4,000+ lines
-- **After**: 31 files, largest 654 lines
-- **Benefit**: 10x easier to navigate
+- **Before**: 4 monolithic files mixing UI, solver orchestration, and visualisation
+- **After**: 36 feature-focused modules (45 Python files including package initialisers) grouped under `core/`, `file_io/`, `solver/`, `ui/`, and `utils/`
+- **Benefit**: Clear package boundaries and predictable locations for every responsibility
 
 ### Code Quality
-- **Before**: Long functions, deep nesting, mixed concerns
-- **After**: Short functions (<30 lines), clear separation
-- **Benefit**: 5x easier to understand
+- **Before**: Long functions, global state, and UI tightly coupled to computation
+- **After**: Tab widgets focus on wiring while 15 handler modules encapsulate file loading, validation, solving, logging, PyVista rendering, animation, and exports
+- **Benefit**: Targeted edits reduce regression risk and make intensive flows easier to reason about
 
 ### Maintainability
-- **Before**: Changes ripple through giant files
-- **After**: Changes isolated to specific modules
-- **Benefit**: 4x faster to modify safely
+- **Before**: Any change required editing 3,000+ line widgets
+- **After**: Solver orchestration lives in `ui/handlers/analysis_handler.py` (871 lines) and display logic is split across dedicated handler modules (~2,100 lines combined) plus a 596-line view
+- **Benefit**: Clear entry points for batch solves, time history, animation, hotspot detection, and exporting
 
 ---
 
@@ -203,19 +203,14 @@ A: See ARCHITECTURE.md "Extension Points" section
 
 | Metric | Value |
 |--------|-------|
-| **Files Created** | 59+ |
-| **Source Modules** | 28 |
-| **Test Files** | 4 |
-| **Documentation Files** | 30+ |
-| **Lines of Code** | ~7,000 |
-| **Lines of Docs** | ~6,500 |
-| **Unit Tests** | 24 |
-| **Manual Tests** | ~250 |
-| **Linting Errors** | 0 |
-| **Complexity Score** | A+ |
-| **Feature Parity** | 100% |
-| **Bug Fixes** | 9 |
-| **Quality Result** | Excellent |
+| **Source modules** | 36 Python modules (45 files including `__init__.py`) |
+| **UI handler modules** | 15 dedicated handlers across solver and display flows |
+| **Lines of Python code** | ≈9,100 across non-`__init__` modules |
+| **Unit test modules** | 4 (`test_data_models`, `test_file_utils`, `test_node_utils`, `test_validators`) |
+| **Manual tests** | ~250 checklist items in `tests/MANUAL_TESTING_CHECKLIST.md` |
+| **Documentation files** | 20+ living guides (README, architecture, migration, status snapshots) |
+| **Bug fixes retained** | Hover annotations, scalar bar refresh, time-history plotting, animation stability |
+| **Feature parity** | 100% workflow parity with the legacy MSUP Smart Solver |
 
 ---
 

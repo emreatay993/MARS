@@ -167,10 +167,10 @@ class ApplicationController(QMainWindow):
         self.solver_tab.animation_precomputation_failed.connect(
             self._on_animation_precomputation_failed
         )
-        
+
         # Connect display tab to solver tab
         self.display_tab.node_picked_signal.connect(
-            self.solver_tab.handle_node_selection
+            self.solver_tab.plot_history_for_node
         )
         self.display_tab.time_point_update_requested.connect(
             self.solver_tab.request_time_point_calculation

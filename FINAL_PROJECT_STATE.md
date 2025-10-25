@@ -94,6 +94,8 @@
 
 **Overall Project**: **90% Complete**
 
+> **Note:** Line counts and completion percentages in this historical snapshot pre-date the final handler split. Refer to `FILE_INDEX.md` for the up-to-date module and line breakdown.
+
 ---
 
 ## 🎯 **Production Readiness Assessment**

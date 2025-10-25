@@ -25,6 +25,7 @@ The primary documentation set has been reviewed and updated to reflect the curre
 | `FINAL_DELIVERY_COMPLETE.md` | Updated to describe the delivered artefacts using MARS naming. |
 | `FINAL_SUMMARY.md` | Reauthored as a concise post-project recap with accurate instructions. |
 | `EXECUTIVE_SUMMARY.md` | Rewritten for stakeholders with the new objectives/outcomes framing. |
+| `FILE_INDEX.md` | Rebuilt with current line counts, module listings, and handler breakdowns. |
 | `TESTING_GUIDE.md` & `MANUAL_TESTING_CHECKLIST.md` | Adjusted titles and expectations to reference the MARS UI. |
 
 Historical reports such as `STATUS_REPORT.md`, `PROGRESS_SUMMARY.md`, and `FINAL_PROJECT_STATE.md` now open with a note explaining that they capture earlier checkpoints.
@@ -33,8 +34,8 @@ Historical reports such as `STATUS_REPORT.md`, `PROGRESS_SUMMARY.md`, and `FINAL
 
 ## Metrics & References
 
-- **Documentation touched:** 15 Markdown files (including historical annotations).
-- **Current module count:** 37 Python files beneath `src/`.
+- **Documentation touched:** A dozen core guides plus historical annotations refreshed in this pass.
+- **Current module count:** 45 Python files beneath `src/` (36 implementation modules + 9 package markers).
 - **Testing artefacts:** Automated unit tests (`pytest tests/ -v`) plus manual checklist updated for the MARS window title.
 - **Key architecture reference:** `ARCHITECTURE.md` already reflected the MARS naming and required minimal edits.
 
@@ -49,4 +50,3 @@ Historical reports such as `STATUS_REPORT.md`, `PROGRESS_SUMMARY.md`, and `FINAL
 ---
 
 Documentation now matches the MARS codebase and is ready for ongoing maintenance.
-

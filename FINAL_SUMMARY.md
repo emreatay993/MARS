@@ -6,7 +6,7 @@ MARS is the fully refactored evolution of the legacy MSUP Smart Solver. The proj
 
 ## ✅ Delivery Snapshot
 
-- **Source layout:** 37 Python modules under `src/` (core, file_io, solver, ui, utils, main).
+- **Source layout:** 45 Python files under `src/` (36 implementation modules + package markers across core, file_io, solver, ui, utils, main).
 - **Key components:** `ApplicationController`, `SolverTab`, `DisplayTab`, `AnalysisEngine`, visualisation managers, file validators/loaders/exporters.
 - **Solver integration:** Legacy `MSUPSmartSolverTransient` retained within `src/solver/engine.py`, wrapped by the new facade.
 - **Documentation refresh:** README, START_HERE, ARCHITECTURE, MIGRATION_GUIDE, TRANSFORMATION_SUMMARY, testing guides, and additional status documents updated or annotated for MARS.
@@ -50,4 +50,3 @@ pytest tests/ -v
 ---
 
 The modernisation journey is complete. Enjoy shipping and evolving MARS!
-

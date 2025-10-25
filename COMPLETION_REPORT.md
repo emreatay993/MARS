@@ -8,7 +8,7 @@
 
 ## Scope Recap
 
-- Modularised the legacy application into 37 Python modules under `src/`.
+- Modularised the legacy application into 36 implementation modules (45 Python files including package markers) under `src/`.
 - Preserved solver capabilities via an `AnalysisEngine` wrapper around `MSUPSmartSolverTransient`.
 - Reworked the UI into a controller/tab/builder/widget structure for clarity and maintainability.
 - Refreshed documentation and testing resources to match the MARS naming and package layout.
@@ -48,4 +48,3 @@
 ---
 
 The MARS modernisation is complete and ready for production workflows.
-

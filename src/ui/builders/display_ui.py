@@ -197,7 +197,7 @@ class DisplayTabUIBuilder:
         # Time step mode
         time_step_mode_combo = QComboBox()
         time_step_mode_combo.addItems(["Custom Time Step", "Actual Data Time Steps"])
-        time_step_mode_combo.setCurrentIndex(1)
+        time_step_mode_combo.setCurrentIndex(0)
         
         custom_step_spin = QDoubleSpinBox()
         custom_step_spin.setDecimals(5)

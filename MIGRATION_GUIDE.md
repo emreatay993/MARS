@@ -178,8 +178,8 @@ def _visualize_data(self, filename):
 - Wrapper: `src/core/computation.py` (AnalysisEngine)
 
 **Configuration**:
-- All constants: `src/utils/constants.py`
-- Styles: `src/utils/constants.py`
+- Solver/runtime constants: `src/utils/constants.py`
+- Qt stylesheets: `src/ui/styles/style_constants.py`
 
 **Utilities**:
 - File operations: `src/utils/file_utils.py`
@@ -211,7 +211,7 @@ DEFAULT_PRECISION = 'Single'  # Changed from 'Double'
 
 **Legacy**: Edit inline stylesheets in `init_ui()`
 
-**Modular**: Edit `src/utils/constants.py`
+**Modular**: Edit `src/ui/styles/style_constants.py`
 ```python
 BUTTON_STYLE = """
     QPushButton {
@@ -221,7 +221,7 @@ BUTTON_STYLE = """
 """
 ```
 
-All buttons automatically use new style.
+All buttons automatically use the updated style constants.
 
 ### Task 4: Add File Format Support
 
@@ -271,7 +271,7 @@ modal_sx = stress_data.modal_sx
 **Problem**: Changed constants but UI looks same
 
 **Solution**: 
-1. Check you edited `src/utils/constants.py` (not legacy)
+1. Check you edited the modular files (`src/utils/constants.py` for solver settings or `src/ui/styles/style_constants.py` for Qt themes)
 2. Restart application
 3. Clear Python cache: `del src/__pycache__`
 
@@ -362,4 +362,3 @@ For team members migrating to modular code:
 **Contributing?** Follow coding standards and submit a PR!
 
 **Upgrading?** This guide has you covered!
-

@@ -61,15 +61,16 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Result visualization
 
 **Key Components**:
-- `SolverTab` class (~467 lines) focused on UI wiring and signal emission
-- `SolverAnalysisHandler` (executes solves, builds configurations, logs progress)
+- `SolverTab` class (~520 lines) focused on UI wiring, signal emission, and console surfaces
+- `SolverAnalysisHandler` (871 lines) executes solves, builds configurations, monitors resources, and coordinates plotting
 - `SolverFileHandler` (file dialogs and modal data life cycle)
 - `SolverUIHandler` (checkbox state, visibility, and plot refresh)
+- `SolverLogHandler` (routes stdout to the embedded console widget)
 - Integration with `file_io` loaders and `core` managers
 
 **Refactoring Impact**: 
 - Original: Monolithic 1,700+ line widget with deeply nested handler logic
-- Refactored: View class trimmed to ~467 lines; long-running flows moved into dedicated handler modules
+- Refactored: View class trimmed to ~520 lines; long-running flows moved into dedicated handler modules
 - Solve orchestration consolidated inside `SolverAnalysisHandler`
 - UI state changes captured in `SolverUIHandler` for easier testing and reuse
 
@@ -86,21 +87,18 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Result export (CSV, APDL)
 
 **Key Components**:
-- `DisplayTab` class (1,822 lines - comprehensive with all features + bug fixes)
-- Visualization methods (delegate to VisualizationManager)
-- Animation control methods (full implementation)
-- Context menu handlers (complete with hotspot detection)
-- Node tracking and camera freeze
-- Hover annotations for node information
-- Export functionality (CSV, APDL)
+- `DisplayTab` class (596 lines) handles widget construction, signal wiring, and high-level state
+- Display handler suite (~2,100 lines across 6 modules) drives file loading, rendering, animation, interaction, exporting, and results application (`display_file_handler`, `display_visualization_handler`, `display_animation_handler`, `display_interaction_handler`, `display_export_handler`, `display_results_handler`)
+- `DisplayState` dataclass coordinates shared state between handlers and the tab
+- Visualization methods delegate to `VisualizationManager`, `AnimationManager`, and `HotspotDetector`
 
 **Refactoring Impact**:
 - Original: 2000+ lines, monolithic with mixed concerns
-- Refactored: 1,822 lines, uses manager pattern for complex logic
-- Visualization delegated to VisualizationManager
-- Animation delegated to AnimationManager
-- Hotspot detection delegated to HotspotDetector
-- All features from legacy + 2 critical bug fixes
+- Refactored: View logic reduced to 596 lines while specialised handlers encapsulate hover annotations, node tracking, hotspot detection, exports, and animation workflows
+- Visualization delegated to `VisualizationManager`
+- Animation delegated to `AnimationManager`
+- Hotspot detection delegated to `HotspotDetector`
+- All features from legacy + critical bug fixes retained
 
 ---
 
@@ -111,17 +109,17 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: Reusable UI components
 
 **Modules**:
-1. `console.py` - Logger widget (66 lines)
+1. `console.py` - Logger widget (64 lines)
    - Redirects stdout to QTextEdit
    - Buffers output for performance
    - Auto-scrolling
 
-2. `plotting.py` - Plot widgets (548 lines)
+2. `plotting.py` - Plot widgets (546 lines)
    - MatplotlibWidget: Interactive plots with tables
    - PlotlyWidget: Modal coordinate visualization
    - PlotlyMaxWidget: Multi-trace plots
 
-3. `dialogs.py` - Dialog windows (221 lines)
+3. `dialogs.py` - Dialog windows (219 lines)
    - AdvancedSettingsDialog: Solver configuration
    - HotspotDialog: Hotspot analysis results
 
@@ -132,11 +130,11 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: Construct complex UI layouts
 
 **Modules**:
-1. `solver_ui.py` - SolverTabUIBuilder (392 lines)
+1. `solver_ui.py` - SolverTabUIBuilder (379 lines)
    - Builds: file inputs, outputs, fatigue params, node selection
    - 8 builder methods, each <25 lines
 
-2. `display_ui.py` - DisplayTabUIBuilder (271 lines)
+2. `display_ui.py` - DisplayTabUIBuilder (304 lines)
    - Builds: file controls, visualization, time point, animation
    - 6 builder methods, each <25 lines
 
@@ -147,6 +145,15 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Each section independently testable
 - Easy to modify individual sections
 - Consistent styling and layout
+
+#### Styles (`src/ui/styles/style_constants.py`)
+
+**Purpose**: Centralised Qt stylesheet strings that reproduce the legacy MSUP look and feel
+
+**Highlights**:
+- Menu bar, dock, tab, button, and group box styles applied by builders and controllers
+- Shared colour palette constants (e.g., theme blue, background tones)
+- Keeps visual customisation in one place alongside the rest of the UI package
 
 ---
 
@@ -260,13 +267,15 @@ This document provides a comprehensive guide to the MARS application's modular a
 
 #### Constants (`src/utils/constants.py`)
 
-**Purpose**: Centralized configuration and styles
+**Purpose**: Centralized solver configuration and runtime settings
 
 **Categories**:
 1. Solver configuration (RAM, precision, GPU)
 2. Data types (NumPy, PyTorch, result dtypes)
-3. UI stylesheets (buttons, groups, tabs, etc.)
-4. Display constants (point size, colors, intervals)
+3. Environment toggles (OpenBLAS threads, GPU enablement)
+4. Display defaults (point size, colours, animation intervals)
+
+> UI stylesheet strings now live in `src/ui/styles/style_constants.py` to keep visual theming alongside the rest of the UI package.
 
 **Benefits**: 
 - Single source of truth
@@ -294,7 +303,7 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: Core numerical computation (minimal changes from legacy)
 
 **Key Class**:
-- `MSUPSmartSolverTransient` (1019 lines, preserved)
+- `MSUPSmartSolverTransient` (1011 lines, preserved)
   - JIT-compiled kernels for performance
   - Memory management
   - Batch processing

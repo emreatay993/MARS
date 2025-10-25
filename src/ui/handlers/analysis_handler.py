@@ -37,38 +37,28 @@ class SolverAnalysisHandler:
 
     @pyqtSlot()
     def solve(self, force_time_history_for_node_id=None):
-        """
-        Main solve method - orchestrates the analysis.
-
-        Args:
-            force_time_history_for_node_id: Optional node ID to force time history mode.
-        """
+        """Run analysis and optionally return time history result."""
+        result = None
         try:
-            # Save current tab index
             current_tab_index = self.tab.show_output_tab_widget.currentIndex()
 
-            # Validate inputs and get configuration
             config = self._validate_and_build_config(force_time_history_for_node_id)
             if config is None:
-                return
+                return None
 
-            # Log start
             self._log_solve_start(config)
-
-            # Configure analysis engine with data
             self._configure_analysis_engine()
 
-            # Execute analysis
-            self._execute_analysis(config)
+            result = self._execute_analysis(config)
 
-            # Log completion
             self._log_solve_complete()
-
-            # Restore tab
             self.tab.show_output_tab_widget.setCurrentIndex(current_tab_index)
 
         except Exception as e:
             self._handle_solve_error(e)
+            result = None
+
+        return result
 
     def _validate_and_build_config(self, force_node_id):
         """
@@ -260,18 +250,17 @@ class SolverAnalysisHandler:
         self.tab.progress_bar.setValue(0)
 
         if config.time_history_mode:
-            # Run single-node analysis
             result = self.tab.analysis_engine.run_single_node_analysis(
                 config.selected_node_id, config
             )
             self._handle_time_history_result(result, config)
         else:
-            # Run batch analysis
             self.tab.analysis_engine.run_batch_analysis(config)
             self._handle_batch_results(config)
+            result = None
 
-        # Hide progress bar
         self.tab.progress_bar.setVisible(False)
+        return result
 
     def _handle_time_history_result(self, result, config):
         """Handle results from time history analysis."""
@@ -306,50 +295,45 @@ class SolverAnalysisHandler:
         max_traces = []
         solver = self.tab.analysis_engine.solver  # Shortcut
 
+        dataset_options = []
+
         if config.calculate_von_mises and hasattr(solver, 'max_over_time_svm'):
             max_traces.append({
                 'name': 'Von Mises (MPa)',
                 'data': solver.max_over_time_svm
             })
-            von_mises_max = solver.max_over_time_svm
-        else:
-            von_mises_max = None
+            dataset_options.append(("SVM (MPa)", "max_von_mises_stress.dat"))
 
         if config.calculate_max_principal_stress and hasattr(solver, 'max_over_time_s1'):
             max_traces.append({
                 'name': 'S1 (MPa)',
                 'data': solver.max_over_time_s1
             })
-            s1_max = solver.max_over_time_s1
-        else:
-            s1_max = None
+            dataset_options.append(("S1 (MPa)", "max_s1_stress.dat"))
+
+        if config.calculate_min_principal_stress and hasattr(solver, 'min_over_time_s3'):
+            dataset_options.append(("S3 (MPa)", "min_s3_stress.dat"))
 
         if config.calculate_deformation and hasattr(solver, 'max_over_time_def'):
             max_traces.append({
                 'name': 'Deformation (mm)',
                 'data': solver.max_over_time_def
             })
-            def_max = solver.max_over_time_def
-        else:
-            def_max = None
+            dataset_options.append(("Deformation (mm)", "max_deformation.dat"))
 
         if config.calculate_velocity and hasattr(solver, 'max_over_time_vel'):
             max_traces.append({
                 'name': 'Velocity (mm/s)',
                 'data': solver.max_over_time_vel
             })
-            vel_max = solver.max_over_time_vel
-        else:
-            vel_max = None
+            dataset_options.append(("Velocity (mm/s)", "max_velocity.dat"))
 
         if config.calculate_acceleration and hasattr(solver, 'max_over_time_acc'):
             max_traces.append({
                 'name': 'Acceleration (mm/s²)',
                 'data': solver.max_over_time_acc
             })
-            acc_max = solver.max_over_time_acc
-        else:
-            acc_max = None
+            dataset_options.append(("Acceleration (mm/s²)", "max_acceleration.dat"))
 
         # Show maximum over time tab if there are traces
         if max_traces:
@@ -399,54 +383,24 @@ class SolverAnalysisHandler:
             )
 
         # Update display tab scalar range controls
-        self._update_display_tab_scalar_range(
-            von_mises_max, s1_max, def_max, vel_max, acc_max
+        self._update_display_tab_scalar_range(solver, dataset_options)
+
+    def _update_display_tab_scalar_range(self, solver, dataset_options):
+        """Update the display tab with solver-generated datasets."""
+        if not dataset_options:
+            return
+
+        try:
+            display_tab = self.tab.window().display_tab
+        except Exception:
+            return
+
+        current_field = getattr(display_tab, 'data_column', None)
+        display_tab.results_handler.apply_solver_results(
+            solver,
+            dataset_options,
+            current_field
         )
-
-    def _update_display_tab_scalar_range(self, von_mises_max, s1_max, def_max, vel_max, acc_max):
-        """
-        Update display tab scalar range controls based on calculated max values.
-
-        Args:
-            von_mises_max: Max von Mises data over time.
-            s1_max: Max S1 data over time.
-            def_max: Max deformation data over time.
-            vel_max: Max velocity data over time.
-            acc_max: Max acceleration data over time.
-        """
-        # Determine scalar min/max from available data
-        scalar_min, scalar_max = None, None
-
-        if von_mises_max is not None:
-            scalar_min = np.min(von_mises_max)
-            scalar_max = np.max(von_mises_max)
-        elif s1_max is not None:
-            scalar_min = np.min(s1_max)
-            scalar_max = np.max(s1_max)
-        elif def_max is not None:
-            scalar_min = np.min(def_max)
-            scalar_max = np.max(def_max)
-        elif vel_max is not None:
-            scalar_min = np.min(vel_max)
-            scalar_max = np.max(vel_max)
-        elif acc_max is not None:
-            scalar_min = np.min(acc_max)
-            scalar_max = np.max(acc_max)
-
-        # Update display tab if values available
-        if scalar_min is not None and scalar_max is not None:
-            try:
-                display_tab = self.tab.window().display_tab
-                display_tab.scalar_min_spin.blockSignals(True)
-                display_tab.scalar_max_spin.blockSignals(True)
-                display_tab.scalar_min_spin.setRange(scalar_min, scalar_max)
-                display_tab.scalar_max_spin.setRange(scalar_min, 1e30)
-                display_tab.scalar_min_spin.setValue(scalar_min)
-                display_tab.scalar_max_spin.setValue(scalar_max)
-                display_tab.scalar_min_spin.blockSignals(False)
-                display_tab.scalar_max_spin.blockSignals(False)
-            except Exception as e:
-                print(f"Could not update display tab scalar range: {e}")
 
     def _log_solve_start(self, config):
         """Log solve start information."""
