@@ -253,7 +253,7 @@ Verify complete workflows match legacy code:
 - **Source modules:** 36 Python modules (45 files including package initialisers) under `src/`
 - **Largest preserved component:** `src/solver/engine.py` at 1011 lines (legacy solver retained for numerical parity)
 - **Solver workflow:** `src/ui/solver_tab.py` (517 lines) focuses on UI wiring while `src/ui/handlers/analysis_handler.py` (871 lines) manages validation, configuration, solves, and logging
-- **Display workflow:** `src/ui/display_tab.py` (596 lines) delegates to six display handler modules for PyVista rendering, animation control, exporting, and interaction logic (~2,100 lines combined)
+- **Display workflow:** `src/ui/display_tab.py` (602 lines) delegates to six display handler modules for PyVista rendering, animation control, exporting, and interaction logic (~2,100 lines combined)
 - **Supporting UI packages:** builders (2 files, 683 lines), widgets (3 files, 829 lines), styles (1 file, 418 lines)
 - **Core & file I/O layers:** 7 modules across `core/` (744 lines) and `file_io/` (561 lines) provide data models, analysis orchestration, visualisation managers, validators, loaders, and exporters
 
@@ -335,6 +335,7 @@ TAB_STYLE = "..."          # Tab widget appearance
 - `REFACTORING_PROGRESS.md` - Detailed refactoring progress
 - `PROGRESS_SUMMARY.md` - High-level overview
 - `STATUS_REPORT.md` - Technical status report
+- `SIGNAL_SLOT_REFERENCE.md` - Signal/slot map covering solver, display, and handler interactions
 - `tests/TESTING_GUIDE.md` - Testing procedures
 - `tests/MANUAL_TESTING_CHECKLIST.md` - GUI testing checklist
 

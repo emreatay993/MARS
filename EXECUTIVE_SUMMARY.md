@@ -35,7 +35,7 @@
 - **Module count:** 45 Python files under `src/` (36 implementation modules + 9 package markers).
 - **Representative line counts:**  
   - `ui/handlers/analysis_handler.py` — 871 lines (solver orchestration, logging, plotting)  
-  - `ui/display_tab.py` — 596 lines (view) with ~2,100 additional lines across six display handler modules  
+  - `ui/display_tab.py` — 602 lines (view) with ~2,100 additional lines across six display handler modules  
   - `ui/solver_tab.py` — 517 lines (UI wiring and console integration)  
   - `ui/application_controller.py` — 210 lines  
   - `core/computation.py` — 228 lines  

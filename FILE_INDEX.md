@@ -48,7 +48,7 @@ This reference captures every Python module that ships with the refactored MARS 
 | File | Lines | Description |
 |------|-------|-------------|
 | `src/ui/application_controller.py` | 210 | Main window controller managing menus, navigator dock, and cross-tab signal wiring |
-| `src/ui/display_tab.py` | 596 | Display tab view constructing widgets and delegating to specialised handlers |
+| `src/ui/display_tab.py` | 602 | Display tab view constructing widgets and delegating to specialised handlers |
 | `src/ui/solver_tab.py` | 517 | Solver tab view handling UI wiring, signal emission, and console integration |
 | `src/ui/__init__.py` | 2 | Package docstring / marker |
 

@@ -33,7 +33,7 @@
 - **Module footprint:** 45 Python files (36 implementation modules + 9 package markers) with clear separation of concerns.
 - **Key module sizes:**  
   - `ui/handlers/analysis_handler.py` — 871 lines (solver orchestration, logging, plotting)  
-  - `ui/display_tab.py` — 596 lines (view) plus ~2,100 lines across display handlers for file loading, rendering, animation, exports, and hotspots  
+  - `ui/display_tab.py` — 602 lines (view) plus ~2,100 lines across display handlers for file loading, rendering, animation, exports, and hotspots  
   - `ui/solver_tab.py` — 517 lines (UI wiring + console integration)  
   - `ui/application_controller.py` — 210 lines (window controller & navigation)  
   - `core/computation.py` — 228 lines (AnalysisEngine wrapper)  

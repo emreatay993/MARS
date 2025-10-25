@@ -10,7 +10,7 @@ import numpy as np
 import pyvista as pv
 
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, pyqtSlot
-from PyQt5.QtWidgets import QMessageBox, QWidget
+from PyQt5.QtWidgets import QMessageBox, QWidget, QStyle
 
 # Import builders and managers
 from ui.builders.display_ui import DisplayTabUIBuilder
@@ -144,6 +144,12 @@ class DisplayTab(QWidget):
         self.actual_interval_spin = self.components['actual_interval_spin']
         self.save_anim_button = self.components['save_anim_button']
         self.anim_group = self.components['anim_group']
+
+        # Apply standard media icons so the playback controls are visually recognisable
+        style = self.style()
+        self.play_button.setIcon(style.standardIcon(QStyle.SP_MediaPlay))
+        self.pause_button.setIcon(style.standardIcon(QStyle.SP_MediaPause))
+        self.stop_button.setIcon(style.standardIcon(QStyle.SP_MediaStop))
     
     def set_plotting_handler(self, plotting_handler):
         """Set the plotting handler for this display tab."""

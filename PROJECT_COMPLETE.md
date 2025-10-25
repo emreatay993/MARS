@@ -35,7 +35,7 @@
 ## 📊 Confirmed Metrics
 
 - **Python modules:** 45 files under `src/` (36 implementation modules + 9 package markers).
-- **Key module sizes:** `ui/handlers/analysis_handler.py` 871 lines, `ui/display_tab.py` 596 lines (plus ~2,100 lines across display handlers), `ui/solver_tab.py` 517 lines, `ui/application_controller.py` 210 lines, `core/computation.py` 228 lines, `core/visualization.py` 332 lines, `solver/engine.py` 1,011 lines.
+- **Key module sizes:** `ui/handlers/analysis_handler.py` 871 lines, `ui/display_tab.py` 602 lines (plus ~2,100 lines across display handlers), `ui/solver_tab.py` 517 lines, `ui/application_controller.py` 210 lines, `core/computation.py` 228 lines, `core/visualization.py` 332 lines, `solver/engine.py` 1,011 lines.
 - **Test suite:** 4 unit-test modules covering validators, data models, file utilities, and node utilities plus detailed manual QA checklist.
 - **Documentation:** 20+ Markdown guides refreshed or annotated to reflect the MARS naming and structure.
 - **Bug fixes retained:** Hover annotations, scalar bar refresh, time-history plotting stability, and other previously tracked fixes remain in place.

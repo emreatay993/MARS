@@ -87,14 +87,14 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Result export (CSV, APDL)
 
 **Key Components**:
-- `DisplayTab` class (596 lines) handles widget construction, signal wiring, and high-level state
+- `DisplayTab` class (602 lines) handles widget construction, signal wiring, and high-level state
 - Display handler suite (~2,100 lines across 6 modules) drives file loading, rendering, animation, interaction, exporting, and results application (`display_file_handler`, `display_visualization_handler`, `display_animation_handler`, `display_interaction_handler`, `display_export_handler`, `display_results_handler`)
 - `DisplayState` dataclass coordinates shared state between handlers and the tab
 - Visualization methods delegate to `VisualizationManager`, `AnimationManager`, and `HotspotDetector`
 
 **Refactoring Impact**:
 - Original: 2000+ lines, monolithic with mixed concerns
-- Refactored: View logic reduced to 596 lines while specialised handlers encapsulate hover annotations, node tracking, hotspot detection, exports, and animation workflows
+- Refactored: View logic reduced to 602 lines while specialised handlers encapsulate hover annotations, node tracking, hotspot detection, exports, and animation workflows
 - Visualization delegated to `VisualizationManager`
 - Animation delegated to `AnimationManager`
 - Hotspot detection delegated to `HotspotDetector`

@@ -151,7 +151,7 @@ That's it! The application launches exactly as before.
 
 ### Maintainability
 - **Before**: Any change required editing 3,000+ line widgets
-- **After**: Solver orchestration lives in `ui/handlers/analysis_handler.py` (871 lines) and display logic is split across dedicated handler modules (~2,100 lines combined) plus a 596-line view
+- **After**: Solver orchestration lives in `ui/handlers/analysis_handler.py` (871 lines) and display logic is split across dedicated handler modules (~2,100 lines combined) plus a 602-line view
 - **Benefit**: Clear entry points for batch solves, time history, animation, hotspot detection, and exporting
 
 ---

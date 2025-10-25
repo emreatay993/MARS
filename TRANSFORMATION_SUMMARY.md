@@ -18,7 +18,7 @@ This document captures how the legacy MSUP Smart Solver codebase evolved into th
 - Modular source tree under `src/` with dedicated packages for UI, core computation, file I/O, solver bindings, and utilities.
 - Central window controller in `src/ui/application_controller.py` (~210 lines) mediates tabs, menus, and navigation.
 - Solver workflow encapsulated in `src/ui/solver_tab.py` (~517 lines) with dedicated handlers, builders, and data models.
-- Visualization responsibilities distributed across `src/ui/display_tab.py` (596-line view), six display handler modules (~2,100 lines), and `src/core/visualization.py` (332 lines) for mesh, animation, and hotspot management.
+- Visualization responsibilities distributed across `src/ui/display_tab.py` (602-line view), six display handler modules (~2,100 lines), and `src/core/visualization.py` (332 lines) for mesh, animation, and hotspot management.
 - Reusable UI builders (`src/ui/builders/*.py`) provide deterministic widget layouts.
 - Unit tests in `tests/` cover validators, data models, and utilities; manual checklists guide end-to-end verification.
 
@@ -37,7 +37,7 @@ legacy/original_baseline_20251012/        src/
                                           ├── ui/
                                           │   ├── application_controller.py (~210 lines)
                                           │   ├── solver_tab.py (~517 lines)
-                                          │   ├── display_tab.py (596 lines)
+                                          │   ├── display_tab.py (602 lines)
                                           │   ├── handlers/ (analysis, display_*, navigator, plotting, settings)
                                           │   ├── builders/ (`solver_ui.py` 379 lines, `display_ui.py` 304 lines)
                                           │   ├── widgets/ (console, dialogs, plotting)
@@ -55,7 +55,7 @@ legacy/original_baseline_20251012/        src/
 |-------------------------------|-----------------------------------------------|-------------------------------------------------------------|
 | Application entry             | Embedded in `main_app.py`                     | Isolated `main.py` bootstraps Qt and ApplicationController  |
 | Solver GUI                    | 1,700+ lines inline logic                     | 517-line tab + 871-line analysis handler + supporting UI state/log handlers |
-| Visualization flow            | Mixed into GUI with manual mesh handling      | 596-line view plus ~2,100 lines of display handlers backed by VisualizationManager & AnimationManager |
+| Visualization flow            | Mixed into GUI with manual mesh handling      | 602-line view plus ~2,100 lines of display handlers backed by VisualizationManager & AnimationManager |
 | File loading                  | Inline CSV/TXT parsing                        | Validators + Loaders return typed data models               |
 | State management              | Global variables and direct widget mutation   | Handlers manage state and signal emission                   |
 | Testability                   | Difficult to unit test                        | Core utilities covered by unit tests; manual checklist codified |
