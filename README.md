@@ -336,6 +336,7 @@ TAB_STYLE = "..."          # Tab widget appearance
 - `PROGRESS_SUMMARY.md` - High-level overview
 - `STATUS_REPORT.md` - Technical status report
 - `SIGNAL_SLOT_REFERENCE.md` - Signal/slot map covering solver, display, and handler interactions
+- `EXECUTIVE_SUMMARY_ENGINEERING.md` - Business case for adopting MARS within mechanical design/analysis teams
 - `tests/TESTING_GUIDE.md` - Testing procedures
 - `tests/MANUAL_TESTING_CHECKLIST.md` - GUI testing checklist
 

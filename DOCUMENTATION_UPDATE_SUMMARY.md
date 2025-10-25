@@ -27,6 +27,7 @@ The primary documentation set has been reviewed and updated to reflect the curre
 | `EXECUTIVE_SUMMARY.md` | Rewritten for stakeholders with the new objectives/outcomes framing. |
 | `FILE_INDEX.md` | Rebuilt with current line counts, module listings, and handler breakdowns. |
 | `SIGNAL_SLOT_REFERENCE.md` | New reference mapping cross-tab signals, solver progress notifications, and dialog events. |
+| `EXECUTIVE_SUMMARY_ENGINEERING.md` | New leadership brief emphasising post-processing speed, license savings, and team workflow impact. |
 | `TESTING_GUIDE.md` & `MANUAL_TESTING_CHECKLIST.md` | Adjusted titles and expectations to reference the MARS UI. |
 
 Historical reports such as `STATUS_REPORT.md`, `PROGRESS_SUMMARY.md`, and `FINAL_PROJECT_STATE.md` now open with a note explaining that they capture earlier checkpoints.
