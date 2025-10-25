@@ -13,8 +13,11 @@ from PyQt5.QtWidgets import (
 )
 from pyvistaqt import QtInteractor
 
+from ui.styles.style_constants import (
+    BUTTON_STYLE, GROUP_BOX_STYLE, READONLY_INPUT_STYLE
+)
+
 from utils.constants import (
-    BUTTON_STYLE, GROUP_BOX_STYLE, READONLY_LINE_EDIT_STYLE,
     DEFAULT_POINT_SIZE, DEFAULT_BACKGROUND_COLOR, DEFAULT_ANIMATION_INTERVAL_MS
 )
 
@@ -40,10 +43,10 @@ class DisplayTabUIBuilder:
         """
         file_button = QPushButton('Load Visualization File')
         file_button.setStyleSheet(BUTTON_STYLE)
-        
+
         file_path = QLineEdit()
         file_path.setReadOnly(True)
-        file_path.setStyleSheet(READONLY_LINE_EDIT_STYLE)
+        file_path.setStyleSheet(READONLY_INPUT_STYLE)
         
         file_layout = QHBoxLayout()
         file_layout.addWidget(file_button)
@@ -119,7 +122,6 @@ class DisplayTabUIBuilder:
             QGroupBox: Group box containing time point controls.
         """
         selected_time_label = QLabel("Initialize / Display results for a selected time point:")
-        selected_time_label.setStyleSheet("margin: 10px;")
         
         time_point_spinbox = QDoubleSpinBox()
         time_point_spinbox.setDecimals(5)

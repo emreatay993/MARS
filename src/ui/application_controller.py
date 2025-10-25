@@ -6,6 +6,7 @@ and tab widgets for solver and display functionality.
 """
 
 from PyQt5.QtCore import Qt, QDir
+from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import (
     QAction, QDockWidget, QFileSystemModel,
     QMainWindow, QMenuBar, QMessageBox, QTabWidget, QTreeView
@@ -17,6 +18,9 @@ from ui.widgets.dialogs import AdvancedSettingsDialog
 from ui.handlers.plotting_handler import PlottingHandler
 from ui.handlers.settings_handler import SettingsHandler
 from ui.handlers.navigator_handler import NavigatorHandler
+from ui.styles.style_constants import (
+    MENU_BAR_STYLE, NAVIGATOR_TITLE_STYLE, TREE_VIEW_STYLE, TAB_STYLE
+)
 
 
 class ApplicationController(QMainWindow):
@@ -32,11 +36,16 @@ class ApplicationController(QMainWindow):
         """Initialize the application controller."""
         super().__init__()
 
+        # Set window background color (matching legacy)
+        palette = self.palette()
+        palette.setColor(QPalette.Window, QColor(230, 230, 230))  # Light gray background
+        self.setPalette(palette)
+
         # Handlers
         self.plotting_handler = PlottingHandler()
 
         # Window configuration
-        self.setWindowTitle('MSUP Smart Solver - v2.0.0 (Modular)')
+        self.setWindowTitle('MARS: Modal Analysis Response Solver  - v1.0.0 (Modular)')
         self.setGeometry(40, 40, 600, 800)
         
         # Create UI components (order matters - navigator before menu bar)
@@ -47,43 +56,10 @@ class ApplicationController(QMainWindow):
     
     def _create_menu_bar(self):
         """Create the menu bar with File, View, and Settings menus."""
-        menu_bar_style = """
-            QMenuBar {
-                background-color: #ffffff;
-                color: #000000;
-                padding: 2px;
-                font-family: Arial;
-                font-size: 12px;
-            }
-            QMenuBar::item {
-                background-color: #ffffff;
-                color: #000000;
-                padding: 2px 5px;
-                margin: 0px;
-            }
-            QMenuBar::item:selected {
-                background-color: #e0e0e0;
-                border-radius: 2px;
-            }
-            QMenu {
-                background-color: #ffffff;
-                color: #000000;
-                padding: 2px;
-                border: 1px solid #d0d0d0;
-            }
-            QMenu::item {
-                background-color: transparent;
-                padding: 2px 10px;
-            }
-            QMenu::item:selected {
-                background-color: #e0e0e0;
-                border-radius: 2px;
-            }
-        """
-        
         self.menu_bar = QMenuBar(self)
         self.setMenuBar(self.menu_bar)
-        self.menu_bar.setStyleSheet(menu_bar_style)
+        # Apply menu bar styles (white background, matching legacy)
+        self.menu_bar.setStyleSheet(MENU_BAR_STYLE)
         
         # File menu
         file_menu = self.menu_bar.addMenu("File")
@@ -155,85 +131,16 @@ class ApplicationController(QMainWindow):
         self.tree_view.doubleClicked.connect(self.navigator_handler.open_navigator_file)
     
     def _apply_navigator_styles(self):
-        """Apply styles to navigator components."""
-        navigator_title_style = """
-            QDockWidget::title {
-                background-color: #e7f0fd;
-                color: black;
-                font-weight: bold;
-                font-size: 9px;
-                padding-top: 2px;
-                padding-bottom: 2px;
-                padding-left: 8px;
-                padding-right: 8px;
-                border-bottom: 2px solid #5b9bd5;
-            }
-        """
-        
-        tree_view_style = """
-            QTreeView {
-                font-size: 7.5pt;
-                background-color: #ffffff;
-                alternate-background-color: #f5f5f5;
-                border: none;
-            }
-            QTreeView::item:hover {
-                background-color: #d0e4ff;
-            }
-            QTreeView::item:selected {
-                background-color: #5b9bd5;
-                color: #ffffff;
-            }
-            QHeaderView::section {
-                background-color: #e7f0fd;
-                padding: 3px;
-                border: none;
-                font-weight: bold;
-            }
-            QScrollBar:vertical {
-                border: none;
-                background: #f0f0f0;
-                width: 8px;
-            }
-            QScrollBar::handle:vertical {
-                background: #5b9bd5;
-                min-height: 20px;
-            }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
-                border: none;
-                background: none;
-            }
-        """
-        
-        self.navigator_dock.setStyleSheet(navigator_title_style)
-        self.tree_view.setStyleSheet(tree_view_style)
+        """Apply styles to navigator components (matching legacy approach)."""
+        # Apply blue navigator title and tree view styles
+        self.navigator_dock.setStyleSheet(NAVIGATOR_TITLE_STYLE)
+        self.tree_view.setStyleSheet(TREE_VIEW_STYLE)
     
     def _create_tabs(self):
         """Create main tab widget with solver and display tabs."""
-        tab_style = """
-            QTabBar::tab {
-                background-color: #d6e4f5;
-                color: #666666;
-                border: 1px solid #5b9bd5;
-                padding: 3px;
-                border-top-left-radius: 5px;
-                border-top-right-radius: 5px;
-                margin: 2px;
-                font-size: 8pt;
-                min-width: 100px;
-            }
-            QTabBar::tab:selected {
-                background-color: #e7f0fd;
-                color: #000000;
-                border: 3px solid #5b9bd5;
-            }
-            QTabBar::tab:hover {
-                background-color: #cce4ff;
-            }
-        """
-        
         self.tab_widget = QTabWidget()
-        self.tab_widget.setStyleSheet(tab_style)
+        # Apply tab styles (matching legacy approach)
+        self.tab_widget.setStyleSheet(TAB_STYLE)
         
         # Create tabs
         self.solver_tab = SolverTab()

@@ -16,22 +16,17 @@ def main():
     # Enable high DPI scaling
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-    
+
     # Create application
     app = QApplication(sys.argv)
-    
-    # Apply global stylesheet
-    app.setStyleSheet("""
-        QLabel, QComboBox, QSpinBox, QDoubleSpinBox, QPushButton, 
-        QCheckBox, QTextEdit, QLineEdit {
-            font-size: 8pt;
-        }
-    """)
-    
+
+    # Note: Styles are applied selectively to individual widgets
+    # to match legacy behavior, not globally to the application
+
     # Create and show main window
     main_window = ApplicationController()
     main_window.showMaximized()
-    
+
     # Run application
     sys.exit(app.exec_())
 

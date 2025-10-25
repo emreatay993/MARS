@@ -16,6 +16,7 @@ from PyQt5.QtWidgets import (
 from utils.constants import (
     RAM_PERCENT, DEFAULT_PRECISION, IS_GPU_ACCELERATION_ENABLED
 )
+from ui.styles.style_constants import DIALOG_STYLE, DIALOG_GROUP_BOX_STYLE
 import solver.engine as solver_engine
 
 
@@ -48,14 +49,7 @@ class AdvancedSettingsDialog(QDialog):
             f"- GPU Acceleration: {'Enabled' if IS_GPU_ACCELERATION_ENABLED else 'Disabled'}"
         )
         self.current_settings_label = QLabel(global_settings_text)
-        self.current_settings_label.setStyleSheet("""
-            background-color: #f0f0f0; 
-            border: 1px solid #dcdcdc; 
-            padding: 8px; 
-            border-radius: 3px;
-            font-family: Consolas, Courier New, monospace;
-            font-size: 9pt;
-        """)
+        self.current_settings_label.setProperty("class", "currentSettingsLabel")
         
         # Create widgets for modification
         self.ram_label = QLabel("Set RAM Allocation (%):")
@@ -121,6 +115,10 @@ class AdvancedSettingsDialog(QDialog):
         main_layout.addStretch()
         main_layout.addWidget(self.buttons)
         self.setLayout(main_layout)
+
+        # Apply styles using direct CSS constants
+        self.setStyleSheet(DIALOG_STYLE)
+        settings_group.setStyleSheet(DIALOG_GROUP_BOX_STYLE)
     
     def get_settings(self):
         """

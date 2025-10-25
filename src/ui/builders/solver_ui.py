@@ -14,8 +14,11 @@ from PyQt5.QtWidgets import (
 )
 
 from utils.constants import (
-    BUTTON_STYLE, GROUP_BOX_STYLE, TAB_STYLE, READONLY_LINE_EDIT_STYLE,
-    CHECKBOX_STYLE, CONSOLE_STYLE, PROGRESS_BAR_STYLE, WINDOW_BACKGROUND_COLOR
+    WINDOW_BACKGROUND_COLOR
+)
+from ui.styles.style_constants import (
+    BUTTON_STYLE, GROUP_BOX_STYLE, TAB_STYLE, READONLY_INPUT_STYLE,
+    CHECKBOX_STYLE, CONSOLE_STYLE, PROGRESS_BAR_STYLE
 )
 from ui.widgets.plotting import MatplotlibWidget, PlotlyWidget
 
@@ -45,42 +48,42 @@ class SolverTabUIBuilder:
         coord_file_button.setFont(QFont('Arial', 8))
         coord_file_path = QLineEdit()
         coord_file_path.setReadOnly(True)
-        coord_file_path.setStyleSheet(READONLY_LINE_EDIT_STYLE)
-        
+        coord_file_path.setStyleSheet(READONLY_INPUT_STYLE)
+
         # Modal Stress File
         stress_file_button = QPushButton('Read Modal Stress File (.csv)')
         stress_file_button.setStyleSheet(BUTTON_STYLE)
         stress_file_button.setFont(QFont('Arial', 8))
         stress_file_path = QLineEdit()
         stress_file_path.setReadOnly(True)
-        stress_file_path.setStyleSheet(READONLY_LINE_EDIT_STYLE)
+        stress_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         
         # Steady-State Stress (optional)
         steady_state_checkbox = QCheckBox("Include Steady-State Stress Field (Optional)")
         steady_state_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
+
         steady_state_file_button = QPushButton('Read Full Stress Tensor File (.txt)')
         steady_state_file_button.setStyleSheet(BUTTON_STYLE)
         steady_state_file_button.setFont(QFont('Arial', 8))
         steady_state_file_button.setVisible(False)
-        
+
         steady_state_file_path = QLineEdit()
         steady_state_file_path.setReadOnly(True)
-        steady_state_file_path.setStyleSheet(READONLY_LINE_EDIT_STYLE)
+        steady_state_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         steady_state_file_path.setVisible(False)
-        
+
         # Deformations (optional)
         deformations_checkbox = QCheckBox("Include Deformations (Optional)")
         deformations_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
+
         deformations_file_button = QPushButton('Read Modal Deformations File (.csv)')
         deformations_file_button.setStyleSheet(BUTTON_STYLE)
         deformations_file_button.setFont(QFont('Arial', 8))
         deformations_file_button.setVisible(False)
-        
+
         deformations_file_path = QLineEdit()
         deformations_file_path.setReadOnly(True)
-        deformations_file_path.setStyleSheet(READONLY_LINE_EDIT_STYLE)
+        deformations_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         deformations_file_path.setVisible(False)
         
         # Skip modes controls
@@ -135,28 +138,20 @@ class SolverTabUIBuilder:
         # Create all checkboxes
         time_history_checkbox = QCheckBox('Time History Mode (Single Node)')
         time_history_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         max_principal_stress_checkbox = QCheckBox('Max Principal Stress')
         max_principal_stress_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         min_principal_stress_checkbox = QCheckBox("Min Principal Stress")
         min_principal_stress_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         von_mises_checkbox = QCheckBox('Von-Mises Stress')
         von_mises_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         deformation_checkbox = QCheckBox('Deformation')
         deformation_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         velocity_checkbox = QCheckBox('Velocity')
         velocity_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         acceleration_checkbox = QCheckBox('Acceleration')
         acceleration_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         damage_index_checkbox = QCheckBox('Damage Index / Potential Damage')
         damage_index_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        
         # Layout
         output_layout = QVBoxLayout()
         output_layout.addWidget(time_history_checkbox)
@@ -238,11 +233,11 @@ class SolverTabUIBuilder:
         node_line_edit.setStyleSheet(BUTTON_STYLE)
         node_line_edit.setMaximumWidth(150)
         node_line_edit.setMinimumWidth(100)
-        
+
         single_node_layout = QHBoxLayout()
         single_node_layout.addWidget(single_node_label)
         single_node_layout.addWidget(node_line_edit)
-        
+
         single_node_group = QGroupBox("Scoping")
         single_node_group.setStyleSheet(GROUP_BOX_STYLE)
         single_node_group.setLayout(single_node_layout)
@@ -272,11 +267,11 @@ class SolverTabUIBuilder:
         console_textbox.setStyleSheet(CONSOLE_STYLE)
         console_textbox.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)
         console_textbox.setText('Console Output:\n')
-        
+
         terminal_font = QFont("Consolas", 8)
         terminal_font.setStyleHint(QFont.Monospace)
         console_textbox.setFont(terminal_font)
-        
+
         # Create tab widget
         show_output_tab_widget = QTabWidget()
         show_output_tab_widget.setStyleSheet(TAB_STYLE)

@@ -4,12 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Refactoring general">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="Multiple output check for play button.">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/application_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/application_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/builders/display_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/display_ui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/display_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/display_tab.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/main_window.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.csv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.dat" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.csv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/constants.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/constants.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -49,9 +57,10 @@
   <component name="PropertiesComponent"><![CDATA[{
   "keyToString": {
     "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.display_ui.executor": "Run",
     "Python.main.executor": "Run",
     "Python.main_app.executor": "Run",
-    "Python.solver_tab.executor": "Debug",
+    "Python.solver_tab.executor": "Run",
     "Python.ui_state_handler.executor": "Debug",
     "RunOnceActivity.ShowReadmeOnStart": "true",
     "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
@@ -161,7 +170,23 @@
       <option name="project" value="LOCAL" />
       <updated>1760902756960</updated>
     </task>
-    <option name="localTasksCounter" value="8" />
+    <task id="LOCAL-00008" summary="Multiple output check for play button.">
+      <option name="closed" value="true" />
+      <created>1760903197854</created>
+      <option name="number" value="00008" />
+      <option name="presentableId" value="LOCAL-00008" />
+      <option name="project" value="LOCAL" />
+      <updated>1760903197854</updated>
+    </task>
+    <task id="LOCAL-00009" summary="Multiple output check for play button.">
+      <option name="closed" value="true" />
+      <created>1760903217530</created>
+      <option name="number" value="00009" />
+      <option name="presentableId" value="LOCAL-00009" />
+      <option name="project" value="LOCAL" />
+      <updated>1760903217530</updated>
+    </task>
+    <option name="localTasksCounter" value="10" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -171,6 +196,18 @@
     <MESSAGE value="Bug fix for Update and Play buttons in Display Tab" />
     <MESSAGE value="Changed the name of the main_window.py into application_controller.py" />
     <MESSAGE value="Refactoring general" />
-    <option name="LAST_COMMIT_MESSAGE" value="Refactoring general" />
+    <MESSAGE value="Multiple output check for play button." />
+    <option name="LAST_COMMIT_MESSAGE" value="Multiple output check for play button." />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
+          <url>file://$PROJECT_DIR$/src/ui/solver_tab.py</url>
+          <line>16</line>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

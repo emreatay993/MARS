@@ -23,6 +23,7 @@ from core.visualization import VisualizationManager, AnimationManager, HotspotDe
 from ui.widgets.dialogs import HotspotDialog
 from file_io.exporters import export_mesh_to_csv, export_apdl_ic
 from utils.constants import NP_DTYPE
+from ui.styles.style_constants import CONTEXT_MENU_STYLE
 
 
 class DisplayTab(QWidget):
@@ -1142,41 +1143,13 @@ class DisplayTab(QWidget):
         from PyQt5.QtGui import QCursor
         context_menu = QMenu(self)
         
-        context_menu.setStyleSheet("""
-            QMenu {
-                background-color: #e7f0fd;
-                color: black;
-                border: 1px solid #5b9bd5;
-                border-radius: 5px;
-                padding: 5px;
-            }
-            QMenu::item {
-                background-color: transparent;
-                padding: 5px 25px 5px 20px;
-                margin: 2px;
-                border-radius: 3px;
-            }
-            QMenu::item:selected {
-                background-color: #cce4ff;
-                color: black;
-            }
-            QMenu::item:disabled {
-                color: #808080;
-                background-color: transparent;
-            }
-            QMenu::separator {
-                height: 1px;
-                background-color: #5b9bd5;
-                margin: 5px 0px;
-            }
-        """)
-        
-        title_style = "font-weight: bold; color: #333; text-decoration: underline; padding: 4px 0px 6px 7px;"
-        
+        # Apply styles using direct CSS constants
+        context_menu.setStyleSheet(CONTEXT_MENU_STYLE)
+
         # Selection Tools section
         from PyQt5.QtWidgets import QLabel, QAction
         box_title_label = QLabel("Selection Tools")
-        box_title_label.setStyleSheet(title_style)
+        box_title_label.setProperty("class", "titleLabel")
         box_title_action = QWidgetAction(context_menu)
         box_title_action.setDefaultWidget(box_title_label)
         context_menu.addAction(box_title_action)
@@ -1199,7 +1172,7 @@ class DisplayTab(QWidget):
         
         # Hotspot Analysis section
         hotspot_title_label = QLabel("Hotspot Analysis")
-        hotspot_title_label.setStyleSheet(title_style)
+        hotspot_title_label.setProperty("class", "titleLabel")
         hotspot_title_action = QWidgetAction(context_menu)
         hotspot_title_action.setDefaultWidget(hotspot_title_label)
         context_menu.addAction(hotspot_title_action)
@@ -1222,7 +1195,7 @@ class DisplayTab(QWidget):
         
         # Point-Based Analysis section
         point_analysis_title_label = QLabel("Point-Based Analysis")
-        point_analysis_title_label.setStyleSheet(title_style)
+        point_analysis_title_label.setProperty("class", "titleLabel")
         point_analysis_title_action = QWidgetAction(context_menu)
         point_analysis_title_action.setDefaultWidget(point_analysis_title_label)
         context_menu.addAction(point_analysis_title_action)
@@ -1236,7 +1209,7 @@ class DisplayTab(QWidget):
         
         # View Control section
         view_title_label = QLabel("View Control")
-        view_title_label.setStyleSheet(title_style)
+        view_title_label.setProperty("class", "titleLabel")
         view_title_action = QWidgetAction(context_menu)
         view_title_action.setDefaultWidget(view_title_label)
         context_menu.addAction(view_title_action)

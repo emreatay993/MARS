@@ -39,69 +39,9 @@ else:
 # Set OpenBLAS to use all available CPU cores for NumPy operations.
 os.environ["OPENBLAS_NUM_THREADS"] = str(os.cpu_count())
 
-# ===== UI Stylesheets =====
-
-BUTTON_STYLE = """
-    QPushButton {
-        background-color: #e7f0fd;
-        border: 1px solid #5b9bd5;
-        padding: 10px;
-        border-radius: 5px;
-    }
-    QPushButton:hover {
-        background-color: #cce4ff;
-    }
-"""
-
-GROUP_BOX_STYLE = """
-    QGroupBox {
-        border: 1px solid #5b9bd5;
-        border-radius: 5px;
-        margin-top: 10px;
-    }
-    QGroupBox::title {
-        subcontrol-origin: margin;
-        subcontrol-position: top left;
-        left: 10px;
-        padding: 0 5px;
-    }
-"""
-
-TAB_STYLE = """
-    QTabBar::tab {
-        background-color: #d6e4f5;  /* Pale blue background for inactive tabs */
-        border: 1px solid #5b9bd5;   /* Default border for tabs */
-        padding: 3px;
-        border-top-left-radius: 5px;  /* Upper left corner rounded */
-        border-top-right-radius: 5px; /* Upper right corner rounded */
-        margin: 2px;
-    }
-    QTabBar::tab:hover {
-        background-color: #cce4ff;  /* Background color when hovering over tabs */
-    }
-    QTabBar::tab:selected {
-        background-color: #e7f0fd;  /* Active tab has your blue theme color */
-        border: 2px solid #5b9bd5;  /* Thicker border for the active tab */
-        color: #000000;  /* Active tab text color */
-    }
-    QTabBar::tab:!selected {
-        background-color: #d6e4f5;  /* Paler blue for unselected tabs */
-        color: #808080;  /* Gray text for inactive tabs */
-        margin-top: 3px;  /* Make the unselected tabs slightly smaller */
-    }
-"""
-
-READONLY_LINE_EDIT_STYLE = "background-color: #f0f0f0; color: grey; border: 1px solid #5b9bd5; padding: 5px;"
-"""Style for read-only line edit widgets."""
-
-CHECKBOX_STYLE = "margin: 10px 0;"
-"""Style for checkbox widgets."""
-
-CONSOLE_STYLE = "background-color: #ffffff; border: 1px solid #5b9bd5"
-"""Style for console text edit widget."""
-
-PROGRESS_BAR_STYLE = "border: 1px solid #5b9bd5; padding: 10px; background-color: #ffffff;"
-"""Style for progress bar widget."""
+# ===== UI Configuration =====
+# Note: All styling is now centralized in src/ui/styles/style_constants.py
+# and applied directly to widgets using setStyleSheet().
 
 # ===== UI Colors =====
 
