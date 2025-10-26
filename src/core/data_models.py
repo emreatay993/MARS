@@ -5,7 +5,8 @@ Defines dataclasses and structures to hold analysis data in a structured and typ
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Dict
+import pandas as pd
 import numpy as np
 
 
@@ -126,6 +127,46 @@ class SteadyStateData:
     def num_nodes(self) -> int:
         """Number of nodes."""
         return len(self.node_ids)
+
+
+@dataclass
+class TemperatureFieldData:
+    """Container for nodal temperature field information."""
+
+    dataframe: pd.DataFrame
+
+    @property
+    def num_nodes(self) -> int:
+        """Number of temperature entries."""
+        return len(self.dataframe.index)
+
+    def get_column(self, column_name: str) -> pd.Series:
+        """Return a specific column from the underlying dataframe."""
+        return self.dataframe[column_name]
+
+
+@dataclass
+class MaterialProfileData:
+    """Container for temperature-dependent material properties."""
+
+    youngs_modulus: pd.DataFrame
+    poisson_ratio: pd.DataFrame
+    plastic_curves: Dict[float, pd.DataFrame] = field(default_factory=dict)
+
+    @classmethod
+    def empty(cls):
+        return cls(
+            youngs_modulus=pd.DataFrame(columns=["Temperature (°C)", "Young's Modulus [MPa]"]),
+            poisson_ratio=pd.DataFrame(columns=["Temperature (°C)", "Poisson's Ratio"]),
+            plastic_curves={}
+        )
+
+    @property
+    def has_data(self) -> bool:
+        return not (self.youngs_modulus.empty and self.poisson_ratio.empty and not self.plastic_curves)
+
+    def curve_for_temperature(self, temperature: float) -> Optional[pd.DataFrame]:
+        return self.plastic_curves.get(temperature)
 
 
 @dataclass

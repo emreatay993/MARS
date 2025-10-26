@@ -6,7 +6,7 @@ solver tab, breaking down the massive init_ui method into manageable pieces.
 """
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QDoubleValidator, QFont, QPalette, QColor
+from PyQt5.QtGui import QDoubleValidator, QFont, QPalette, QColor, QIntValidator
 from PyQt5.QtWidgets import (
     QCheckBox, QComboBox, QGridLayout, QGroupBox, QHBoxLayout,
     QLabel, QLineEdit, QProgressBar, QPushButton, QSizePolicy,
@@ -268,20 +268,74 @@ class SolverTabUIBuilder:
         # Placeholder layout (extend with real options later)
         layout = QVBoxLayout()
 
+        material_profile_button = QPushButton('Enter Material Profile')
+        material_profile_button.setStyleSheet(BUTTON_STYLE)
+        material_profile_button.setFont(QFont('Arial', 8))
+
+        temperature_field_button = QPushButton('Read Temperature Field File (.txt)')
+        temperature_field_button.setStyleSheet(BUTTON_STYLE)
+        temperature_field_button.setFont(QFont('Arial', 8))
+        temperature_field_path = QLineEdit()
+        temperature_field_path.setReadOnly(True)
+        temperature_field_path.setStyleSheet(READONLY_INPUT_STYLE)
+
+        file_row = QHBoxLayout()
+        file_row.addWidget(temperature_field_button)
+        file_row.addWidget(temperature_field_path)
+        file_row.setStretch(0, 0)
+        file_row.setStretch(1, 1)
+
         method_row = QHBoxLayout()
         method_label = QLabel("Select Method:")
         method_combo = QComboBox()
-        method_combo.addItems(["Neuber", "Glinka"])
+        method_combo.addItems(["Neuber", "Glinka", "Incremental Buczynski-Glinka (IBG)"])
         method_row.addWidget(method_label)
         method_row.addWidget(method_combo)
         method_row.addStretch()
 
+        iteration_row = QHBoxLayout()
+        iteration_label = QLabel("Iteration Controls:")
+        iteration_label.setMinimumWidth(120)
+        max_iter_label = QLabel("Max Iterations")
+        max_iter_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        max_iter_input = QLineEdit("60")
+        max_iter_input.setMaximumWidth(70)
+        max_iter_validator = QIntValidator(1, 10000, max_iter_input)
+        max_iter_input.setValidator(max_iter_validator)
+        tolerance_label = QLabel("Tolerance")
+        tolerance_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        tolerance_input = QLineEdit("1e-10")
+        tolerance_input.setMaximumWidth(100)
+        tolerance_validator = QDoubleValidator(0.0, 1.0, 12, tolerance_input)
+        tolerance_validator.setNotation(QDoubleValidator.ScientificNotation)
+        tolerance_input.setValidator(tolerance_validator)
+        iteration_row.addWidget(iteration_label)
+        iteration_row.addWidget(max_iter_label)
+        iteration_row.addWidget(max_iter_input)
+        iteration_row.addWidget(tolerance_label)
+        iteration_row.addWidget(tolerance_input)
+        iteration_row.addStretch()
+
+        warning_label = QLabel("Warning: Relaxed iteration settings may impact accuracy.")
+        warning_label.setStyleSheet("color: #b36b00; font-style: italic;")
+        warning_label.setVisible(False)
+
+        layout.addWidget(material_profile_button)
+        layout.addLayout(file_row)
         layout.addLayout(method_row)
+        layout.addLayout(iteration_row)
+        layout.addWidget(warning_label)
         plasticity_options_group.setLayout(layout)
         plasticity_options_group.setVisible(False)
 
         self.components['plasticity_options_group'] = plasticity_options_group
+        self.components['material_profile_button'] = material_profile_button
+        self.components['temperature_field_button'] = temperature_field_button
+        self.components['temperature_field_path'] = temperature_field_path
         self.components['plasticity_method_combo'] = method_combo
+        self.components['plasticity_max_iter_input'] = max_iter_input
+        self.components['plasticity_tolerance_input'] = tolerance_input
+        self.components['plasticity_warning_label'] = warning_label
 
         return plasticity_options_group
     

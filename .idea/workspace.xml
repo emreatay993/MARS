@@ -4,9 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Updated user-oriented manuals">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Added the skeleton code for Plasticity Correction feature (v0).">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/core/data_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/data_models.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/loaders.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/file_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/file_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/log_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/log_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/solver_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/solver_tab.py" afterDir="false" />
     </list>
@@ -249,7 +253,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761465079146</updated>
     </task>
-    <option name="localTasksCounter" value="19" />
+    <task id="LOCAL-00019" summary="- Added the skeleton code for Plasticity Correction feature (v0).">
+      <option name="closed" value="true" />
+      <created>1761501163403</created>
+      <option name="number" value="00019" />
+      <option name="presentableId" value="LOCAL-00019" />
+      <option name="project" value="LOCAL" />
+      <updated>1761501163403</updated>
+    </task>
+    <option name="localTasksCounter" value="20" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -268,6 +280,7 @@
     <MESSAGE value="- Added example input files to be used for manual user testing." />
     <MESSAGE value="- Added additional engineering-oriented documents for the software." />
     <MESSAGE value="- Updated user-oriented manuals" />
-    <option name="LAST_COMMIT_MESSAGE" value="- Updated user-oriented manuals" />
+    <MESSAGE value="- Added the skeleton code for Plasticity Correction feature (v0)." />
+    <option name="LAST_COMMIT_MESSAGE" value="- Added the skeleton code for Plasticity Correction feature (v0)." />
   </component>
 </project>

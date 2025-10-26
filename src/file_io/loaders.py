@@ -14,7 +14,8 @@ from core.data_models import (
     ModalData,
     ModalStressData,
     DeformationData,
-    SteadyStateData
+    SteadyStateData,
+    TemperatureFieldData
 )
 from file_io.validators import (
     validate_mcf_file,
@@ -195,3 +196,23 @@ def load_steady_state_stress(filename: str) -> SteadyStateData:
         steady_syz=steady_syz,
         steady_sxz=steady_sxz
     )
+
+
+def load_temperature_field(filename: str) -> TemperatureFieldData:
+    """Load nodal temperature field data from a TXT file."""
+    try:
+        df = pd.read_csv(filename, sep='\t', engine='python')
+        if df.shape[1] <= 1:
+            df = pd.read_csv(filename, sep='\s+', engine='python')
+    except Exception as exc:
+        raise ValueError(f"Failed to parse temperature field file: {exc}") from exc
+
+    if df.empty:
+        raise ValueError("Temperature field file is empty.")
+
+    df.columns = [col.strip() for col in df.columns]
+
+    if 'Node Number' not in df.columns:
+        raise ValueError("Temperature field file must contain a 'Node Number' column.")
+
+    return TemperatureFieldData(dataframe=df)

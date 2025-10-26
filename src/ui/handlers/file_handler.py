@@ -11,7 +11,8 @@ from PyQt5.QtWidgets import QFileDialog, QMessageBox
 # Import your existing loaders
 from file_io.loaders import (
     load_modal_coordinates, load_modal_stress,
-    load_modal_deformations, load_steady_state_stress
+    load_modal_deformations, load_steady_state_stress,
+    load_temperature_field
 )
 
 
@@ -152,4 +153,29 @@ class SolverFileHandler:
             QMessageBox.warning(
                 self.tab, "Invalid File",
                 f"The selected Steady-State Stress File is not valid.\n\nError: {e}"
+            )
+
+    # --- Temperature Field File ---
+
+    def select_temperature_field_file(self, checked=False):
+        """Open file dialog for temperature field file."""
+        file_name, _ = QFileDialog.getOpenFileName(
+            self.tab, 'Open Temperature Field File', '',
+            'Text Files (*.txt);;All Files (*)'
+        )
+        if file_name:
+            self._load_temperature_field_file(file_name)
+
+    def _load_temperature_field_file(self, filename):
+        """Load temperature field file into a DataFrame."""
+        try:
+            temperature_data = load_temperature_field(filename)
+            self.tab.temperature_field_file_path.setText(filename)
+            self.tab.on_temperature_field_loaded(temperature_data, filename)
+        except ValueError as e:
+            self.tab.temperature_field_data = None
+            self.tab.temperature_field_file_path.clear()
+            QMessageBox.warning(
+                self.tab, "Invalid File",
+                f"The selected Temperature Field File is not valid.\n\nError: {e}"
             )

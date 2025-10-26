@@ -7,6 +7,7 @@ and the AnalysisEngine facade.
 
 import os
 import sys
+from typing import Optional
 
 import numpy as np
 from PyQt5.QtCore import Qt, pyqtSignal, pyqtSlot
@@ -19,12 +20,14 @@ from ui.handlers.file_handler import SolverFileHandler
 from ui.handlers.ui_state_handler import SolverUIHandler
 from ui.handlers.analysis_handler import SolverAnalysisHandler
 from ui.handlers.log_handler import SolverLogHandler
+from ui.dialogs.material_profile_dialog import MaterialProfileDialog
 from ui.widgets.console import Logger
 from ui.widgets.plotting import MatplotlibWidget
 from core.computation import AnalysisEngine
 from core.data_models import (
-    ModalData, ModalStressData, DeformationData, 
-    SteadyStateData, SolverConfig
+    ModalData, ModalStressData, DeformationData,
+    SteadyStateData, TemperatureFieldData, MaterialProfileData,
+    SolverConfig
 )
 
 
@@ -68,7 +71,9 @@ class SolverTab(QWidget):
         self.coord_loaded = False
         self.stress_loaded = False
         self.deformation_loaded = False
-        
+        self.temperature_field_data: Optional[TemperatureFieldData] = None
+        self.material_profile_data: MaterialProfileData = MaterialProfileData.empty()
+
         # For plotting
         self.plot_dialog = None
         self.modal_plot_window = None
@@ -144,7 +149,13 @@ class SolverTab(QWidget):
         self.node_line_edit = self.components['node_line_edit']
         self.single_node_group = self.components['single_node_group']
         self.plasticity_options_group = self.components['plasticity_options_group']
+        self.material_profile_button = self.components['material_profile_button']
+        self.temperature_field_button = self.components['temperature_field_button']
+        self.temperature_field_file_path = self.components['temperature_field_path']
         self.plasticity_method_combo = self.components['plasticity_method_combo']
+        self.plasticity_max_iter_input = self.components['plasticity_max_iter_input']
+        self.plasticity_tolerance_input = self.components['plasticity_tolerance_input']
+        self.plasticity_warning_label = self.components['plasticity_warning_label']
         
         # Console and plots
         self.console_textbox = self.components['console_textbox']
@@ -188,6 +199,8 @@ class SolverTab(QWidget):
         self.stress_file_button.clicked.connect(self.file_handler.select_stress_file)
         self.deformations_file_button.clicked.connect(self.file_handler.select_deformations_file)
         self.steady_state_file_button.clicked.connect(self.file_handler.select_steady_state_file)
+        self.temperature_field_button.clicked.connect(self.file_handler.select_temperature_field_file)
+        self.material_profile_button.clicked.connect(self.open_material_profile_dialog)
         
         # Checkboxes
         self.steady_state_checkbox.toggled.connect(self.ui_handler.toggle_steady_state_stress_inputs)
@@ -203,6 +216,8 @@ class SolverTab(QWidget):
         self.plasticity_correction_checkbox.toggled.connect(
             self.ui_handler.toggle_plasticity_options_visibility
         )
+        self.plasticity_max_iter_input.textChanged.connect(self.ui_handler.on_plasticity_iteration_inputs_changed)
+        self.plasticity_tolerance_input.textChanged.connect(self.ui_handler.on_plasticity_iteration_inputs_changed)
         
         # Plot updates
         self.max_principal_stress_checkbox.toggled.connect(
@@ -241,6 +256,18 @@ class SolverTab(QWidget):
         self.ui_handler._update_plasticity_state()
         self.ui_handler.toggle_plasticity_options_visibility(False)
         self.ui_handler.update_single_node_plot()
+
+    def on_temperature_field_loaded(self, temperature_data, filename):
+        """Handle UI updates after temperature field file is loaded."""
+        self.temperature_field_data = temperature_data
+        self.log_handler._log_temperature_field_load(filename, temperature_data)
+
+    def open_material_profile_dialog(self):
+        """Launch the material profile editor dialog."""
+        dialog = MaterialProfileDialog(self, self.material_profile_data)
+        if dialog.exec_() == QDialog.Accepted:
+            self.material_profile_data = dialog.get_data()
+            self.log_handler._log_material_profile_update(self.material_profile_data)
 
     def on_coord_file_loaded(self, modal_data, filename):
         """Handle all UI and state updates after a coord file is loaded."""
@@ -497,6 +524,8 @@ class SolverTab(QWidget):
             self._load_deformation_file(file_path)
         elif target_widget == self.steady_state_file_path:
             self._load_steady_state_file(file_path)
+        elif target_widget == self.temperature_field_file_path:
+            self.file_handler._load_temperature_field_file(file_path)
 
     # ========== External Request Interface ==========
 

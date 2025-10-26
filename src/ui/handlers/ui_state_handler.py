@@ -5,6 +5,7 @@ This class encapsulates all logic related to managing the state of UI components
 (enabling/disabling, showing/hiding, etc.) based on user interaction.
 """
 
+import math
 import numpy as np
 
 
@@ -76,6 +77,10 @@ class SolverUIHandler:
         """Show/hide plasticity options group based on Plasticity checkbox."""
         try:
             self.tab.plasticity_options_group.setVisible(bool(is_checked))
+            if is_checked:
+                self.on_plasticity_iteration_inputs_changed()
+            else:
+                self.clear_plasticity_warning()
         except Exception as e:
             print(f"Error toggling plasticity options visibility: {e}")
 
@@ -146,6 +151,7 @@ class SolverUIHandler:
             self.tab.plasticity_correction_checkbox.setChecked(False)
             # Also hide options when dependency not satisfied
             self.toggle_plasticity_options_visibility(False)
+            self.clear_plasticity_warning()
 
     def on_exclusive_output_toggled(self, is_checked, sender_checkbox):
         """Ensure only one output is selected in time history mode."""
@@ -278,6 +284,53 @@ class SolverUIHandler:
                 self.tab.show_output_tab_widget.indexOf(self.tab.plot_min_over_time_tab),
                 False
             )
+
+    def on_plasticity_iteration_inputs_changed(self, _text=None):
+        """React to iteration parameter edits and display warnings if needed."""
+        if not self.tab.plasticity_options_group.isVisible():
+            return
+        self._update_plasticity_iteration_warning()
+
+    def _update_plasticity_iteration_warning(self):
+        warning_label = getattr(self.tab, 'plasticity_warning_label', None)
+        if warning_label is None:
+            return
+
+        max_iter_text = self.tab.plasticity_max_iter_input.text().strip()
+        tolerance_text = self.tab.plasticity_tolerance_input.text().strip()
+
+        default_max_iter = 60
+        default_tolerance = 1e-10
+
+        show_warning = False
+
+        try:
+            max_iter_value = default_max_iter if max_iter_text == '' else int(max_iter_text)
+        except ValueError:
+            warning_label.setText("Warning: Invalid iteration count entered.")
+            warning_label.setVisible(True)
+            return
+
+        try:
+            tolerance_value = default_tolerance if tolerance_text == '' else float(tolerance_text)
+        except ValueError:
+            warning_label.setText("Warning: Invalid tolerance entered.")
+            warning_label.setVisible(True)
+            return
+
+        warning_label.setText("Warning: Relaxed iteration settings may impact accuracy.")
+
+        if max_iter_value != default_max_iter:
+            show_warning = True
+        if not math.isclose(tolerance_value, default_tolerance, rel_tol=0.0, abs_tol=1e-15):
+            show_warning = True
+
+        warning_label.setVisible(show_warning)
+
+    def clear_plasticity_warning(self):
+        warning_label = getattr(self.tab, 'plasticity_warning_label', None)
+        if warning_label is not None:
+            warning_label.setVisible(False)
 
     def _update_skip_modes_combo(self, num_modes):
         """Update skip modes combo box."""

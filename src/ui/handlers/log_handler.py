@@ -74,3 +74,31 @@ class SolverLogHandler:
         self.tab.console_textbox.append(
             f"Steady-state stress data shape: {steady_data.node_ids.shape}"
         )
+
+    def _log_temperature_field_load(self, filename, temperature_data):
+        """Log successful temperature field file load."""
+        self.tab.console_textbox.append(
+            f"Successfully loaded temperature field file: "
+            f"{os.path.basename(filename)}\n"
+        )
+        self.tab.console_textbox.append(
+            f"Temperature entries: {temperature_data.num_nodes} rows"
+        )
+        self.tab.console_textbox.verticalScrollBar().setValue(
+            self.tab.console_textbox.verticalScrollBar().maximum()
+        )
+
+    def _log_material_profile_update(self, material_data):
+        """Log updates to the material profile."""
+        youngs_rows = len(material_data.youngs_modulus.index)
+        poisson_rows = len(material_data.poisson_ratio.index)
+        plastic_sets = len(material_data.plastic_curves)
+        self.tab.console_textbox.append("Material profile updated:")
+        self.tab.console_textbox.append(
+            f" - Young's modulus entries: {youngs_rows}\n"
+            f" - Poisson's ratio entries: {poisson_rows}\n"
+            f" - Plasticity curves: {plastic_sets} temperature sets\n"
+        )
+        self.tab.console_textbox.verticalScrollBar().setValue(
+            self.tab.console_textbox.verticalScrollBar().maximum()
+        )
