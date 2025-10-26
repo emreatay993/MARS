@@ -1,453 +1,421 @@
-# DETAILED USER MANUAL · MARS: Modal Analysis Response Solver
+# DETAILED USER MANUAL · MARS: Modal Analysis Response Solver (GUI Edition)
 
-> **Revision**: 2024-## · **Audience**: Structural analysts, FEA engineers, visualization specialists  
-> **Scope**: Desktop application under `src/` – solver, visualization, data I/O, utilities, UI scaffold
-
----
-
-## Page 1 – Welcome & Product Overview
-
-MARS (Modal Analysis Response Solver) is a PyQt5 desktop application that transforms modal analysis data into actionable stress, deformation, and fatigue insights. The refactored architecture in `src/` separates solver logic, data models, UI widgets, and visualization managers to deliver a modular, maintainable workflow.
-
-**Highlights**
-- **Batch & node-specific analyses** driven by `core.computation.AnalysisEngine`.
-- **GPU-aware transient solver** implemented in `solver.engine.MSUPSmartSolverTransient`, supporting PyTorch acceleration.
-- **Immersive 3D visualization** powered by PyVista, managed via `core.visualization`.
-- **Robust file handling** (`file_io` package) validating and loading MCF, CSV, and TXT data sources.
-- **Guided UI** with separate Solver and Display tabs, reusable builders, and handler classes under `src/ui/`.
-
-Use this manual to understand end-to-end workflows—from preparing input files, configuring solver runs, and interpreting results, through to troubleshooting and extending the application.
+> Audience: Mechanical/structural engineers using MARS via the desktop GUI
+> Purpose: Step-by-step, click-by-click guidance with mock-up image placeholders
 
 ---
 
-## Page 2 – Table of Contents
+## Page 1 – Welcome & What You Can Do
 
-1. Welcome & Product Overview  
-2. Table of Contents  
-3. System Requirements & Dependencies  
-4. Installing & Launching MARS  
-5. Orientation: UI Structure & Navigation  
-6. Preparing Input Data  
-7. Loading Modal Coordinate Files  
-8. Importing Stress, Steady-State, and Deformation Data  
-9. Configuring Analyses & Output Requests  
-10. Running Batch vs Time History Analyses  
-11. Reviewing Console Output & Logs  
-12. Visual Explorer: Display Tab Fundamentals  
-13. Scalar Controls, Colormaps & Layout  
-14. Animations, Timing, and Playback Options  
-15. Hotspot Detection & Node Tracking  
-16. Exporting Results (CSV, APDL, Mesh)  
-17. Advanced Topics: Steady-State, Deformation Scaling, and Damage  
-18. Performance Tuning & Resource Management  
-19. Troubleshooting & Common Recovery Paths  
-20. Appendix: Shortcuts, Settings, and Reference Tables
+MARS turns modal analysis inputs into stress maps, time histories, animations, and fatigue indicators. This guide shows exactly where to click to: load inputs, run analyses, visualize results, export CSVs and videos, detect hotspots, and focus on specific nodes.
+
+- No programming required.
+- Assumes you have modal coordinate, modal stress, and optional deformation/steady-state files.
+
+[Image Placeholder: Main Window overview — tabs, navigator, menu]
 
 ---
 
-## Page 3 – System Requirements & Dependencies
+## Page 2 – Quick Tour of the Interface
 
-**Operating Systems**  
-- Windows 10/11 (primary testing environment)  
-- macOS & Linux supported where PyQt5 and PyVista dependencies resolve
+- Menu bar: File, View, Settings
+- Left: Navigator (file browser)
+- Tabs: Main Window (Solver) and Display
 
-**Hardware**  
-- Intel/AMD CPU with SSE2 support  
-- 16 GB RAM recommended (solver auto-chunks via `solver.engine._estimate_chunk_size`)  
-- Optional CUDA-capable NVIDIA GPU for acceleration (`utils.constants.IS_GPU_ACCELERATION_ENABLED`)
+Key idea: Load and run on the Main Window tab, explore and export on the Display tab.
 
-**Software Prerequisites**  
-- Python 3.10+ (see `venv` or `requirements.txt`)  
-- Required packages: PyQt5, PyVista, NumPy, Pandas, Numba, PyTorch, psutil, matplotlib, plotly  
-- Optional: CUDA Toolkit for GPU acceleration
-
-**File Formats Supported**
-- Modal Coordinates: `.mcf` (wrapped legacy format, unwrapped by `utils.file_utils.unwrap_mcf_file`)  
-- Modal Stress & Deformations: `.csv` (columnar data with node identifiers)  
-- Steady-State Stress: `.txt` (tab-delimited reports)
-
-Before launch, ensure firewall policies allow PyVista’s off-screen rendering and PyTorch GPU initialization if applicable.
+[Image Placeholder: UI callouts — 1) Menu, 2) Navigator, 3) Tabs]
 
 ---
 
-## Page 4 – Installing & Launching MARS
+## Page 3 – Before You Start
 
-1. **Clone or extract** the repository containing the `src/` folder.  
-2. **Create/activate** a Python virtual environment (recommended):
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate  # Windows: .venv\Scripts\activate
-   pip install -r requirements.txt
-   ```
-3. **Launch the application**:
-   ```bash
-   python -m src.main
-   ```
-   The `main()` function (`src/main.py`) configures high-DPI scaling via `QApplication.setAttribute`, instantiates `ApplicationController`, and displays the maximized window.
+Have the following ready:
+- Modal coordinates file (.mcf)
+- Modal stress file (.csv)
+- Optional: Deformation file (.csv)
+- Optional: Steady-state stress (.txt)
 
-4. **First run checks**:
-   - Confirm the menu bar, Navigator dock, and tabs render with legacy styles from `ui/styles/style_constants.py`.
-   - Verify GPU availability in the console (solver logs device selection).
+Tip: Keep Node IDs and units consistent across files.
 
-If PyQt5 fails to initialize due to missing platform plugins, ensure `QT_QPA_PLATFORM_PLUGIN_PATH` is set or reinstall PyQt5.
+[Image Placeholder: Example file set in a project folder]
 
 ---
 
-## Page 5 – Orientation: UI Structure & Navigation
+## Page 4 – Set the Project Directory
 
-**Main Window (`ui/application_controller.py`)**
-- **Menu Bar**: File (project directory selection), View (toggle Navigator), Settings (Advanced dialog placeholder).
-- **Navigator Dock**: File browser backed by `QFileSystemModel`, filtered for `.csv`, `.mcf`, `.txt`.
-- **Tab Widget**: Two primary tabs—
-  - **Main Window (Solver Tab)**: Handles data ingestion and analysis execution.
-  - **Display Tab**: Hosts the 3D visualization and export tooling.
+1) Click File → Select Project Directory
+2) Choose the folder that contains your .mcf/.csv/.txt files
+3) The Navigator updates to that folder
 
-**Handlers & Builders**
-- `ui.builders.solver_ui` and `display_ui` construct widgets with consistent styling.
-- `ui.handlers.*` modules own logic for file selection, analysis, UI state, plot maintenance, animations, exports, and logging.
-
-**Console Integration**
-- Solver tab redirects `stdout` to `ui.widgets.console.Logger` for live progress messages and warnings.
-
-**Navigation Tips**
-- Use the Navigator to double-click input files; `ui.handlers.navigator_handler.NavigatorHandler` routes them to the correct handler in the active tab.
-- Dock widgets can be re-positioned; layouts persist per Qt session.
+[Image Placeholder: File menu — Select Project Directory]
 
 ---
 
-## Page 6 – Preparing Input Data
+## Page 5 – Navigator Basics
 
-### Modal Coordinate Files (`.mcf`)
-- Contain time history of generalized coordinates per mode.
-- Must include a header line with `Time` as detected in `file_io.loaders.load_modal_coordinates`.
-- Wrapped lines are automatically flattened; ensure file permissions allow temporary `_unwrapped` creation.
+- Double-click files to load them into appropriate fields.
+- Sort by name or type; resize columns.
+- Use View → Navigator to hide/show the panel.
 
-### Modal Stress CSV
-- Mandatory columns: `NodeID`, stress tensors matching regex `sx_`, `sy_`, `sz_`, `sxy_`, `syz_`, `sxz_`.
-- Optional columns: `X`, `Y`, `Z` for nodal coordinates.
-- Validate structure using `file_io.validators.validate_modal_stress_file`.
-
-### Modal Deformation CSV (Optional)
-- Required columns: `NodeID`, `ux_`, `uy_`, `uz_` series.
-- Enables deformation, velocity, acceleration outputs.
-
-### Steady-State Stress TXT (Optional)
-- Tab-delimited with columns `Node Number`, `SX (MPa)`, `SY (MPa)`, `SZ (MPa)`, `SXY (MPa)`, `SYZ (MPa)`, `SXZ (MPa)`.
-- Used when `Include Steady-State Stress Field` is checked.
-
-Ensure consistent NodeID ordering across files; mismatches trigger validation warnings. Back up large datasets—solver logs chunk processing progress but cannot recover corrupted inputs.
+[Image Placeholder: Navigator with .mcf, .csv, .txt highlighted]
 
 ---
 
-## Page 7 – Loading Modal Coordinate Files
+## Page 6 – Load Modal Coordinates (.mcf)
 
-1. Navigate to the **Solver Tab**.
-2. Click **Read Modal Coordinate File (.mcf)**.  
-   - A file dialog opens within the currently selected project directory (`SolverFileHandler.select_coord_file`).
-3. On selection, the path field populates, and validation runs:
-   - `validate_mcf_file` ensures the `Time` header and numeric data.
-   - `load_modal_coordinates` unwraps to a temporary file, parses with Pandas, then instantiates `core.data_models.ModalData`.
-4. Successful load updates solver state:
-   - Flags `coord_loaded` to `True`.
-   - Prepares skip mode combo box with available indices.
+On the Main Window tab:
+1) Click Read Modal Coordinate File (.mcf)
+2) Pick your .mcf file
+3) The path box fills and the Console notes success
 
-**Best Practices**
-- Keep coordinate files under 1 GB to avoid disk thrashing.
-- If validation fails, inspect the console for the exact error message returned by the validator.
-- Delete stale `_unwrapped` files if the process is interrupted mid-load.
+The SOLVE button will be enabled after you also load stress.
+
+[Image Placeholder: Buttons and path fields on Main Window]
 
 ---
 
-## Page 8 – Importing Stress, Steady-State, and Deformation Data
+## Page 7 – Load Modal Stress (.csv)
 
-### Modal Stress
-1. Click **Read Modal Stress File (.csv)**.
-2. File handler loads into a `ModalStressData` object, capturing:
-   - `node_ids`, component arrays (`modal_sx`, `modal_sy`, etc.), optional coordinates.
-3. On success, solver enables stress-dependent checkboxes (Von Mises, principal stresses).
+1) Click Read Modal Stress File (.csv)
+2) Select the stress CSV
+3) Stress-dependent outputs (e.g., Von-Mises, Principal) become available
 
-### Steady-State Stress (Optional)
-1. Tick **Include Steady-State Stress Field (Optional)**.
-2. Hidden controls appear; select the `.txt` file.
-3. Data is validated and stored in `SteadyStateData`; `AnalysisEngine.create_solver` maps steady-state data to modal nodes.
+Tip: If your CSV also contains X,Y,Z, hover on the Display tab will show Node IDs with coordinates.
 
-### Modal Deformations (Optional)
-1. Tick **Include Deformations (Optional)**.
-2. Load `.csv` to populate `DeformationData`.
-3. Enables deformation, velocity, acceleration outputs and animation of geometric deformation.
-
-**Validation Feedback**
-- Failures surface via modal dialogs (`QMessageBox`) and console entries.
-- Use consistent node counts; mismatches trigger alignment errors downstream.
+[Image Placeholder: Stress file loaded — checkboxes enabled]
 
 ---
 
-## Page 9 – Configuring Analyses & Output Requests
+## Page 8 – Optional: Include Steady-State Stress
 
-**Core Options**
-- `Skip first n modes`: Visible after stress load; choose modes to omit (high-frequency trimming).
-- Output checkboxes grouped into:
-  - **Time History Mode** (single-node evaluations)
-  - **Field Outputs** (von Mises, principal stresses, deformation, velocity, acceleration, damage index)
+1) Tick Include Steady-State Stress Field (Optional)
+2) Click Read Full Stress Tensor File (.txt)
+3) Select the steady-state file
 
-**Time History Mode**
-- Toggles UI to accept a **Node ID** target (`node_line_edit`).
-- Locks out mutually exclusive outputs (e.g., field visualizations) to maintain solver constraints.
-- `SolverAnalysisHandler._validate_time_history_mode` ensures node availability.
+This adds static bias to the reconstructed stresses.
 
-**Fatigue Parameters**
-- When `Damage Index / Potential Damage` is enabled, provide:
-  - `fatigue_A` (strength coefficient)
-  - `fatigue_m` (exponent)
-- Inputs are validated by `QDoubleValidator` and runtime checks.
-
-**Output Directory**
-- Set via Advanced settings (future) or defaults to modal stress directory.
-- `SolverConfig.output_directory` directs file exports.
+[Image Placeholder: Steady-state toggle revealing file input]
 
 ---
 
-## Page 10 – Running Batch vs Time History Analyses
+## Page 9 – Optional: Include Deformations
 
-1. Confirm required datasets are loaded (`coord_loaded`, `stress_loaded`).
-2. Click **SOLVE**.
-3. `SolverAnalysisHandler.solve` orchestrates:
-   - Validation & config assembly (`_validate_and_build_config`).
-   - Engine setup (`AnalysisEngine.configure_data`).
-   - Solver creation and run (`create_solver`, `run_batch_analysis` or `run_single_node_analysis`).
+1) Tick Include Deformations (Optional)
+2) Click Read Modal Deformations File (.csv)
+3) Select the deformation CSV
 
-**Batch Mode**
-- Computes requested field outputs for all nodes.
-- Writes CSV exports as configured.
-- Progress bar updates via `MSUPSmartSolverTransient.progress_signal`.
+This unlocks Deformation, Velocity, and Acceleration outputs and enables deformed animations.
 
-**Time History Mode**
-- Produces `AnalysisResult` with `time_values` and `stress_values`.
-- Plots appear within Matplotlib/Plotly tabs (`ui.widgets.plotting`).
-- Optionally triggers Display tab updates if visualization is linked.
-
-**During Execution**
-- Console logs stage transitions, memory chunk sizes, GPU/CPU selection.
-- Canceling is manual (close app); ensure data integrity before re-running.
+[Image Placeholder: Deformation toggle revealing file input]
 
 ---
 
-## Page 11 – Reviewing Console Output & Logs
+## Page 10 – Choose Outputs
 
-**Logger Widget (`ui.widgets.console.Logger`)**
-- Captures `stdout` and color-codes warnings/errors.
-- Use copy/paste for archiving run logs.
+Under Outputs:
+- Time History Mode (Single Node) — for a single node time plot
+- Max Principal Stress — s1 envelope
+- Min Principal Stress — s3 envelope
+- Von-Mises Stress — standard ductile metric
+- Deformation / Velocity / Acceleration — require deformations loaded
+- Damage Index / Potential Damage — appears when Von-Mises is selected (if enabled)
 
-**Progress Indicators**
-- `QProgressBar` becomes visible during solver execution.
-- Percentages derive from chunk completion events in `solver.engine.MSUPSmartSolverTransient`.
+Use Skip first n modes to exclude initial modes if desired.
 
-**Common Messages**
-- Validation errors (input mismatch).
-- Memory warnings (`_estimate_ram_required_per_iteration`).
-- Completion summaries with export locations.
-
-**Log Maintenance**
-- Logs are session-based; export or screenshot important diagnostics before closing the app.
-- For automated logging, redirect output to files via Python when launching (`python -m src.main > mars.log`).
+[Image Placeholder: Outputs group with checkboxes annotated]
 
 ---
 
-## Page 12 – Visual Explorer: Display Tab Fundamentals
+## Page 11 – Time History Mode (Single Node)
 
-After analysis or by loading exported data, switch to the **Display** tab.
+1) Tick Time History Mode (Single Node)
+2) In Scoping, enter the Node ID
+3) Select one time-history quantity (e.g., Von-Mises or s1)
+4) Click SOLVE to plot
 
-**Key Components**
-- **File Controls**: Import mesh-ready CSV/VTK to create a PyVista `PolyData`.
-- **Plotter**: Embedded PyVista render window, managed by `DisplayVisualizationHandler`.
-- **Scalar Controls**: Min/max spin boxes, color bar adjustments, percentile range tools.
-- **Deformation Controls**: Scale factor entry; validated to avoid distorted geometry.
-- **Time Point Group**: Request calculations from the solver tab via signals.
-- **Animation Group**: Playback controls with Qt-standard media icons.
+The Time History plot appears in the Plot (Time History) tab.
 
-`DisplayTab` wires these pieces together, coordinating managers:
-- `VisualizationManager` handles mesh creation/updating.
-- `AnimationManager` precomputes frames.
-- `HotspotDetector` (within `core.visualization`) assists with threshold-based selections.
+[Image Placeholder: Scoping group and time history checkbox]
 
 ---
 
-## Page 13 – Scalar Controls, Colormaps & Layout
+## Page 12 – Fatigue Parameters (If Damage Enabled)
 
-**Scalar Range**
-- Use `Scalar Min/Max` spin boxes or percentile presets to focus on relevant ranges (`VisualizationManager.compute_scalar_range`).
-- Dynamic updates propagate to the plotter via `DisplayVisualizationHandler`.
+When Damage Index / Potential Damage is available:
+1) Tick Damage Index / Potential Damage
+2) In Fatigue Parameters, enter σ'f and b
+3) Click SOLVE
 
-**Point Size & Representation**
-- Adjust `Point Size` for scatter-like views; switch plot representation (surface, point cloud) via context menu.
+Interpret damage maps carefully and verify material constants.
 
-**Color Mapping**
-- Choose from PyVista palettes; ensure scalar field naming consistency (default `Result` or analysis-specific label).
-- Out-of-range clipping indicates data issues—verify exports or re-run analysis with correct outputs.
-
-**Layout Tips**
-- Use PyVista’s toolbar (orbit, pan, zoom).
-- Reset camera if geometry appears distorted after deformation scaling.
+[Image Placeholder: Fatigue parameters σ'f and b]
 
 ---
 
-## Page 14 – Animations, Timing, and Playback Options
+## Page 13 – Run the Analysis
 
-**Precomputation Workflow**
-1. Configure animation parameters (start, end, interval).
-2. Click **Play** or request precomputation (`DisplayTab.animation_precomputation_requested`).
-3. `AnimationManager.precompute_frames` caches scalar data and optional deformed coordinates.
+1) Ensure both .mcf and stress .csv are loaded
+2) Select desired outputs
+3) Click SOLVE
+4) Watch Console messages and the Progress Bar
 
-**Control Panel**
-- `Time Step Mode`: Choose actual solver steps or custom sub-sampling.
-- `Actual Interval (ms)`: Control playback rate.
-- `Save Animation`: Export MP4/AVI using PyVista’s writer (ensure FFMPEG installed).
+When finished, proceed to the Display tab to explore results.
 
-**Deformation Inclusion**
-- When deformation data exists, the animation manager stores per-frame coordinates for realistic playback.
-- Validate scale via `Deformation Scale` before playing to avoid fold-over artifacts.
-
-**Troubleshooting**
-- If precomputation fails, `animation_precomputation_failed` slot displays a warning and resets buttons.
-- Large datasets may require increasing RAM or reducing frame counts.
+[Image Placeholder: SOLVE button and progress bar]
 
 ---
 
-## Page 15 – Hotspot Detection & Node Tracking
+## Page 14 – Console & Plot Tabs (Main Window)
 
-**Hotspot Tools**
-- `HotspotDetector` identifies regions exceeding thresholds (e.g., top 5% stress).
-- Initiate from the context menu; adjustable parameters appear in the dialog.
+- Console: shows load/validation messages and processing steps
+- Plot (Time History): appears when Time History mode is active
+- Plot (Modal Coordinates): used to inspect coordinate amplitudes
 
-**Node Picking**
-- Activate picking mode to select nodes and emit `node_picked_signal`.
-- Selected nodes can be:
-  - Sent to solver tab for time history (`SolverTab.plot_history_for_node`).
-  - Highlighted with markers and labels.
+Use these for quick validation before switching to the Display tab.
 
-**Navigator Integration**
-- `NavigatorHandler` enables double-clicking exported CSVs to auto-load in display tab, streamlining hotspot review.
-
-**Tracking Persistence**
-- Freeze tracked node positions to monitor relative deformation.
-- Use `freeze_tracked_node` toggles to compare different time steps.
+[Image Placeholder: Console and plot tabs]
 
 ---
 
-## Page 16 – Exporting Results (CSV, APDL, Mesh)
+## Page 15 – Switch to Display Tab
 
-**Time Point Exports**
-- `DisplayExportHandler` leverages `file_io.exporters.export_time_point_results`.
-- Include `NodeID`, coordinates, and scalar columns.
+Click the Display tab to see the 3D view and controls:
+- Load Visualization File (for CSV-based meshes)
+- Visualization Controls (point size, legend range, deformation scale)
+- Initialization & Time Point Controls (time selection, save CSV, export APDL IC)
+- Animation Controls (playback and export)
 
-**Animation Snapshots**
-- Export precomputed frames to disk; choose CSV sequences or video.
-- Use consistent naming conventions for downstream scripts.
-
-**APDL Initial Conditions**
-- `export_apdl_ic` writes velocity-based initial condition commands:
-  ```python
-  export_apdl_ic(node_ids, vel_x, vel_y, vel_z, "velocity.ic")
-  ```
-- Output matches the format generated by legacy `file_io.fea_utilities.generate_apdl_ic`.
-
-**Mesh Exports**
-- `export_mesh_to_csv` captures PyVista meshes with active scalar fields for external plotting or reporting.
-
-**Best Practices**
-- Store exports in project-specific directories.
-- Check units before importing into FE solvers (default velocities in mm/s).
+[Image Placeholder: Display tab at first view]
 
 ---
 
-## Page 17 – Advanced Topics: Steady-State, Deformation Scaling, and Damage
+## Page 16 – Hover, Colorbar, and Point Size
 
-**Steady-State Integration**
-- When included, solver maps steady-state stresses to modal node IDs.
-- Combined stresses enhance accuracy for load cases with static bias.
+- Hover over points to see Node ID and current scalar value
+- Adjust Node Point Size for clarity
+- Set Legend Range Min/Max to focus the color scale
 
-**Deformation Scaling**
-- Applied through `VisualizationManager.apply_deformation`.
-- Maintain moderate scale factors to preserve element shape comprehension.
-- Use `Reset` functionality if geometry diverges.
+Tip: Reset camera after large changes for a clean view.
 
-**Velocity & Acceleration**
-- Derived via `_vel_acc_from_disp` (Numba-accelerated central differences).
-- Ensure uniform time step spacing; solver warns if irregularities detected.
-
-**Damage Index**
-- Requires fatigue parameters `A` and `m`.
-- Solver computes signed von Mises to evaluate damage accumulation.
-- Validate with material-specific S-N curves for engineering relevance.
+[Image Placeholder: Hover tooltip showing NodeID and value]
 
 ---
 
-## Page 18 – Performance Tuning & Resource Management
+## Page 17 – Compute a Time Point Field
 
-**Memory Management**
-- Solver estimates per-node memory and chunk size to prevent RAM exhaustion.
-- Adjust `DEFAULT_PRECISION` in `utils/constants.py` to `Single` for lighter memory footprint (accuracy trade-off).
+When initialization is complete (after SOLVE), enable time point workflows:
+1) In Initialization & Time Point Controls, set Time (seconds)
+2) Click Update to compute node-wise values for that instant
+3) Use Save Time Point as CSV to export what you see
 
-**GPU Acceleration**
-- Enable `IS_GPU_ACCELERATION_ENABLED = True`; ensure CUDA is available.
-- PyTorch tensors automatically migrate to GPU via `torch.device`.
+If deformations exist, you can also Export Velocity as Initial Condition in APDL.
 
-**Parallelism**
-- NumPy uses all CPU cores (see `OPENBLAS_NUM_THREADS`).
-- Numba kernels (`@njit(parallel=True)`) accelerate velocity/acceleration computations.
-
-**Large Dataset Tips**
-- Reduce animation frames via custom step mode.
-- Skip initial modes if dominated by noise.
-- Disable unused outputs to minimize memory requirements.
+[Image Placeholder: Time point panel with callouts]
 
 ---
 
-## Page 19 – Troubleshooting & Common Recovery Paths
+## Page 18 – Load External CSV Results
 
-| Symptom | Possible Cause | Resolution |
+To visualize an external CSV:
+1) Click Load Visualization File
+2) Select a CSV with X, Y, Z, optional NodeID, and at least one scalar column
+3) The first scalar column becomes active; adjust legend and point size
+
+Use this to compare alternatives or post-process snapshots.
+
+[Image Placeholder: External CSV loaded into plotter]
+
+---
+
+## Page 19 – Animate Your Results
+
+1) Choose Time Step Mode:
+   - Custom Time Step (enter Step in seconds)
+   - Actual Data Time Steps (throttle with Every nth)
+2) Set Interval (ms)
+3) Set Start and End times
+4) Click Play; Pause or Stop as needed
+5) Click Save as Video/GIF to export (MP4 needs ffmpeg)
+
+If deformations were provided, geometry deforms during playback.
+
+[Image Placeholder: Animation controls — play/pause/stop]
+
+---
+
+## Page 20 – Right-Click Context Menu (Display)
+
+Right-click anywhere on the 3D view to access:
+- Selection Tools: Add/Remove Selection Box, Pick Box Center
+- Hotspot Analysis: Find Hotspots (current view) or in Selection
+- Point-Based Analysis: Plot Time History for Selected Node
+- View Control: Go To Node, Lock Camera for Animation, Reset Camera
+
+[Image Placeholder: Context menu with sections labeled]
+
+---
+
+## Page 21 – Find Hotspots
+
+1) Right-click → Find Hotspots (on current view) or in Selection
+2) Enter how many top nodes to find
+3) A dialog lists the nodes with highest values
+4) Click a node to label and zoom to it
+
+Use hotspots to shortlist critical regions for detailed checks.
+
+[Image Placeholder: Hotspot dialog with table]
+
+---
+
+## Page 22 – Select an Area with a Box
+
+1) Right-click → Add Selection Box
+2) Right-click → Pick Box Center, then click to position
+3) Drag handles to resize
+4) Run Find Hotspots in Selection
+
+Use box selection to focus on sub-assemblies.
+
+[Image Placeholder: Selection box around a region]
+
+---
+
+## Page 23 – Go To Node & Track During Animation
+
+1) Right-click → Go To Node
+2) Enter a Node ID to fly the camera there
+3) Right-click → Lock Camera for Animation (freeze node) to keep focus during playback
+4) Right-click → Reset Camera to restore the default view
+
+[Image Placeholder: Node target marker and label]
+
+---
+
+## Page 24 – Batch Workflow (Checklist)
+
+1) Load .mcf
+2) Load stress .csv
+3) (Optional) Load steady-state .txt
+4) (Optional) Load deformations .csv
+5) Choose outputs
+6) (Optional) Set Skip first n modes
+7) SOLVE
+8) Display → adjust legend → hotspots → screenshots/exports
+
+[Image Placeholder: Batch flow diagram]
+
+---
+
+## Page 25 – Time History Workflow (Checklist)
+
+1) Load .mcf and stress .csv
+2) Tick Time History Mode
+3) Enter Node ID
+4) Select a time-history metric
+5) SOLVE → review plot
+6) Display → compute time point snapshots, export CSV if needed
+
+[Image Placeholder: Time history flow diagram]
+
+---
+
+## Page 26 – Export Your Results
+
+- Save Time Point as CSV — includes NodeID, coordinates, and active scalar
+- Export Velocity as Initial Condition in APDL — generates velocity IC commands
+- Save as Video/GIF — exports playback to file (ensure ffmpeg for MP4)
+
+Keep exports in project-specific folders for traceability.
+
+[Image Placeholder: Export buttons and example outputs]
+
+---
+
+## Page 27 – Troubleshooting (At a Glance)
+
+| Symptom | Cause | What to try |
 | --- | --- | --- |
-| “Invalid MCF file” | Missing `Time` header or wrapped data corruption | Re-export MCF, verify header, use validator script. |
-| Solver stalls near 0% | Huge datasets chunking slowly | Wait for chunk estimation; monitor RAM usage via Task Manager. |
-| Display shows blank scene | No active scalar or mesh not loaded | Load mesh, ensure `Result` column populated, reset camera. |
-| Animation precompute fails | Insufficient memory / invalid time range | Reduce frame count, verify start/end indices, check console. |
-| Damage index zero everywhere | Fatigue parameters unset or null data | Re-enter `A`/`m`, confirm solver outputs include von Mises. |
+| SOLVE disabled | Missing .mcf or stress .csv | Load both files |
+| No deformation outputs | Deformations not included/loaded | Tick Include Deformations and load .csv |
+| Empty scalar bar | CSV lacks scalar column | Use a CSV with at least one scalar field |
+| Animation won’t save | ffmpeg missing | Install ffmpeg or choose GIF |
+| Hotspots disabled | No active scalar | Apply a scalar via CSV or results |
 
-**Recovery Checklist**
-- Review console logs to pinpoint failing stage.
-- Confirm file paths (relative vs absolute) especially when using Navigator.
-- For persistent UI issues, delete Qt cache directories or reset application state.
+[Image Placeholder: Troubleshooting grid]
 
 ---
 
-## Page 20 – Appendix: Shortcuts, Settings, and Reference Tables
+## Page 28 – Tips for Clear Visuals
 
-**Qt Shortcuts**
-- `Ctrl+O`: Open file dialog within focused tab (standard).
-- `Ctrl+W`: Close dialogs.
-- `F1`: Reserved for future in-app help.
+- Keep deformation scale ≤ 5 for realistic visuals
+- Use consistent color ranges across comparisons
+- Label key nodes for reports
+- Take screenshots at the same camera angle for each variant
 
-**Configuration Summary**
-- Precision: `utils/constants.py::DEFAULT_PRECISION`
-- GPU Flag: `utils/constants.py::IS_GPU_ACCELERATION_ENABLED`
-- Default animation interval: `utils/constants.py::DEFAULT_ANIMATION_INTERVAL_MS`
-
-**Key Modules & Responsibilities**
-- `core/data_models.py`: Typed containers for modal, stress, deformation data.
-- `core/computation.py`: High-level solver façade and result aggregation.
-- `solver/engine.py`: Numba/PyTorch-accelerated transient solver kernel.
-- `file_io/validators.py`: Input verification pipelines.
-- `ui/handlers/*`: Glue logic connecting UI events to backend operations.
-- `core/visualization.py`: Mesh management, animation, hotspot detection.
-
-**Support & Maintenance**
-- Document unresolved issues in `BUGFIX_*.md` files.
-- Coordinate architecture changes with the plans in `ARCHITECTURE.md`.
-- For deployment scripts, maintain parity with `START_HERE.md` guidance.
+[Image Placeholder: Good vs poor visualization examples]
 
 ---
 
-### End of Detailed User Manual
+## Page 29 – Keyboard & Mouse Basics
 
-Continue to the Quick User Manual for a concise reference, or the Detailed Theory Manual for algorithmic underpinnings.
+- Left-drag: Rotate
+- Right-drag: Pan
+- Mouse wheel: Zoom
+- Right-click: Context menu
+- Tabs: Click to switch (Main Window, Display)
+
+[Image Placeholder: Mouse diagram]
+
+---
+
+## Page 30 – Review Checklist Before Reporting
+
+- [ ] Inputs validated; Node IDs consistent
+- [ ] Outputs selected match the report scope
+- [ ] Peaks make sense vs loading events
+- [ ] Legends readable; units correct
+- [ ] Exports saved (CSV/video) as needed
+
+[Image Placeholder: Final review poster]
+
+---
+
+## Page 31 – File Format Notes (For Reference)
+
+- .mcf: Modal coordinates with a Time column
+- Stress .csv: NodeID (+ optional X,Y,Z) and component series
+- Deformation .csv: NodeID with ux_, uy_, uz_ series
+- Steady-state .txt: Tab-delimited with labeled components
+
+[Image Placeholder: File snippet samples]
+
+---
+
+## Page 32 – FAQs
+
+Q: Which outputs require deformations?
+A: Deformation, Velocity, and Acceleration.
+
+Q: How do I compare runs with the same color scale?
+A: Manually set Legend Range min/max to fixed values.
+
+Q: How do I focus on a specific node?
+A: Right-click → Go To Node; then Lock Camera for Animation if needed.
+
+[Image Placeholder: FAQ cards]
+
+---
+
+## Page 33 – Getting Help
+
+If you encounter issues:
+- Note buttons clicked and inputs used
+- Copy messages from the Console
+- Share a minimal set of files if possible
+
+Contact your MARS maintainer for assistance.
+
+[Image Placeholder: Support footer]
 
