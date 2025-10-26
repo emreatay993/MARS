@@ -4,33 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="-Updated the docs and the application name in files.">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Updated user-oriented manuals">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ARCHITECTURE.md" beforeDir="false" afterPath="$PROJECT_DIR$/ARCHITECTURE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/COMPLETION_REPORT.md" beforeDir="false" afterPath="$PROJECT_DIR$/COMPLETION_REPORT.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DELIVERY_MANIFEST.md" beforeDir="false" afterPath="$PROJECT_DIR$/DELIVERY_MANIFEST.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/DOCUMENTATION_UPDATE_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/DOCUMENTATION_UPDATE_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/EXECUTIVE_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/EXECUTIVE_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FILE_INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/FILE_INDEX.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FINAL_DELIVERY_COMPLETE.md" beforeDir="false" afterPath="$PROJECT_DIR$/FINAL_DELIVERY_COMPLETE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FINAL_DELIVERY_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/FINAL_DELIVERY_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FINAL_PROJECT_STATE.md" beforeDir="false" afterPath="$PROJECT_DIR$/FINAL_PROJECT_STATE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/FINAL_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/FINAL_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MIGRATION_GUIDE.md" beforeDir="false" afterPath="$PROJECT_DIR$/MIGRATION_GUIDE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PROJECT_COMPLETE.md" beforeDir="false" afterPath="$PROJECT_DIR$/PROJECT_COMPLETE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/START_HERE.md" beforeDir="false" afterPath="$PROJECT_DIR$/START_HERE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/TRANSFORMATION_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/TRANSFORMATION_SUMMARY.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/legacy/deleted_from_src_main_window.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/application_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/application_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/builders/display_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/display_ui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/display_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/display_tab.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/max_von_mises_stress.dat" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/solver_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/solver_tab.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.csv" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/time_of_max_von_mises_stress.dat" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -67,22 +45,22 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.display_ui.executor": "Run",
-    "Python.main.executor": "Run",
-    "Python.main_app.executor": "Run",
-    "Python.solver_tab.executor": "Run",
-    "Python.ui_state_handler.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.display_ui.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main_app.executor&quot;: &quot;Run&quot;,
+    &quot;Python.solver_tab.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ui_state_handler.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="solver_tab" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="MARS_" />
@@ -223,7 +201,55 @@
       <option name="project" value="LOCAL" />
       <updated>1761410677295</updated>
     </task>
-    <option name="localTasksCounter" value="13" />
+    <task id="LOCAL-00013" summary="-Further refactoring of display_tab.py">
+      <option name="closed" value="true" />
+      <created>1761428274751</created>
+      <option name="number" value="00013" />
+      <option name="presentableId" value="LOCAL-00013" />
+      <option name="project" value="LOCAL" />
+      <updated>1761428274751</updated>
+    </task>
+    <task id="LOCAL-00014" summary="- Added icons for animation control buttons (play, pause, stop).&#10;&#10;- Added/Updated documentations to detail signal-slot relations between modules.">
+      <option name="closed" value="true" />
+      <created>1761429769405</created>
+      <option name="number" value="00014" />
+      <option name="presentableId" value="LOCAL-00014" />
+      <option name="project" value="LOCAL" />
+      <updated>1761429769405</updated>
+    </task>
+    <task id="LOCAL-00015" summary="- Added example input files to be used for manual user testing.">
+      <option name="closed" value="true" />
+      <created>1761429969030</created>
+      <option name="number" value="00015" />
+      <option name="presentableId" value="LOCAL-00015" />
+      <option name="project" value="LOCAL" />
+      <updated>1761429969030</updated>
+    </task>
+    <task id="LOCAL-00016" summary="- Added additional engineering-oriented documents for the software.">
+      <option name="closed" value="true" />
+      <created>1761430438040</created>
+      <option name="number" value="00016" />
+      <option name="presentableId" value="LOCAL-00016" />
+      <option name="project" value="LOCAL" />
+      <updated>1761430438040</updated>
+    </task>
+    <task id="LOCAL-00017" summary="- Updated user-oriented manuals">
+      <option name="closed" value="true" />
+      <created>1761436295777</created>
+      <option name="number" value="00017" />
+      <option name="presentableId" value="LOCAL-00017" />
+      <option name="project" value="LOCAL" />
+      <updated>1761436295777</updated>
+    </task>
+    <task id="LOCAL-00018" summary="- Updated user-oriented manuals">
+      <option name="closed" value="true" />
+      <created>1761465079146</created>
+      <option name="number" value="00018" />
+      <option name="presentableId" value="LOCAL-00018" />
+      <option name="project" value="LOCAL" />
+      <updated>1761465079146</updated>
+    </task>
+    <option name="localTasksCounter" value="19" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -237,6 +263,11 @@
     <MESSAGE value="Centralized styling." />
     <MESSAGE value="-Improved Error handling for Play button.&#10;&#10;-Improved the clarity of signal-slot relationships with decorators." />
     <MESSAGE value="-Updated the docs and the application name in files." />
-    <option name="LAST_COMMIT_MESSAGE" value="-Updated the docs and the application name in files." />
+    <MESSAGE value="-Further refactoring of display_tab.py" />
+    <MESSAGE value="- Added icons for animation control buttons (play, pause, stop).&#10;&#10;- Added/Updated documentations to detail signal-slot relations between modules." />
+    <MESSAGE value="- Added example input files to be used for manual user testing." />
+    <MESSAGE value="- Added additional engineering-oriented documents for the software." />
+    <MESSAGE value="- Updated user-oriented manuals" />
+    <option name="LAST_COMMIT_MESSAGE" value="- Updated user-oriented manuals" />
   </component>
 </project>

@@ -136,7 +136,7 @@ class SolverTabUIBuilder:
             QGroupBox: Group box containing output selection checkboxes.
         """
         # Create all checkboxes
-        time_history_checkbox = QCheckBox('Time History Mode (Single Node)')
+        time_history_checkbox = QCheckBox('Enable Time History Mode (Single Node)')
         time_history_checkbox.setStyleSheet(CHECKBOX_STYLE)
         max_principal_stress_checkbox = QCheckBox('Max Principal Stress')
         max_principal_stress_checkbox.setStyleSheet(CHECKBOX_STYLE)
@@ -144,6 +144,8 @@ class SolverTabUIBuilder:
         min_principal_stress_checkbox.setStyleSheet(CHECKBOX_STYLE)
         von_mises_checkbox = QCheckBox('Von-Mises Stress')
         von_mises_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        plasticity_correction_checkbox = QCheckBox('Enable Plasticity Correction')
+        plasticity_correction_checkbox.setStyleSheet(CHECKBOX_STYLE)
         deformation_checkbox = QCheckBox('Deformation')
         deformation_checkbox.setStyleSheet(CHECKBOX_STYLE)
         velocity_checkbox = QCheckBox('Velocity')
@@ -154,7 +156,6 @@ class SolverTabUIBuilder:
         damage_index_checkbox.setStyleSheet(CHECKBOX_STYLE)
         # Layout
         output_layout = QVBoxLayout()
-        output_layout.addWidget(time_history_checkbox)
         output_layout.addWidget(max_principal_stress_checkbox)
         output_layout.addWidget(min_principal_stress_checkbox)
         output_layout.addWidget(von_mises_checkbox)
@@ -162,8 +163,10 @@ class SolverTabUIBuilder:
         output_layout.addWidget(velocity_checkbox)
         output_layout.addWidget(acceleration_checkbox)
         output_layout.addWidget(damage_index_checkbox)
+        output_layout.addWidget(time_history_checkbox)
+        output_layout.addWidget(plasticity_correction_checkbox)
         
-        output_group = QGroupBox("Outputs")
+        output_group = QGroupBox("Output Options")
         output_group.setStyleSheet(GROUP_BOX_STYLE)
         output_group.setLayout(output_layout)
         
@@ -172,6 +175,7 @@ class SolverTabUIBuilder:
         self.components['max_principal_stress_checkbox'] = max_principal_stress_checkbox
         self.components['min_principal_stress_checkbox'] = min_principal_stress_checkbox
         self.components['von_mises_checkbox'] = von_mises_checkbox
+        self.components['plasticity_correction_checkbox'] = plasticity_correction_checkbox
         self.components['deformation_checkbox'] = deformation_checkbox
         self.components['velocity_checkbox'] = velocity_checkbox
         self.components['acceleration_checkbox'] = acceleration_checkbox
@@ -179,7 +183,7 @@ class SolverTabUIBuilder:
         
         # Initially disable checkboxes until files are loaded
         for key in ['max_principal_stress_checkbox', 'min_principal_stress_checkbox',
-                    'von_mises_checkbox', 'deformation_checkbox', 'velocity_checkbox',
+                    'von_mises_checkbox', 'plasticity_correction_checkbox', 'deformation_checkbox', 'velocity_checkbox',
                     'acceleration_checkbox', 'damage_index_checkbox', 'time_history_checkbox']:
             self.components[key].setEnabled(False)
         
@@ -250,6 +254,36 @@ class SolverTabUIBuilder:
         self.components['single_node_group'] = single_node_group
         
         return single_node_group
+
+    def build_plasticity_options_section(self):
+        """
+        Build the plasticity correction options section.
+
+        Returns:
+            QGroupBox: Group box for plasticity options (initially hidden).
+        """
+        plasticity_options_group = QGroupBox("Plasticity Correction Options")
+        plasticity_options_group.setStyleSheet(GROUP_BOX_STYLE)
+
+        # Placeholder layout (extend with real options later)
+        layout = QVBoxLayout()
+
+        method_row = QHBoxLayout()
+        method_label = QLabel("Select Method:")
+        method_combo = QComboBox()
+        method_combo.addItems(["Neuber", "Glinka"])
+        method_row.addWidget(method_label)
+        method_row.addWidget(method_combo)
+        method_row.addStretch()
+
+        layout.addLayout(method_row)
+        plasticity_options_group.setLayout(layout)
+        plasticity_options_group.setVisible(False)
+
+        self.components['plasticity_options_group'] = plasticity_options_group
+        self.components['plasticity_method_combo'] = method_combo
+
+        return plasticity_options_group
     
     def build_console_tabs_section(self):
         """
@@ -358,6 +392,7 @@ class SolverTabUIBuilder:
         output_group = self.build_output_selection_section()
         fatigue_params_group = self.build_fatigue_params_section()
         single_node_group = self.build_single_node_section()
+        plasticity_options_group = self.build_plasticity_options_section()
         solve_button = self.build_solve_button()
         console_tabs = self.build_console_tabs_section()
         progress_bar = self.build_progress_section()
@@ -367,6 +402,7 @@ class SolverTabUIBuilder:
         hbox_user_inputs.addWidget(output_group)
         hbox_user_inputs.addWidget(fatigue_params_group)
         hbox_user_inputs.addWidget(single_node_group)
+        hbox_user_inputs.addWidget(plasticity_options_group)
         
         # Add all to main layout
         main_layout.addWidget(file_group)

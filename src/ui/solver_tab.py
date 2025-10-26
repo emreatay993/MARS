@@ -133,6 +133,7 @@ class SolverTab(QWidget):
         self.velocity_checkbox = self.components['velocity_checkbox']
         self.acceleration_checkbox = self.components['acceleration_checkbox']
         self.damage_index_checkbox = self.components['damage_index_checkbox']
+        self.plasticity_correction_checkbox = self.components['plasticity_correction_checkbox']
         
         # Fatigue parameters
         self.A_line_edit = self.components['A_line_edit']
@@ -142,6 +143,8 @@ class SolverTab(QWidget):
         # Single node controls
         self.node_line_edit = self.components['node_line_edit']
         self.single_node_group = self.components['single_node_group']
+        self.plasticity_options_group = self.components['plasticity_options_group']
+        self.plasticity_method_combo = self.components['plasticity_method_combo']
         
         # Console and plots
         self.console_textbox = self.components['console_textbox']
@@ -165,6 +168,7 @@ class SolverTab(QWidget):
             self.max_principal_stress_checkbox,
             self.min_principal_stress_checkbox,
             self.von_mises_checkbox,
+            self.plasticity_correction_checkbox,
             self.damage_index_checkbox
         ]
         
@@ -192,8 +196,13 @@ class SolverTab(QWidget):
         self.time_history_checkbox.toggled.connect(self.ui_handler._on_time_history_toggled)
         self.von_mises_checkbox.toggled.connect(self.ui_handler.toggle_damage_index_checkbox_visibility)
         self.von_mises_checkbox.toggled.connect(self.ui_handler._update_damage_index_state)
+        self.von_mises_checkbox.toggled.connect(self.ui_handler._update_plasticity_state)
         self.time_history_checkbox.toggled.connect(self.ui_handler._update_damage_index_state)
+        self.time_history_checkbox.toggled.connect(self.ui_handler._update_plasticity_state)
         self.damage_index_checkbox.toggled.connect(self.ui_handler.toggle_fatigue_params_visibility)
+        self.plasticity_correction_checkbox.toggled.connect(
+            self.ui_handler.toggle_plasticity_options_visibility
+        )
         
         # Plot updates
         self.max_principal_stress_checkbox.toggled.connect(
@@ -229,6 +238,8 @@ class SolverTab(QWidget):
     def _setup_initial_state(self):
         """Setup initial widget states."""
         self.ui_handler.toggle_damage_index_checkbox_visibility()
+        self.ui_handler._update_plasticity_state()
+        self.ui_handler.toggle_plasticity_options_visibility(False)
         self.ui_handler.update_single_node_plot()
 
     def on_coord_file_loaded(self, modal_data, filename):

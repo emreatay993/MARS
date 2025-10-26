@@ -40,6 +40,9 @@ class SolverUIHandler:
             if not deformations_enabled:
                 cb.setChecked(False)
 
+        # Ensure plasticity follows Von Mises selection (always visible)
+        self._update_plasticity_state()
+
     def toggle_steady_state_stress_inputs(self, is_checked):
         """Show/hide steady-state stress file controls."""
         self.tab.steady_state_file_button.setVisible(is_checked)
@@ -68,6 +71,13 @@ class SolverUIHandler:
     def toggle_fatigue_params_visibility(self, checked):
         """Show/hide fatigue parameters group."""
         self.tab.fatigue_params_group.setVisible(checked)
+
+    def toggle_plasticity_options_visibility(self, is_checked):
+        """Show/hide plasticity options group based on Plasticity checkbox."""
+        try:
+            self.tab.plasticity_options_group.setVisible(bool(is_checked))
+        except Exception as e:
+            print(f"Error toggling plasticity options visibility: {e}")
 
     def toggle_single_node_solution_group(self, is_checked):
         """Show/hide single node selection group."""
@@ -111,6 +121,8 @@ class SolverUIHandler:
                 checkbox.blockSignals(True)
                 checkbox.setChecked(False)
                 checkbox.blockSignals(False)
+            # Ensure dependent UI reflects new states
+            self._update_plasticity_state()
 
     def _update_damage_index_state(self, checked=False):
         """Update damage index checkbox state."""
@@ -121,6 +133,19 @@ class SolverUIHandler:
         if not is_enabled:
             self.tab.damage_index_checkbox.setChecked(False)
             self.tab.damage_index_checkbox.setVisible(False)
+
+    def _update_plasticity_state(self, checked=False):
+        """Enable Plasticity Correction only when Von Mises is selected.
+
+        Remains visible at all times; disables and unchecks when Von Mises is not selected.
+        """
+        is_von_mises_selected = self.tab.von_mises_checkbox.isChecked()
+        # Keep visible; only toggle enabled state
+        self.tab.plasticity_correction_checkbox.setEnabled(is_von_mises_selected)
+        if not is_von_mises_selected:
+            self.tab.plasticity_correction_checkbox.setChecked(False)
+            # Also hide options when dependency not satisfied
+            self.toggle_plasticity_options_visibility(False)
 
     def on_exclusive_output_toggled(self, is_checked, sender_checkbox):
         """Ensure only one output is selected in time history mode."""
