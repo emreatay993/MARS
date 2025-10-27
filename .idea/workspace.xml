@@ -4,9 +4,13 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Added the skeleton code for Plasticity Correction feature (v1).">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Implemented the Material Profile Dialog for Plasticity Correction feature (Beta).">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/exporters.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/exporters.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/loaders.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/file_io/validators.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/validators.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/dialogs/material_profile_dialog.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/dialogs/material_profile_dialog.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/__init__.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/__init__.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -263,7 +267,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761510338313</updated>
     </task>
-    <option name="localTasksCounter" value="21" />
+    <task id="LOCAL-00021" summary="- Implemented the Material Profile Dialog for Plasticity Correction feature (Beta).">
+      <option name="closed" value="true" />
+      <created>1761569989524</created>
+      <option name="number" value="00021" />
+      <option name="presentableId" value="LOCAL-00021" />
+      <option name="project" value="LOCAL" />
+      <updated>1761569989524</updated>
+    </task>
+    <option name="localTasksCounter" value="22" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -284,6 +296,7 @@
     <MESSAGE value="- Updated user-oriented manuals" />
     <MESSAGE value="- Added the skeleton code for Plasticity Correction feature (v0)." />
     <MESSAGE value="- Added the skeleton code for Plasticity Correction feature (v1)." />
-    <option name="LAST_COMMIT_MESSAGE" value="- Added the skeleton code for Plasticity Correction feature (v1)." />
+    <MESSAGE value="- Implemented the Material Profile Dialog for Plasticity Correction feature (Beta)." />
+    <option name="LAST_COMMIT_MESSAGE" value="- Implemented the Material Profile Dialog for Plasticity Correction feature (Beta)." />
   </component>
 </project>

@@ -164,3 +164,98 @@ def validate_steady_state_file(filename: str) -> Tuple[bool, Optional[str]]:
         
     except Exception as e:
         return False, str(e)
+
+
+def validate_material_profile_payload(payload: dict) -> Tuple[bool, Optional[str]]:
+    """
+    Validate the structure of a material profile JSON payload.
+
+    Args:
+        payload: Parsed JSON object representing the material profile.
+
+    Returns:
+        Tuple of (is_valid, error_message). error_message is None if valid.
+    """
+
+    def _validate_table(section: dict, section_name: str, expected_columns) -> Tuple[bool, Optional[str]]:
+        if section is None:
+            # Treat missing section as empty table
+            return True, None
+        if not isinstance(section, dict):
+            return False, f"{section_name} section must be an object."
+
+        columns = section.get("columns")
+        data = section.get("data")
+        if columns is None or data is None:
+            return False, f"{section_name} section must include 'columns' and 'data' entries."
+        if not isinstance(columns, list) or not isinstance(data, list):
+            return False, f"{section_name} section must provide list-based 'columns' and 'data'."
+
+        try:
+            df = pd.DataFrame(data, columns=columns)
+        except Exception as exc:
+            return False, f"Unable to parse {section_name} data: {exc}"
+
+        rename_map = {columns[i]: expected_columns[i] for i in range(min(len(columns), len(expected_columns)))}
+        df = df.rename(columns=rename_map)
+
+        missing = [col for col in expected_columns if col not in df.columns]
+        if missing:
+            return False, f"{section_name} is missing expected columns: {', '.join(missing)}."
+
+        df = df[expected_columns]
+        try:
+            for column in expected_columns:
+                if df[column].empty:
+                    continue
+                pd.to_numeric(df[column], errors='raise')
+        except Exception as exc:
+            return False, f"{section_name} contains non-numeric values: {exc}"
+
+        return True, None
+
+    if not isinstance(payload, dict):
+        return False, "Material profile JSON must be an object."
+
+    youngs_valid, youngs_error = _validate_table(
+        payload.get("youngs_modulus"),
+        "Young's modulus",
+        ["Temperature (°C)", "Young's Modulus [MPa]"]
+    )
+    if not youngs_valid:
+        return False, youngs_error
+
+    poisson_valid, poisson_error = _validate_table(
+        payload.get("poisson_ratio"),
+        "Poisson's ratio",
+        ["Temperature (°C)", "Poisson's Ratio"]
+    )
+    if not poisson_valid:
+        return False, poisson_error
+
+    plastic_data = payload.get("plastic_curves", [])
+    if plastic_data is None:
+        plastic_data = []
+    if not isinstance(plastic_data, list):
+        return False, "Plastic curves section must be a list."
+
+    for entry in plastic_data:
+        if not isinstance(entry, dict):
+            return False, "Each plastic curve entry must be an object."
+        temperature = entry.get("temperature")
+        if temperature is None:
+            return False, "Plastic curve entries must include a temperature value."
+        try:
+            float(temperature)
+        except (TypeError, ValueError):
+            return False, f"Invalid temperature value '{temperature}' in plastic curve entry."
+
+        curve_valid, curve_error = _validate_table(
+            entry,
+            f"Plastic curve (@ {temperature})",
+            ["Plastic Strain", "True Stress [MPa]"]
+        )
+        if not curve_valid:
+            return False, curve_error
+
+    return True, None

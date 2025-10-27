@@ -20,9 +20,6 @@ def main():
     # Create application
     app = QApplication(sys.argv)
 
-    # Note: Styles are applied selectively to individual widgets
-    # to match legacy behavior, not globally to the application
-
     # Create and show main window
     main_window = ApplicationController()
     main_window.showMaximized()

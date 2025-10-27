@@ -4,9 +4,12 @@ Export helpers for MARS (Modal Analysis Response Solver).
 Functions for exporting analysis results to CSV/APDL and related formats.
 """
 
+import json
 import pandas as pd
 import numpy as np
 from typing import Optional, List, Dict
+
+from core.data_models import MaterialProfileData
 
 
 def export_to_csv(data: pd.DataFrame, filename: str) -> None:
@@ -155,3 +158,35 @@ def export_results_with_headers(filename: str, node_ids: np.ndarray,
         df_out = pd.concat([df_out, df_coords], axis=1)
     
     df_out.to_csv(filename, index=False)
+
+
+def export_material_profile(profile: MaterialProfileData, filename: str) -> None:
+    """
+    Export a material profile to JSON format.
+
+    Args:
+        profile: MaterialProfileData instance containing all material tables.
+        filename: Destination path for the JSON file.
+    """
+    payload = {
+        "youngs_modulus": {
+            "columns": list(profile.youngs_modulus.columns),
+            "data": profile.youngs_modulus.values.tolist(),
+        },
+        "poisson_ratio": {
+            "columns": list(profile.poisson_ratio.columns),
+            "data": profile.poisson_ratio.values.tolist(),
+        },
+        "plastic_curves": [],
+    }
+
+    for temperature in sorted(profile.plastic_curves.keys()):
+        curve_df = profile.plastic_curves[temperature]
+        payload["plastic_curves"].append({
+            "temperature": float(temperature),
+            "columns": list(curve_df.columns),
+            "data": curve_df.values.tolist(),
+        })
+
+    with open(filename, "w", encoding="utf-8-sig") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)

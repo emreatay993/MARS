@@ -5,6 +5,7 @@ Provides functions for loading input files and converting them into structured
 data models.
 """
 
+import json
 import os
 import pandas as pd
 import numpy as np
@@ -15,13 +16,15 @@ from core.data_models import (
     ModalStressData,
     DeformationData,
     SteadyStateData,
-    TemperatureFieldData
+    TemperatureFieldData,
+    MaterialProfileData,
 )
 from file_io.validators import (
     validate_mcf_file,
     validate_modal_stress_file,
     validate_deformation_file,
-    validate_steady_state_file
+    validate_steady_state_file,
+    validate_material_profile_payload,
 )
 from utils.file_utils import unwrap_mcf_file
 from utils.constants import NP_DTYPE
@@ -203,7 +206,7 @@ def load_temperature_field(filename: str) -> TemperatureFieldData:
     try:
         df = pd.read_csv(filename, sep='\t', engine='python')
         if df.shape[1] <= 1:
-            df = pd.read_csv(filename, sep='\s+', engine='python')
+            df = pd.read_csv(filename, sep=r'\s+', engine='python')
     except Exception as exc:
         raise ValueError(f"Failed to parse temperature field file: {exc}") from exc
 
@@ -216,3 +219,75 @@ def load_temperature_field(filename: str) -> TemperatureFieldData:
         raise ValueError("Temperature field file must contain a 'Node Number' column.")
 
     return TemperatureFieldData(dataframe=df)
+
+
+def _build_material_profile_dataframe(section: dict, expected_columns) -> pd.DataFrame:
+    if section is None:
+        return pd.DataFrame(columns=expected_columns)
+
+    columns = section.get("columns", expected_columns)
+    data = section.get("data", [])
+
+    df = pd.DataFrame(data, columns=columns)
+    rename_map = {columns[i]: expected_columns[i] for i in range(min(len(columns), len(expected_columns)))}
+    df = df.rename(columns=rename_map)
+
+    missing = [col for col in expected_columns if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing expected columns: {', '.join(missing)}")
+
+    df = df[expected_columns]
+    for column in expected_columns:
+        if df[column].empty:
+            continue
+        df[column] = pd.to_numeric(df[column], errors='raise')
+    return df
+
+
+def load_material_profile(filename: str) -> MaterialProfileData:
+    """
+    Load a material profile JSON file into a MaterialProfileData object.
+
+    Args:
+        filename: Path to the material profile JSON file.
+
+    Returns:
+        MaterialProfileData populated with Young's modulus, Poisson's ratio,
+        and plastic curve datasets.
+    """
+    if not os.path.exists(filename):
+        raise ValueError("File does not exist.")
+
+    try:
+        with open(filename, "r", encoding="utf-8-sig") as fh:
+            payload = json.load(fh)
+    except Exception as exc:
+        raise ValueError(f"Failed to read material profile: {exc}") from exc
+
+    is_valid, error = validate_material_profile_payload(payload)
+    if not is_valid:
+        raise ValueError(f"Invalid material profile: {error}")
+
+    youngs_df = _build_material_profile_dataframe(
+        payload.get("youngs_modulus"),
+        ["Temperature (°C)", "Young's Modulus [MPa]"],
+    )
+    poisson_df = _build_material_profile_dataframe(
+        payload.get("poisson_ratio"),
+        ["Temperature (°C)", "Poisson's Ratio"],
+    )
+
+    plastic_curves = {}
+    for entry in payload.get("plastic_curves", []):
+        temperature = float(entry.get("temperature"))
+        curve_df = _build_material_profile_dataframe(
+            entry,
+            ["Plastic Strain", "True Stress [MPa]"],
+        )
+        plastic_curves[temperature] = curve_df
+
+    return MaterialProfileData(
+        youngs_modulus=youngs_df,
+        poisson_ratio=poisson_df,
+        plastic_curves=plastic_curves,
+    )
