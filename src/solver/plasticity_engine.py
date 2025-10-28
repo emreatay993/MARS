@@ -515,6 +515,14 @@ def ibg_solver_tensor_core(sig_hist: np.ndarray,   # (N,6)
             continue
 
         # curve-aware Δεp
+        k_factor = 0.8  # (e.g., 80% - YOU MUST TUNE THIS VALUE)
+        # --- K-Factor Correction ---
+        # This is an empirical factor (0.0 < k_factor <= 1.0) tuned to match
+        # transient FEA. It acknowledges that the elastic dUe is an
+        # overestimate of the energy that should be converted to plastic work.
+
+        dUe_corrected = k_factor * max(dUe, 0.0)
+
         dep = _delta_epsp_curve_aware_core(max(dUe, 0.0), Tk, eps_prev, TEMP, SIG, EPSP, use_plateau)
 
         # Update total plastic strain *before* scaling

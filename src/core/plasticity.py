@@ -184,8 +184,10 @@ def map_temperature_field_to_nodes(
             table. When ``None`` any missing node triggers an error.
     """
     df = temperature_data.dataframe.copy()
-    node_column = _get_column(df, ["Node Number", "Node", "NodeID", "Node Id"], "node identifiers")
-    df = df.set_index(node_column.astype(int))
+    node_column_name = _get_column(df, ["Node Number", "Node", "NodeID", "Node Id"], "node identifiers").name
+    
+    df.drop_duplicates(subset=[node_column_name], keep="last", inplace=True)
+    df = df.set_index(df[node_column_name].astype(int))
 
     column = column_name or infer_temperature_column(temperature_data)
     if column not in df.columns:

@@ -94,6 +94,9 @@ def load_modal_stress(filename: str) -> ModalStressData:
     
     # Load data
     df = pd.read_csv(filename)
+
+    # Drop duplicates, keeping the last entry
+    df.drop_duplicates(subset=['NodeID'], keep='last', inplace=True)
     
     # Extract node IDs
     node_ids = df['NodeID'].to_numpy().flatten()
@@ -144,6 +147,9 @@ def load_modal_deformations(filename: str) -> DeformationData:
     # Load data
     df = pd.read_csv(filename)
     
+    # Drop duplicates, keeping the last entry
+    df.drop_duplicates(subset=['NodeID'], keep='last', inplace=True)
+
     # Extract node IDs
     node_ids = df['NodeID'].to_numpy().flatten()
     

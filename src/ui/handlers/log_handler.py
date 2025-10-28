@@ -6,6 +6,8 @@ and appending them to the UI's console.
 """
 
 import os
+from typing import Sequence
+import pandas as pd
 
 
 class SolverLogHandler:
@@ -19,6 +21,14 @@ class SolverLogHandler:
             tab (SolverTab): The parent SolverTab instance (to access console).
         """
         self.tab = tab
+
+    def _get_node_column_name(self, df: pd.DataFrame) -> str | None:
+        """Find the node column name from a list of candidates."""
+        candidates = ["Node Number", "Node", "NodeID", "Node Id"]
+        for name in candidates:
+            if name in df.columns:
+                return name
+        return None
 
     def _log_coordinate_load(self, filename, modal_data):
         """Log successful coordinate file load."""
@@ -81,9 +91,19 @@ class SolverLogHandler:
             f"Successfully loaded temperature field file: "
             f"{os.path.basename(filename)}\n"
         )
-        self.tab.console_textbox.append(
-            f"Temperature entries: {temperature_data.num_nodes} rows"
-        )
+        
+        num_rows = temperature_data.num_nodes
+        node_col = self._get_node_column_name(temperature_data.dataframe)
+        if node_col:
+            num_unique = temperature_data.dataframe[node_col].nunique()
+            self.tab.console_textbox.append(
+                f"Temperature entries: {num_unique} unique nodes from {num_rows} rows"
+            )
+        else:
+            self.tab.console_textbox.append(
+                f"Temperature entries: {num_rows} rows (could not determine node column)"
+            )
+
         self.tab.console_textbox.verticalScrollBar().setValue(
             self.tab.console_textbox.verticalScrollBar().maximum()
         )
