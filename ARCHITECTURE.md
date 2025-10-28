@@ -202,6 +202,18 @@ This document provides a comprehensive guide to the MARS application's modular a
 
 **Design Pattern**: Manager pattern (encapsulates complex logic)
 
+#### Plasticity Utilities (`src/core/plasticity.py`)
+
+**Purpose**: Prepare material and temperature inputs for the plasticity solvers.
+
+**Key Components**:
+- `build_material_db_from_profile()` converts UI material profiles into the numerical tables used by the solver.
+- `map_temperature_field_to_nodes()` aligns temperature datasets with solver node ordering, honouring defaults when provided.
+- `extract_poisson_ratio()` picks a representative Poisson ratio (with safe fallbacks).
+- `PlasticityDataError` communicates validation issues back to UI layers.
+
+**Design Pattern**: Functional utilities focused on pure data transformation.
+
 #### Data Models (`src/core/data_models.py`)
 
 **Purpose**: Structured data containers

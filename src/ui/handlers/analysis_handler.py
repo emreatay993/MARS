@@ -13,13 +13,14 @@ import traceback
 import  gc
 import psutil
 from datetime import datetime
+from typing import Optional
 from PyQt5.QtCore import pyqtSlot
 import numpy as np
 from PyQt5.QtWidgets import QMessageBox, QApplication
 import pyvista as pv
 
 from solver import engine as solver_engine
-from core.data_models import SolverConfig
+from core.data_models import PlasticityConfig, SolverConfig
 from ui.widgets.plotting import PlotlyMaxWidget
 
 
@@ -125,6 +126,15 @@ class SolverAnalysisHandler:
                 return None
             config.fatigue_A, config.fatigue_m = fatigue_params
 
+        try:
+            plasticity_cfg = self._build_plasticity_config(config)
+        except ValueError as exc:
+            self.tab.console_textbox.append(f"Plasticity configuration error: {exc}")
+            QMessageBox.warning(self.tab, "Plasticity Configuration", str(exc))
+            return None
+
+        config.plasticity = plasticity_cfg
+
         return config
 
     def _validate_time_history_mode(self, force_node_id):
@@ -205,6 +215,62 @@ class SolverAnalysisHandler:
             )
             return None
 
+    def _build_plasticity_config(self, solver_config: SolverConfig) -> Optional[PlasticityConfig]:
+        """Assemble plasticity configuration or return ``None`` when disabled."""
+        if not self.tab.plasticity_correction_checkbox.isChecked():
+            return None
+
+        if not self.tab.von_mises_checkbox.isChecked():
+            raise ValueError("Von Mises output must be enabled when plasticity correction is selected.")
+
+        method_text = self.tab.plasticity_method_combo.currentText().strip().lower()
+        method_map = {
+            "neuber": "neuber",
+            "glinka": "glinka",
+            "incremental buczynski-glinka (ibg)": "ibg",
+        }
+        if method_text not in method_map:
+            raise ValueError(f"Unsupported plasticity method '{self.tab.plasticity_method_combo.currentText()}'.")
+        method = method_map[method_text]
+
+        if method == "ibg" and not solver_config.time_history_mode:
+            raise ValueError("Incremental Buczynski-Glinka (IBG) correction requires Time History mode.")
+
+        material_profile = self.tab.material_profile_data
+        if material_profile is None or not material_profile.has_data:
+            raise ValueError("Please enter a material profile with plastic curves before enabling plasticity.")
+
+        temperature_data = self.tab.temperature_field_data
+        if method in {"neuber", "glinka"} and temperature_data is None:
+            raise ValueError("Neuber and Glinka corrections require a temperature field file.")
+
+        max_iter_text = self.tab.plasticity_max_iter_input.text().strip()
+        tol_text = self.tab.plasticity_tolerance_input.text().strip()
+
+        try:
+            max_iterations = int(max_iter_text) if max_iter_text else 60
+        except ValueError as exc:
+            raise ValueError("Invalid maximum iteration count for plasticity correction.") from exc
+
+        try:
+            tolerance = float(tol_text) if tol_text else 1e-10
+        except ValueError as exc:
+            raise ValueError("Invalid tolerance value for plasticity correction.") from exc
+
+        default_temperature = 22.0 if temperature_data is None else None
+
+        return PlasticityConfig(
+            enabled=True,
+            method=method,
+            max_iterations=max_iterations,
+            tolerance=tolerance,
+            material_profile=material_profile,
+            temperature_field=temperature_data,
+            default_temperature=default_temperature,
+            extrapolation_mode=(self.tab.plasticity_extrapolation_combo.currentText().strip().lower()
+                                if getattr(self.tab, 'plasticity_extrapolation_combo', None) else 'linear'),
+        )
+
     def _get_skip_n_modes(self):
         """Get number of modes to skip from UI."""
         if not self.tab.skip_modes_combo.isVisible():
@@ -216,9 +282,21 @@ class SolverAnalysisHandler:
 
     def _get_output_directory(self):
         """Get output directory for results."""
-        if self.tab.project_directory:
-            return self.tab.project_directory
-        return os.path.dirname(os.path.abspath(__file__))
+        base_path = self.tab.project_directory or os.path.dirname(os.path.abspath(__file__))
+        base_path = os.path.abspath(base_path)
+
+        if os.path.isfile(base_path):
+            base_path = os.path.dirname(base_path)
+
+        try:
+            os.makedirs(base_path, exist_ok=True)
+        except OSError:
+            # Fall back to a safe location beside this module
+            fallback = os.path.dirname(os.path.abspath(__file__))
+            os.makedirs(fallback, exist_ok=True)
+            base_path = fallback
+
+        return base_path
 
     def _configure_analysis_engine(self):
         """Configure the analysis engine with loaded data."""
@@ -265,6 +343,14 @@ class SolverAnalysisHandler:
     def _handle_time_history_result(self, result, config):
         """Handle results from time history analysis."""
         # Update plot
+        plasticity_overlay = result.metadata.get('plasticity') if result.metadata else None
+        # Add diagnostics toggle request if available
+        try:
+            show_diag = bool(getattr(self.tab, 'plasticity_diag_checkbox', None) and self.tab.plasticity_diag_checkbox.isChecked())
+        except Exception:
+            show_diag = False
+        if plasticity_overlay is not None:
+            plasticity_overlay['show_diagnostics'] = show_diag
         self.tab.plot_single_node_tab.update_plot(
             result.time_values,
             result.stress_values,
@@ -274,8 +360,27 @@ class SolverAnalysisHandler:
             is_von_mises=config.calculate_von_mises,
             is_deformation=config.calculate_deformation,
             is_velocity=config.calculate_velocity,
-            is_acceleration=config.calculate_acceleration
+            is_acceleration=config.calculate_acceleration,
+            plasticity_overlay=plasticity_overlay
         )
+
+        # Console messaging for plasticity in time-history mode
+        if config.plasticity and config.plasticity.enabled:
+            if plasticity_overlay and 'plastic_strain' in plasticity_overlay:
+                method_name = config.plasticity.method.upper()
+                self.tab.console_textbox.append(
+                    f"Plasticity correction applied ({method_name}) for node {result.node_id}."
+                )
+                final_strain = plasticity_overlay['plastic_strain'][-1]
+                self.tab.console_textbox.append(
+                    f"Final cumulative plastic strain: {final_strain:.6e}"
+                )
+            else:
+                if (config.plasticity.method or '').lower() != 'ibg':
+                    self.tab.console_textbox.append(
+                        "Plasticity overlay is only available with IBG in Time History; "
+                        "Neuber/Glinka do not produce per-step corrected traces."
+                    )
 
         # Ensure the time history plot tab is visible
         plot_tab_index = self.tab.show_output_tab_widget.indexOf(self.tab.plot_single_node_tab)
@@ -302,38 +407,55 @@ class SolverAnalysisHandler:
                 'name': 'Von Mises (MPa)',
                 'data': solver.max_over_time_svm
             })
-            dataset_options.append(("SVM (MPa)", "max_von_mises_stress.dat"))
+            dataset_options.append(("SVM (MPa)", "max_von_mises_stress.csv"))
+
+        plasticity_ctx = getattr(solver, 'plasticity_context', None)
+        if plasticity_ctx and plasticity_ctx.method in {'neuber', 'glinka'}:
+            dataset_options.append(("Corrected SVM (MPa)", "corrected_von_mises.csv"))
+            dataset_options.append(("Plastic Strain", "plastic_strain.csv"))
+            corrected_trace = getattr(solver, 'max_over_time_svm_corrected', None)
+            if corrected_trace is not None:
+                corrected_copy = np.array(corrected_trace, dtype=float)
+                corrected_copy[~np.isfinite(corrected_copy)] = np.nan
+                if not np.all(np.isnan(corrected_copy)):
+                    max_traces.append({
+                        'name': 'Corrected Von Mises (MPa)',
+                        'data': corrected_copy
+                    })
+            self.tab.console_textbox.append(
+                f"Plasticity correction applied ({plasticity_ctx.method.title()})"
+            )
 
         if config.calculate_max_principal_stress and hasattr(solver, 'max_over_time_s1'):
             max_traces.append({
                 'name': 'S1 (MPa)',
                 'data': solver.max_over_time_s1
             })
-            dataset_options.append(("S1 (MPa)", "max_s1_stress.dat"))
+            dataset_options.append(("S1 (MPa)", "max_s1_stress.csv"))
 
         if config.calculate_min_principal_stress and hasattr(solver, 'min_over_time_s3'):
-            dataset_options.append(("S3 (MPa)", "min_s3_stress.dat"))
+            dataset_options.append(("S3 (MPa)", "min_s3_stress.csv"))
 
         if config.calculate_deformation and hasattr(solver, 'max_over_time_def'):
             max_traces.append({
                 'name': 'Deformation (mm)',
                 'data': solver.max_over_time_def
             })
-            dataset_options.append(("Deformation (mm)", "max_deformation.dat"))
+            dataset_options.append(("Deformation (mm)", "max_deformation.csv"))
 
         if config.calculate_velocity and hasattr(solver, 'max_over_time_vel'):
             max_traces.append({
                 'name': 'Velocity (mm/s)',
                 'data': solver.max_over_time_vel
             })
-            dataset_options.append(("Velocity (mm/s)", "max_velocity.dat"))
+            dataset_options.append(("Velocity (mm/s)", "max_velocity.csv"))
 
         if config.calculate_acceleration and hasattr(solver, 'max_over_time_acc'):
             max_traces.append({
                 'name': 'Acceleration (mm/s²)',
                 'data': solver.max_over_time_acc
             })
-            dataset_options.append(("Acceleration (mm/s²)", "max_acceleration.dat"))
+            dataset_options.append(("Acceleration (mm/s²)", "max_acceleration.csv"))
 
         # Show maximum over time tab if there are traces
         if max_traces:

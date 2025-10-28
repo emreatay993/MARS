@@ -6,6 +6,7 @@ import os
 from typing import Iterable, Optional, Tuple
 
 import numpy as np
+import pandas as pd
 
 from ui.handlers.display_base_handler import DisplayBaseHandler
 
@@ -69,12 +70,15 @@ class DisplayResultsHandler(DisplayBaseHandler):
                 return None
 
             file_path = os.path.join(base_dir, filename)
-            if not os.path.exists(file_path):
-                return None
+            if os.path.exists(file_path):
+                df = pd.read_csv(file_path)
+                candidate_cols = [col for col in df.columns if col.lower() != 'nodeid']
+                if not candidate_cols:
+                    return None
+                values = df[candidate_cols[0]].to_numpy(dtype=float, copy=True)
+                return values
 
-            dtype = getattr(solver, "RESULT_DTYPE", np.float64)
-            data = np.memmap(file_path, dtype=dtype, mode="r")
-            return np.asarray(data, dtype=float)
+            return None
         except Exception as exc:
             print(f"Failed to load solver result array from {filename}: {exc}")
             return None

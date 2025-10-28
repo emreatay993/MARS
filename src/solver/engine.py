@@ -3,6 +3,8 @@ import gc
 import math
 import os
 import time
+from dataclasses import dataclass
+from typing import Optional
 
 # ---- Third-Party Imports ----
 import psutil
@@ -21,6 +23,27 @@ from utils.constants import (
     TORCH_DTYPE,
     RESULT_DTYPE
 )
+from solver.plasticity_engine import (
+    MaterialDB,
+    apply_glinka_correction,
+    apply_ibg_correction,
+    apply_neuber_correction,
+    von_mises_from_voigt,
+)
+
+
+@dataclass
+class PlasticityRuntimeContext:
+    """Runtime parameters for applying plasticity corrections."""
+
+    method: str
+    material_db: MaterialDB
+    temperatures: Optional[np.ndarray] = None
+    max_iterations: int = 60
+    tolerance: float = 1e-10
+    poisson_ratio: float = 0.3
+    default_temperature: float = 22.0
+    use_plateau: bool = False
 
 class MSUPSmartSolverTransient(QObject):
     progress_signal = pyqtSignal(int)
@@ -41,6 +64,9 @@ class MSUPSmartSolverTransient(QObject):
         self.max_over_time_def = None
         self.max_over_time_vel = None
         self.max_over_time_acc = None
+
+        self.max_over_time_svm_corrected = None
+        self.plasticity_context: Optional[PlasticityRuntimeContext] = None
 
         self.fatigue_A = None
         self.fatigue_m = None
@@ -594,6 +620,14 @@ class MSUPSmartSolverTransient(QObject):
         actual_uy = torch.matmul(self.modal_deformations_uy[start_idx:end_idx, :], self.modal_coord)
         actual_uz = torch.matmul(self.modal_deformations_uz[start_idx:end_idx, :], self.modal_coord)
         return (actual_ux.cpu().numpy(), actual_uy.cpu().numpy(), actual_uz.cpu().numpy())
+
+    def set_plasticity_context(self, context: Optional[PlasticityRuntimeContext]):
+        """Assign the runtime plasticity context (``None`` disables plasticity)."""
+        self.plasticity_context = context
+        if context and context.method in {"neuber", "glinka"}:
+            self.max_over_time_svm_corrected = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+        else:
+            self.max_over_time_svm_corrected = None
     # endregion
 
     # region Internal Batch Processing Helpers
@@ -604,79 +638,127 @@ class MSUPSmartSolverTransient(QObject):
         Initializes a dictionary of calculation jobs, their memmap files, and result metadata.
         This centralizes the configuration for all possible calculations.
         """
+        os.makedirs(self.output_directory, exist_ok=True)
+
+        def _prepare_memmap(path, shape):
+            path = os.path.abspath(path)
+            # Ensure previous run artifacts are removed so Windows can recreate the file
+            try:
+                if os.path.exists(path):
+                    os.remove(path)
+            except OSError:
+                # If removal fails we'll still try to overwrite in memmap
+                pass
+            return np.memmap(path, dtype=self.RESULT_DTYPE, mode='w+', shape=shape)
+
         jobs = {}
 
         if calculate_von_mises:
             self.max_over_time_svm = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
             jobs['von_mises'] = {
-                'max_memmap': np.memmap(os.path.join(self.output_directory, 'max_von_mises_stress.dat'),
-                                        dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
-                'time_memmap': np.memmap(os.path.join(self.output_directory, 'time_of_max_von_mises_stress.dat'),
-                                         dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
+                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_von_mises_stress.dat'),
+                                              (self.modal_sx.shape[0],)),
+                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_von_mises_stress.dat'),
+                                               (self.modal_sx.shape[0],)),
                 'csv_header_val': "SVM_Max",
-                'csv_header_time': "Time_of_SVM_Max"
+                'csv_header_time': "Time_of_SVM_Max",
+                'csv_value_name': 'max_von_mises_stress.csv',
+                'csv_time_name': 'time_of_max_von_mises_stress.csv'
             }
 
         if calculate_max_principal_stress:
             self.max_over_time_s1 = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
             jobs['s1_max'] = {
-                'max_memmap': np.memmap(os.path.join(self.output_directory, 'max_s1_stress.dat'),
-                                        dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
-                'time_memmap': np.memmap(os.path.join(self.output_directory, 'time_of_max_s1_stress.dat'),
-                                         dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
+                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_s1_stress.dat'),
+                                              (self.modal_sx.shape[0],)),
+                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_s1_stress.dat'),
+                                               (self.modal_sx.shape[0],)),
                 'csv_header_val': "S1_Max",
-                'csv_header_time': "Time_of_S1_Max"
+                'csv_header_time': "Time_of_S1_Max",
+                'csv_value_name': 'max_s1_stress.csv',
+                'csv_time_name': 'time_of_max_s1_stress.csv'
             }
 
         if calculate_min_principal_stress:
             self.min_over_time_s3 = np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
             jobs['s3_min'] = {
-                'min_memmap': np.memmap(os.path.join(self.output_directory, 'min_s3_stress.dat'),
-                                        dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
-                'time_memmap': np.memmap(os.path.join(self.output_directory, 'time_of_min_s3_stress.dat'),
-                                         dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
+                'min_memmap': _prepare_memmap(os.path.join(self.output_directory, 'min_s3_stress.dat'),
+                                              (self.modal_sx.shape[0],)),
+                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_min_s3_stress.dat'),
+                                               (self.modal_sx.shape[0],)),
                 'csv_header_val': "S3_Min",
-                'csv_header_time': "Time_of_S3_Min"
+                'csv_header_time': "Time_of_S3_Min",
+                'csv_value_name': 'min_s3_stress.csv',
+                'csv_time_name': 'time_of_min_s3_stress.csv'
             }
 
         if calculate_deformation:
             self.max_over_time_def = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
             jobs['deformation'] = {
-                'max_memmap': np.memmap(os.path.join(self.output_directory, 'max_deformation.dat'),
-                                        dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
-                'time_memmap': np.memmap(os.path.join(self.output_directory, 'time_of_max_deformation.dat'),
-                                         dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
+                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_deformation.dat'),
+                                              (self.modal_sx.shape[0],)),
+                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_deformation.dat'),
+                                               (self.modal_sx.shape[0],)),
                 'csv_header_val': "DEF_Max",
-                'csv_header_time': "Time_of_DEF_Max"
+                'csv_header_time': "Time_of_DEF_Max",
+                'csv_value_name': 'max_deformation.csv',
+                'csv_time_name': 'time_of_max_deformation.csv'
             }
 
         if calculate_velocity:
             self.max_over_time_vel = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
             jobs['velocity'] = {
-                'max_memmap': np.memmap(os.path.join(self.output_directory, 'max_velocity.dat'),
-                                        dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
-                'time_memmap': np.memmap(os.path.join(self.output_directory, 'time_of_max_velocity.dat'),
-                                         dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
+                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_velocity.dat'),
+                                              (self.modal_sx.shape[0],)),
+                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_velocity.dat'),
+                                               (self.modal_sx.shape[0],)),
                 'csv_header_val': "VEL_Max",
-                'csv_header_time': "Time_of_VEL_Max"
+                'csv_header_time': "Time_of_VEL_Max",
+                'csv_value_name': 'max_velocity.csv',
+                'csv_time_name': 'time_of_max_velocity.csv'
             }
 
         if calculate_acceleration:
             self.max_over_time_acc = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
             jobs['acceleration'] = {
-                'max_memmap': np.memmap(os.path.join(self.output_directory, 'max_acceleration.dat'),
-                                        dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
-                'time_memmap': np.memmap(os.path.join(self.output_directory, 'time_of_max_acceleration.dat'),
-                                         dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
+                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_acceleration.dat'),
+                                              (self.modal_sx.shape[0],)),
+                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_acceleration.dat'),
+                                               (self.modal_sx.shape[0],)),
                 'csv_header_val': "ACC_Max",
-                'csv_header_time': "Time_of_ACC_Max"
+                'csv_header_time': "Time_of_ACC_Max",
+                'csv_value_name': 'max_acceleration.csv',
+                'csv_time_name': 'time_of_max_acceleration.csv'
             }
 
         if calculate_damage:
             jobs['damage'] = {
-                'damage_memmap': np.memmap(os.path.join(self.output_directory, 'potential_damage_results.dat'),
-                                           dtype=self.RESULT_DTYPE, mode='w+', shape=(self.modal_sx.shape[0],)),
-                'csv_header_val': "Potential Damage (Damage Index)"
+                'damage_memmap': _prepare_memmap(os.path.join(self.output_directory, 'potential_damage_results.dat'),
+                                                 (self.modal_sx.shape[0],)),
+                'csv_header_val': "Potential Damage (Damage Index)",
+                'csv_value_name': 'potential_damage_results.csv'
+            }
+
+        if self.plasticity_context and self.plasticity_context.method in {'neuber', 'glinka'}:
+            jobs['plasticity'] = {
+                'corrected_memmap': _prepare_memmap(
+                    os.path.join(self.output_directory, 'corrected_von_mises.dat'),
+                    (self.modal_sx.shape[0],)
+                ),
+                'time_memmap': _prepare_memmap(
+                    os.path.join(self.output_directory, 'time_of_max_corrected_von_mises.dat'),
+                    (self.modal_sx.shape[0],)
+                ),
+                'plastic_strain_memmap': _prepare_memmap(
+                    os.path.join(self.output_directory, 'plastic_strain.dat'),
+                    (self.modal_sx.shape[0],)
+                ),
+                'csv_header_val': "Corrected SVM (MPa)",
+                'csv_header_time': "Time_of_Corrected_SVM_Max",
+                'csv_header_strain': "Plastic_Strain",
+                'csv_value_name': 'corrected_von_mises.csv',
+                'csv_time_name': 'time_of_max_corrected_von_mises.csv',
+                'csv_strain_name': 'plastic_strain.csv'
             }
 
         return jobs
@@ -685,7 +767,7 @@ class MSUPSmartSolverTransient(QObject):
                               actual_syz, actual_sxz):
         """Processes all stress-derived calculations for a given chunk of nodes."""
         # --- Von Mises Stress Calculation ---
-        if 'von_mises' in jobs or 'damage' in jobs:
+        if 'von_mises' in jobs or 'damage' in jobs or 'plasticity' in jobs:
             start_time = time.time()
             sigma_vm = self.compute_von_mises_stress(actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz,
                                                      actual_sxz)
@@ -696,6 +778,11 @@ class MSUPSmartSolverTransient(QObject):
                 self.max_over_time_svm = np.maximum(self.max_over_time_svm, np.max(sigma_vm, axis=0))
                 job['max_memmap'][start_idx:end_idx] = np.max(sigma_vm, axis=1)
                 job['time_memmap'][start_idx:end_idx] = time_values[np.argmax(sigma_vm, axis=1)]
+
+            if 'plasticity' in jobs:
+                self._apply_plasticity_scalar_chunk(
+                    jobs['plasticity'], sigma_vm, time_values, start_idx, end_idx
+                )
 
         # --- Principal Stress Calculation ---
         if 's1_max' in jobs or 's3_min' in jobs:
@@ -770,6 +857,115 @@ class MSUPSmartSolverTransient(QObject):
     # endregion
 
     # region Main Methods
+
+    def _apply_plasticity_scalar_chunk(self, plasticity_job, sigma_vm, time_values, start_idx, end_idx):
+        """Apply Neuber/Glinka corrections for the current chunk."""
+        ctx = self.plasticity_context
+        if ctx is None:
+            return
+
+        node_count = sigma_vm.shape[0]
+        if ctx.temperatures is not None:
+            local_temperatures = ctx.temperatures[start_idx:end_idx]
+        else:
+            local_temperatures = np.full(node_count, ctx.default_temperature, dtype=np.float64)
+
+        peak_indices = np.argmax(sigma_vm, axis=1)
+        peak_values = sigma_vm[np.arange(node_count), peak_indices]
+
+        if ctx.method == 'neuber':
+            corrected, plastic_strain = apply_neuber_correction(
+                peak_values, local_temperatures, ctx.material_db,
+                tol=ctx.tolerance, max_iterations=ctx.max_iterations
+            )
+        else:
+            corrected, plastic_strain = apply_glinka_correction(
+                peak_values, local_temperatures, ctx.material_db,
+                tol=ctx.tolerance, max_iterations=ctx.max_iterations
+            )
+
+        plasticity_job['corrected_memmap'][start_idx:end_idx] = corrected
+        plasticity_job['time_memmap'][start_idx:end_idx] = time_values[peak_indices]
+        plasticity_job['plastic_strain_memmap'][start_idx:end_idx] = plastic_strain
+
+        if self.max_over_time_svm_corrected is not None:
+            np.maximum.at(self.max_over_time_svm_corrected, peak_indices, corrected)
+
+    def _apply_ibg_single_node(self, node_index: int, stress_components) -> Optional[dict]:
+        """Run IBG correction for a single node time history."""
+        ctx = self.plasticity_context
+        if ctx is None or ctx.method != 'ibg':
+            return None
+
+        sx, sy, sz, sxy, syz, sxz = [np.asarray(comp).reshape(-1) for comp in stress_components]
+        stress_history = np.column_stack((sx, sy, sz, sxy, syz, sxz))
+        if ctx.temperatures is not None:
+            node_temp = float(ctx.temperatures[node_index])
+        else:
+            node_temp = float(ctx.default_temperature)
+        temp_history = np.full(stress_history.shape[0], node_temp, dtype=np.float64)
+
+        corrected_tensor, plastic_strain = apply_ibg_correction(
+            stress_history, temp_history, ctx.material_db, use_plateau=ctx.use_plateau
+        )
+        corrected_vm = np.empty(stress_history.shape[0], dtype=np.float64)
+        for step in range(stress_history.shape[0]):
+            corrected_vm[step] = von_mises_from_voigt(corrected_tensor[step])
+
+        delta_eps = np.empty_like(plastic_strain)
+        if plastic_strain.size > 0:
+            delta_eps[0] = plastic_strain[0]
+            if plastic_strain.size > 1:
+                delta_eps[1:] = plastic_strain[1:] - plastic_strain[:-1]
+
+        return {
+            'corrected_vm': corrected_vm,
+            'plastic_strain': plastic_strain,
+            'delta_plastic_strain': delta_eps,
+            'corrected_tensor': corrected_tensor,
+            'temperature': temp_history,
+            'method': 'ibg',
+        }
+
+    def _apply_scalar_plasticity_single_node(self, node_index: int, sigma_vm_series: np.ndarray) -> Optional[dict]:
+        """Run Neuber/Glinka correction per time step for a node's VM history."""
+        ctx = self.plasticity_context
+        if ctx is None or ctx.method not in {'neuber', 'glinka'}:
+            return None
+
+        if sigma_vm_series is None or sigma_vm_series.size == 0:
+            return None
+
+        if ctx.temperatures is not None:
+            node_temp = float(ctx.temperatures[node_index])
+        else:
+            node_temp = float(ctx.default_temperature)
+        temp_series = np.full(sigma_vm_series.shape[0], node_temp, dtype=np.float64)
+
+        if ctx.method == 'neuber':
+            corrected, plastic_strain = apply_neuber_correction(sigma_vm_series, temp_series, ctx.material_db,
+                                                                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                                                                use_plateau=ctx.use_plateau)
+        else:
+            corrected, plastic_strain = apply_glinka_correction(sigma_vm_series, temp_series, ctx.material_db,
+                                                                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                                                                use_plateau=ctx.use_plateau)
+
+        delta_eps = np.empty_like(plastic_strain)
+        if plastic_strain.size > 0:
+            delta_eps[0] = plastic_strain[0]
+            if plastic_strain.size > 1:
+                delta_eps[1:] = plastic_strain[1:] - plastic_strain[:-1]
+
+        return {
+            'corrected_vm': corrected,
+            'plastic_strain': plastic_strain,
+            'delta_plastic_strain': delta_eps,
+            'elastic_vm': sigma_vm_series,
+            'temperature': temp_series,
+            'method': ctx.method,
+        }
+
     def process_results_in_batch(self,
                                  time_values,
                                  df_node_ids,
@@ -881,6 +1077,8 @@ class MSUPSmartSolverTransient(QObject):
         - stress_values: Array of stress values (either Von Mises or Max/Min Principal Stress).
         """
 
+        metadata = {}
+
         is_stress_calc_needed = calculate_von_mises or calculate_max_principal_stress or calculate_min_principal_stress
         if is_stress_calc_needed:
             # region Compute normal stresses for the selected node
@@ -893,8 +1091,22 @@ class MSUPSmartSolverTransient(QObject):
                 sigma_vm = self.compute_von_mises_stress(actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz,
                                                          actual_sxz)
                 print(f"Von Mises Stress calculated for Node {selected_node_id}\n")
+                plasticity_info = None
+                # If IBG is selected, compute IBG overlay; otherwise allow per-step Neuber/Glinka overlay
+                if self.plasticity_context is not None:
+                    if self.plasticity_context.method == 'ibg':
+                        plasticity_info = self._apply_ibg_single_node(
+                            selected_node_idx,
+                            (actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz)
+                        )
+                    elif self.plasticity_context.method in {'neuber', 'glinka'}:
+                        sigma_vm_series = sigma_vm[0, :]
+                        plasticity_info = self._apply_scalar_plasticity_single_node(selected_node_idx, sigma_vm_series)
+                if plasticity_info is not None:
+                    plasticity_info['elastic_vm'] = sigma_vm[0, :]
+                    metadata['plasticity'] = plasticity_info
 
-                return np.arange(sigma_vm.shape[1]), sigma_vm[0, :]  # time_points, stress_values
+                return np.arange(sigma_vm.shape[1]), sigma_vm[0, :], metadata  # time_points, stress_values
 
             if calculate_max_principal_stress or calculate_min_principal_stress:
                 s1, _, s3 = self.compute_principal_stresses(actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz,
@@ -902,11 +1114,11 @@ class MSUPSmartSolverTransient(QObject):
                 if calculate_max_principal_stress:
                     # Compute Principal Stresses for the selected node
                     print(f"Max Principal Stresses calculated for Node {selected_node_id}\n")
-                    return np.arange(s1.shape[1]), s1[0, :]  # time_indices, stress_values
+                    return np.arange(s1.shape[1]), s1[0, :], metadata  # time_indices, stress_values
 
                 if calculate_min_principal_stress:
                     print(f"Min Principal Stresses calculated for Node {selected_node_id}\n")
-                    return np.arange(s3.shape[1]), s3[0, :]  # S₃ min history
+                    return np.arange(s3.shape[1]), s3[0, :], metadata  # S₃ min history
 
         if calculate_deformation or calculate_velocity or calculate_acceleration:
             if self.modal_deformations_ux is None:
@@ -923,7 +1135,7 @@ class MSUPSmartSolverTransient(QObject):
                         'Z': uz[0, :]
                     }
                     print(f"Deformation calculated for Node {selected_node_id}\n")
-                    return np.arange(def_mag.shape[1]), deformation_data
+                    return np.arange(def_mag.shape[1]), deformation_data, metadata
 
                 if calculate_velocity or calculate_acceleration:
                     vel_mag, acc_mag, vel_x, vel_y, vel_z, acc_x, acc_y, acc_z = \
@@ -936,7 +1148,7 @@ class MSUPSmartSolverTransient(QObject):
                             'Z': vel_z[0, :]
                         }
                         print(f"Velocity calculated for Node {selected_node_id}\n")
-                        return np.arange(vel_mag.shape[1]), velocity_data
+                        return np.arange(vel_mag.shape[1]), velocity_data, metadata
                     if calculate_acceleration:
                         acceleration_data = {
                             'Magnitude': acc_mag[0, :],
@@ -945,22 +1157,20 @@ class MSUPSmartSolverTransient(QObject):
                             'Z': acc_z[0, :]
                         }
                         print(f"Acceleration calculated for Node {selected_node_id}\n")
-                        return np.arange(acc_mag.shape[1]), acceleration_data
+                        return np.arange(acc_mag.shape[1]), acceleration_data, metadata
 
         # Return none if no output is requested
-        return None, None
+        return None, None, metadata
     # endregion
 
     # region File I/O Utilities
-    def _convert_dat_to_csv(self, node_ids, node_coords, dat_filename, csv_filename, header):
-        """Converts a .dat file to a .csv file with NodeID and, if available, X,Y,Z coordinates."""
+    def _write_csv(self, node_ids, node_coords, values, csv_filename, header):
+        """Write a CSV file with NodeID and optional coordinate columns."""
         try:
-            # Read the memmap file as a NumPy array
-            data = np.memmap(dat_filename, dtype=RESULT_DTYPE, mode='r', shape=(len(node_ids),))
             # Create a DataFrame for NodeID and the computed stress data
             df_out = pd.DataFrame({
                 'NodeID': node_ids,
-                header: data
+                header: values
             })
             # If node_coords is available, include the X, Y, Z coordinates
             if node_coords is not None:
@@ -968,44 +1178,132 @@ class MSUPSmartSolverTransient(QObject):
                 df_out = pd.concat([df_out, df_coords], axis=1)
             # Save to CSV
             df_out.to_csv(csv_filename, index=False)
-            print(f"Successfully converted {dat_filename} to {csv_filename}.")
+
+            print(f"Successfully written {csv_filename}.")
         except Exception as e:
-            print(f"Error converting {dat_filename} to {csv_filename}: {e}")
+            print(f"Error writing {csv_filename}: {e}")
 
     def _finalize_and_convert_results(self, jobs, df_node_ids, node_coords):
         """Flushes all memmap files and converts them to CSV."""
+
+        def _finalize_memmap(memmap_obj):
+            if memmap_obj is None:
+                return None, None
+            try:
+                memmap_obj.flush()
+            except Exception:
+                pass
+            data_copy = np.asarray(memmap_obj, dtype=float).copy()
+            path = getattr(memmap_obj, 'filename', None)
+            return data_copy, path
+
         for job_name, job_data in jobs.items():
+            if job_name == 'plasticity':
+                corrected_values, corrected_path = _finalize_memmap(job_data.get('corrected_memmap'))
+                time_values, time_path = _finalize_memmap(job_data.get('time_memmap'))
+                strain_values, strain_path = _finalize_memmap(job_data.get('plastic_strain_memmap'))
+
+                if corrected_values is not None:
+                    self._write_csv(
+                        df_node_ids, node_coords,
+                        corrected_values,
+                        os.path.join(self.output_directory, job_data['csv_value_name']),
+                        job_data['csv_header_val']
+                    )
+                if time_values is not None:
+                    self._write_csv(
+                        df_node_ids, node_coords,
+                        time_values,
+                        os.path.join(self.output_directory, job_data['csv_time_name']),
+                        job_data['csv_header_time']
+                    )
+                if strain_values is not None:
+                    self._write_csv(
+                        df_node_ids, node_coords,
+                        strain_values,
+                        os.path.join(self.output_directory, job_data['csv_strain_name']),
+                        job_data['csv_header_strain']
+                    )
+
+                for p in (corrected_path, time_path, strain_path):
+                    if p:
+                        try:
+                            os.remove(p)
+                        except OSError:
+                            pass
+
+                job_data['corrected_memmap'] = None
+                job_data['time_memmap'] = None
+                job_data['plastic_strain_memmap'] = None
+                continue
+
             if job_name == 'damage':
-                memmap_file = job_data['damage_memmap']
-                memmap_file.flush()
-                self._convert_dat_to_csv(df_node_ids, node_coords,
-                                         memmap_file.filename,
-                                         memmap_file.filename.replace('.dat', '.csv'),
-                                         job_data['csv_header_val'])
-            elif job_name == 's3_min':
-                min_memmap = job_data['min_memmap']
-                time_memmap = job_data['time_memmap']
-                min_memmap.flush()
-                time_memmap.flush()
-                self._convert_dat_to_csv(df_node_ids, node_coords,
-                                         min_memmap.filename,
-                                         min_memmap.filename.replace('.dat', '.csv'),
-                                         job_data['csv_header_val'])
-                self._convert_dat_to_csv(df_node_ids, node_coords,
-                                         time_memmap.filename,
-                                         time_memmap.filename.replace('.dat', '.csv'),
-                                         job_data['csv_header_time'])
-            else:  # Handles max value cases (s1, svm, def, vel, acc)
-                max_memmap = job_data['max_memmap']
-                time_memmap = job_data['time_memmap']
-                max_memmap.flush()
-                time_memmap.flush()
-                self._convert_dat_to_csv(df_node_ids, node_coords,
-                                         max_memmap.filename,
-                                         max_memmap.filename.replace('.dat', '.csv'),
-                                         job_data['csv_header_val'])
-                self._convert_dat_to_csv(df_node_ids, node_coords,
-                                         time_memmap.filename,
-                                         time_memmap.filename.replace('.dat', '.csv'),
-                                         job_data['csv_header_time'])
+                damage_values, damage_path = _finalize_memmap(job_data.get('damage_memmap'))
+                if damage_values is not None:
+                    self._write_csv(
+                        df_node_ids, node_coords,
+                        damage_values,
+                        os.path.join(self.output_directory, job_data['csv_value_name']),
+                        job_data['csv_header_val']
+                    )
+                if damage_path:
+                    try:
+                        os.remove(damage_path)
+                    except OSError:
+                        pass
+                job_data['damage_memmap'] = None
+                continue
+
+            if job_name == 's3_min':
+                min_values, min_path = _finalize_memmap(job_data.get('min_memmap'))
+                time_values, time_path = _finalize_memmap(job_data.get('time_memmap'))
+                if min_values is not None:
+                    self._write_csv(
+                        df_node_ids, node_coords,
+                        min_values,
+                        os.path.join(self.output_directory, job_data['csv_value_name']),
+                        job_data['csv_header_val']
+                    )
+                if time_values is not None:
+                    self._write_csv(
+                        df_node_ids, node_coords,
+                        time_values,
+                        os.path.join(self.output_directory, job_data['csv_time_name']),
+                        job_data['csv_header_time']
+                    )
+                for p in (min_path, time_path):
+                    if p:
+                        try:
+                            os.remove(p)
+                        except OSError:
+                            pass
+                job_data['min_memmap'] = None
+                job_data['time_memmap'] = None
+                continue
+
+            # Handles max value cases (s1, svm, def, vel, acc)
+            max_values, max_path = _finalize_memmap(job_data.get('max_memmap'))
+            time_values, time_path = _finalize_memmap(job_data.get('time_memmap'))
+            if max_values is not None:
+                self._write_csv(
+                    df_node_ids, node_coords,
+                    max_values,
+                    os.path.join(self.output_directory, job_data['csv_value_name']),
+                    job_data['csv_header_val']
+                )
+            if time_values is not None:
+                self._write_csv(
+                    df_node_ids, node_coords,
+                    time_values,
+                    os.path.join(self.output_directory, job_data['csv_time_name']),
+                    job_data['csv_header_time']
+                )
+            for p in (max_path, time_path):
+                if p:
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
+            job_data['max_memmap'] = None
+            job_data['time_memmap'] = None
     # endregion

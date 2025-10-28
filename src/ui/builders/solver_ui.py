@@ -320,11 +320,27 @@ class SolverTabUIBuilder:
         warning_label.setStyleSheet("color: #b36b00; font-style: italic;")
         warning_label.setVisible(False)
 
+        # Diagnostics toggle: optional overlay of Δεp and εp in time-history
+        diag_checkbox = QCheckBox('Show plasticity diagnostics (Δεp, εp)')
+        diag_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        diag_checkbox.setToolTip('Plot per-step Δεp and cumulative εp on a secondary axis in Time History mode.')
+
+        # Extrapolation mode
+        extrap_row = QHBoxLayout()
+        extrap_label = QLabel("Extrapolation:")
+        extrap_combo = QComboBox()
+        extrap_combo.addItems(["Linear", "Plateau"])  # default Linear
+        extrap_row.addWidget(extrap_label)
+        extrap_row.addWidget(extrap_combo)
+        extrap_row.addStretch()
+
         layout.addWidget(material_profile_button)
         layout.addLayout(file_row)
         layout.addLayout(method_row)
         layout.addLayout(iteration_row)
         layout.addWidget(warning_label)
+        layout.addWidget(diag_checkbox)
+        layout.addLayout(extrap_row)
         plasticity_options_group.setLayout(layout)
         plasticity_options_group.setVisible(False)
 
@@ -336,6 +352,8 @@ class SolverTabUIBuilder:
         self.components['plasticity_max_iter_input'] = max_iter_input
         self.components['plasticity_tolerance_input'] = tolerance_input
         self.components['plasticity_warning_label'] = warning_label
+        self.components['plasticity_diag_checkbox'] = diag_checkbox
+        self.components['plasticity_extrapolation_combo'] = extrap_combo
 
         return plasticity_options_group
     

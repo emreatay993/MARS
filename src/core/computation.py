@@ -8,10 +8,16 @@ instantiation, configuration, and result processing.
 import numpy as np
 from typing import Optional, Tuple
 
-from solver.engine import MSUPSmartSolverTransient
+from solver.engine import MSUPSmartSolverTransient, PlasticityRuntimeContext
+from core.plasticity import (
+    PlasticityDataError,
+    build_material_db_from_profile,
+    extract_poisson_ratio,
+    map_temperature_field_to_nodes,
+)
 from core.data_models import (
     ModalData, ModalStressData, DeformationData, SteadyStateData,
-    SolverConfig, AnalysisResult
+    SolverConfig, AnalysisResult, PlasticityConfig
 )
 from utils.node_utils import get_node_index_from_id
 
@@ -31,6 +37,7 @@ class AnalysisEngine:
         self.stress_data = None
         self.deformation_data = None
         self.steady_state_data = None
+        self.plasticity_config: Optional[PlasticityConfig] = None
     
     def configure_data(self,
                       modal_data: ModalData,
@@ -124,8 +131,14 @@ class AnalysisEngine:
         if config.calculate_damage:
             solver.fatigue_A = config.fatigue_A
             solver.fatigue_m = config.fatigue_m
-        
+
+        # Assign solver before configuring plasticity so helper can access it
         self.solver = solver
+        self.plasticity_config = config.plasticity
+        if self.plasticity_config and self.plasticity_config.is_active:
+            self._configure_plasticity_context(self.plasticity_config)
+        else:
+            solver.set_plasticity_context(None)
         return solver
     
     def run_batch_analysis(self, config: SolverConfig) -> None:
@@ -173,7 +186,7 @@ class AnalysisEngine:
             raise ValueError(f"Node ID {node_id} not found.")
         
         # Run single-node processing
-        time_indices, stress_values = self.solver.process_results_for_a_single_node(
+        time_indices, stress_values, metadata = self.solver.process_results_for_a_single_node(
             node_idx,
             node_id,
             self.stress_data.node_ids,
@@ -204,7 +217,8 @@ class AnalysisEngine:
             time_values=time_indices,
             stress_values=stress_values,
             result_type=result_type,
-            node_id=node_id
+            node_id=node_id,
+            metadata=metadata or {}
         )
     
     def compute_time_point_stresses(self, time_index: int) -> Tuple[np.ndarray, ...]:
@@ -222,7 +236,56 @@ class AnalysisEngine:
         
         # Compute stresses for all nodes at the given time point
         return self.solver.compute_normal_stresses(0, self.stress_data.num_nodes)
-    
+
     def reset(self):
         """Reset the engine state."""
         self.solver = None
+        self.plasticity_config = None
+
+    # ------------------------------------------------------------------
+    # Plasticity helpers
+    # ------------------------------------------------------------------
+
+    def _configure_plasticity_context(self, config: PlasticityConfig) -> None:
+        """Prepare and attach the plasticity runtime context to the solver."""
+        if self.solver is None or self.stress_data is None:
+            return
+
+        try:
+            material_db = build_material_db_from_profile(config.material_profile)
+            poisson = config.poisson_ratio or extract_poisson_ratio(config.material_profile)
+
+            temperatures = None
+            if config.method in {"neuber", "glinka"}:
+                if config.temperature_field is not None:
+                    temperatures = map_temperature_field_to_nodes(
+                        config.temperature_field,
+                        self.stress_data.node_ids,
+                        column_name=config.temperature_column,
+                        default_temperature=config.default_temperature,
+                    )
+                elif config.default_temperature is not None:
+                    temperatures = np.full(
+                        self.stress_data.num_nodes,
+                        float(config.default_temperature),
+                        dtype=np.float64
+                    )
+                else:
+                    raise PlasticityDataError(
+                        "Temperature information is required for Neuber/Glinka plasticity corrections."
+                    )
+
+            context = PlasticityRuntimeContext(
+                method=config.method,
+                material_db=material_db,
+                temperatures=temperatures,
+                max_iterations=config.max_iterations,
+                tolerance=config.tolerance,
+                poisson_ratio=float(poisson),
+                default_temperature=float(config.default_temperature or 22.0),
+                use_plateau=(config.extrapolation_mode or 'linear').lower() == 'plateau',
+            )
+            self.solver.set_plasticity_context(context)
+        except PlasticityDataError as exc:
+            self.solver.set_plasticity_context(None)
+            raise ValueError(str(exc)) from exc

@@ -170,6 +170,26 @@ class MaterialProfileData:
 
 
 @dataclass
+class PlasticityConfig:
+    """Configuration for plasticity corrections."""
+
+    enabled: bool = False
+    method: str = "neuber"  # allowable: "neuber", "glinka", "ibg"
+    max_iterations: int = 60
+    tolerance: float = 1e-10
+    material_profile: Optional[MaterialProfileData] = None
+    temperature_field: Optional[TemperatureFieldData] = None
+    default_temperature: Optional[float] = None
+    temperature_column: Optional[str] = None
+    poisson_ratio: Optional[float] = None
+    extrapolation_mode: str = "linear"  # "linear" or "plateau"
+
+    @property
+    def is_active(self) -> bool:
+        return self.enabled and (self.material_profile is not None)
+
+
+@dataclass
 class SolverConfig:
     """
     Configuration settings for the solver.
@@ -204,6 +224,7 @@ class SolverConfig:
     selected_node_id: Optional[int] = None
     include_steady_state: bool = False
     output_directory: Optional[str] = None
+    plasticity: Optional[PlasticityConfig] = None
 
 
 @dataclass

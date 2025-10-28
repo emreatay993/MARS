@@ -156,6 +156,8 @@ class SolverTab(QWidget):
         self.plasticity_max_iter_input = self.components['plasticity_max_iter_input']
         self.plasticity_tolerance_input = self.components['plasticity_tolerance_input']
         self.plasticity_warning_label = self.components['plasticity_warning_label']
+        self.plasticity_diag_checkbox = self.components.get('plasticity_diag_checkbox')
+        self.plasticity_extrapolation_combo = self.components.get('plasticity_extrapolation_combo')
         
         # Console and plots
         self.console_textbox = self.components['console_textbox']

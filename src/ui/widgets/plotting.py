@@ -182,7 +182,8 @@ class MatplotlibWidget(QWidget):
                    is_von_mises=False,
                    is_deformation=False,
                    is_velocity=False,
-                   is_acceleration=False):
+                   is_acceleration=False,
+                   plasticity_overlay=None):
         """Update the plot and table with new data."""
         # Reset state
         self.figure.clear()
@@ -237,17 +238,18 @@ class MatplotlibWidget(QWidget):
         
         # Handle array data (single component)
         else:
-            self.model.setHorizontalHeaderLabels(["Time [s]", "Value"])
-            for xi, yi in zip(x, y):
-                self.model.appendRow([QStandardItem(f"{xi:.5f}"), QStandardItem(f"{yi:.5f}")])
-            
             if is_min_principal_stress:
-                self.ax.plot(x, y, label=r'$\sigma_3$', color='green')
+                self.model.setHorizontalHeaderLabels(["Time [s]", r'$\sigma_3$ [MPa]'])
+                for xi, yi in zip(x, y):
+                    self.model.appendRow([QStandardItem(f"{xi:.5f}"), QStandardItem(f"{yi:.5f}")])
+
+                line, = self.ax.plot(x, y, label=r'$\sigma_3$', color='green')
+                self.plotted_lines.append(line)
                 self.ax.set_title(f"Min Principal Stress (Node ID: {node_id})" if node_id else "Min Principal Stress", fontsize=8)
                 self.ax.set_ylabel(r'$\sigma_3$ [MPa]', fontsize=8)
                 min_y_value = np.min(y)
                 time_of_min = x[np.argmin(y)]
-                textstr = f'Min Magnitude: {min_y_value:.4f}\\nTime of Min: {time_of_min:.5f} s'
+                textstr = f'Min Magnitude: {min_y_value:.4f}\nTime of Min: {time_of_min:.5f} s'
             else:
                 title, label, color = "Stress", "Value", 'blue'
                 if is_max_principal_stress:
@@ -255,14 +257,63 @@ class MatplotlibWidget(QWidget):
                 elif is_von_mises:
                     title, label, color = "Von Mises Stress", r'$\sigma_{VM}$', 'blue'
                 
-                self.ax.plot(x, y, label=label, color=color)
+                headers = ["Time [s]", f"{label} [MPa]"]
+                if plasticity_overlay and 'corrected_vm' in plasticity_overlay:
+                    corrected = np.asarray(plasticity_overlay['corrected_vm'], dtype=float)
+                    strain = np.asarray(plasticity_overlay.get('plastic_strain', []), dtype=float)
+
+                    elastic_line, = self.ax.plot(x, y, label=f"{label} (Elastic)", color=color)
+                    corrected_line, = self.ax.plot(x, corrected, label=f"{label} (Corrected)", color='orange')
+                    self.plotted_lines.extend([elastic_line, corrected_line])
+
+                    headers.append("Corrected [MPa]")
+                    if strain.size == corrected.size:
+                        headers.append("Plastic Strain")
+
+                    self.model.setHorizontalHeaderLabels(headers)
+                    for idx, xi in enumerate(x):
+                        row_items = [
+                            QStandardItem(f"{xi:.5f}"),
+                            QStandardItem(f"{y[idx]:.5f}"),
+                            QStandardItem(f"{corrected[idx]:.5f}")
+                        ]
+                        if strain.size == corrected.size:
+                            row_items.append(QStandardItem(f"{strain[idx]:.6e}"))
+                        self.model.appendRow(row_items)
+
+                    if corrected.size > 0 and np.any(np.isfinite(corrected)):
+                        max_corr = np.nanmax(corrected)
+                        time_of_max = x[np.nanargmax(corrected)]
+                        textstr = f'Max Corrected: {max_corr:.4f}\nTime of Max: {time_of_max:.5f} s'
+                else:
+                    line, = self.ax.plot(x, y, label=label, color=color)
+                    self.plotted_lines.append(line)
+                    self.model.setHorizontalHeaderLabels(headers)
+                    for xi, yi in zip(x, y):
+                        self.model.appendRow([QStandardItem(f"{xi:.5f}"), QStandardItem(f"{yi:.5f}")])
+
+                    if len(y) > 0 and np.any(y):
+                        max_y_value = np.max(y)
+                        time_of_max = x[np.argmax(y)]
+                        textstr = f'Max Magnitude: {max_y_value:.4f}\nTime of Max: {time_of_max:.5f} s'
+
                 self.ax.set_title(f"{title} (Node ID: {node_id})" if node_id else title, fontsize=8)
                 self.ax.set_ylabel(f'{label} [MPa]', fontsize=8)
-                
-                if len(y) > 0 and np.any(y):
-                    max_y_value = np.max(y)
-                    time_of_max = x[np.argmax(y)]
-                    textstr = f'Max Magnitude: {max_y_value:.4f}\nTime of Max: {time_of_max:.5f} s'
+
+                # Optional diagnostics overlay (Δεp, εp) on secondary axis
+                if plasticity_overlay and plasticity_overlay.get('show_diagnostics'):
+                    eps = np.asarray(plasticity_overlay.get('plastic_strain', []), dtype=float)
+                    deps = np.asarray(plasticity_overlay.get('delta_plastic_strain', []), dtype=float)
+                    if eps.size == len(x) or deps.size == len(x):
+                        ax2 = self.ax.twinx()
+                        ax2.grid(False)
+                        if eps.size == len(x):
+                            line_eps, = ax2.plot(x, eps, label='εp (cumulative)', color='purple', linestyle='--', linewidth=1)
+                            self.plotted_lines.append(line_eps)
+                        if deps.size == len(x):
+                            line_deps, = ax2.plot(x, deps, label='Δεp (per step)', color='brown', linestyle=':', linewidth=1)
+                            self.plotted_lines.append(line_deps)
+                        ax2.set_ylabel('Plastic Strain', fontsize=8)
         
         # Apply common styling
         self.ax.set_xlabel('Time [seconds]', fontsize=8)
