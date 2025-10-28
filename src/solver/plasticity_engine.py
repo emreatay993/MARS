@@ -517,17 +517,22 @@ def ibg_solver_tensor_core(sig_hist: np.ndarray,   # (N,6)
         # curve-aware Δεp
         dep = _delta_epsp_curve_aware_core(max(dUe, 0.0), Tk, eps_prev, TEMP, SIG, EPSP, use_plateau)
 
+        # Update total plastic strain *before* scaling
+        eps_prev += dep
+        epsp[k]   = eps_prev
+        # --------------------------------------------------------
+
         # 2-pass scale iteration to couple denominator with corrected stress
         scale = 1.0
         for _ in range(2):
             vm_corr = scale * vm_el[k]
-            # Use current flow stress at accumulated plastic strain for coupling
+            # Use current flow stress at *updated* accumulated plastic strain
             flow    = sigma_of_T_epsp_njit(Tk, eps_prev, TEMP, SIG, EPSP, use_plateau)
             denom   = max(vm_corr, flow, 1e-9)
-            scale   = 1.0 / (1.0 + Ek * dep / denom)
+            # Use *total* plastic strain (eps_prev) in scaling formula
+            scale   = 1.0 / (1.0 + Ek * eps_prev / denom)
+            # ------------------------------------------------------------------
 
-        eps_prev += dep
-        epsp[k]   = eps_prev
         # with deviatoric-only update:
         m = (sig_hist[k, 0] + sig_hist[k, 1] + sig_hist[k, 2]) / 3.0           # (1) mean stress
         hyd = np.array([m, m, m, 0.0, 0.0, 0.0], dtype=np.float64)      # (2) hydrostatic part

@@ -4,17 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Refactored Material Profile Dialog for Modularity.">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Trying the first implementation of plasticity correction engine (still very buggy and messy).">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/ARCHITECTURE.md" beforeDir="false" afterPath="$PROJECT_DIR$/ARCHITECTURE.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/computation.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/computation.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/data_models.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/data_models.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/solver/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/solver/engine.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/handlers/display_results_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/display_results_handler.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/solver_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/solver_tab.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/widgets/plotting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/plotting.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/solver/plasticity_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/solver/plasticity_engine.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -56,7 +48,7 @@
     "ModuleVcsDetector.initialDetectionPerformed": "true",
     "Python.display_ui.executor": "Run",
     "Python.engine.executor": "Run",
-    "Python.main.executor": "Debug",
+    "Python.main.executor": "Run",
     "Python.main_app.executor": "Run",
     "Python.solver_tab.executor": "Run",
     "Python.ui_state_handler.executor": "Debug",
@@ -288,7 +280,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761588340365</updated>
     </task>
-    <option name="localTasksCounter" value="23" />
+    <task id="LOCAL-00023" summary="- Trying the first implementation of plasticity correction engine (still very buggy and messy).">
+      <option name="closed" value="true" />
+      <created>1761611461756</created>
+      <option name="number" value="00023" />
+      <option name="presentableId" value="LOCAL-00023" />
+      <option name="project" value="LOCAL" />
+      <updated>1761611461756</updated>
+    </task>
+    <option name="localTasksCounter" value="24" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -311,16 +311,12 @@
     <MESSAGE value="- Added the skeleton code for Plasticity Correction feature (v1)." />
     <MESSAGE value="- Implemented the Material Profile Dialog for Plasticity Correction feature (Beta)." />
     <MESSAGE value="- Refactored Material Profile Dialog for Modularity." />
-    <option name="LAST_COMMIT_MESSAGE" value="- Refactored Material Profile Dialog for Modularity." />
+    <MESSAGE value="- Trying the first implementation of plasticity correction engine (still very buggy and messy)." />
+    <option name="LAST_COMMIT_MESSAGE" value="- Trying the first implementation of plasticity correction engine (still very buggy and messy)." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
       <breakpoints>
-        <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
-          <url>file://$PROJECT_DIR$/src/solver/engine.py</url>
-          <line>1308</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/solver/plasticity_engine.py</url>
           <line>316</line>
@@ -353,12 +349,12 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/solver/plasticity_engine.py</url>
-          <line>588</line>
+          <line>593</line>
           <option name="timeStamp" value="14" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/ui/widgets/plotting.py</url>
-          <line>265</line>
+          <line>316</line>
           <option name="timeStamp" value="16" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
@@ -368,7 +364,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/solver/plasticity_engine.py</url>
-          <line>524</line>
+          <line>529</line>
           <option name="timeStamp" value="18" />
         </line-breakpoint>
       </breakpoints>
