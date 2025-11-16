@@ -4,6 +4,25 @@ This document captures the detailed plan for integrating the new plasticity corr
 
 ---
 
+## IMPORTANT: IBG Algorithm Status
+
+**⚠️ The Incremental Buczynski-Glinka (IBG) algorithm is currently DISABLED in this version of MARS.**
+
+The IBG option appears in the plasticity correction method dropdown but is greyed out and unselectable. While the implementation exists in the codebase (`src/solver/plasticity_engine.py`), it has been deactivated at the UI level pending:
+
+- Further algorithmic development and refinement
+- Comprehensive verification against known test cases
+- Validation with experimental data
+- Improvements to robustness and numerical accuracy
+
+**Future Work**: The IBG algorithm will be re-enabled in a future release once the above requirements are satisfied. Users should currently rely on the Neuber or Glinka methods for plasticity corrections, which are fully functional and validated.
+
+For implementation details, see:
+- UI deactivation: `src/ui/builders/solver_ui.py` (line ~300)
+- Core algorithm: `src/solver/plasticity_engine.py` (`ibg_solver_tensor_core`, `apply_ibg_correction`)
+
+---
+
 ## 1. Goals
 - Support Neuber, Glinka, and Incremental Buczynski–Glinka (IBG) corrections using the new solver logic located in `code_to_implement/plasticity_correction_engine.py`.
 - Allow plasticity correction to participate in both batch computations and single-node (time history) solves without breaking current functionality.

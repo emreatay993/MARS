@@ -4,12 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Modified IBG algorithm.">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Corrected node number bug (duplicate nodes).">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/core/plasticity.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/core/plasticity.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/file_io/loaders.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/file_io/loaders.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/solver/plasticity_engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/solver/plasticity_engine.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/handlers/log_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/log_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/PLASTICITY_INTEGRATION_PLAN.md" beforeDir="false" afterPath="$PROJECT_DIR$/PLASTICITY_INTEGRATION_PLAN.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/application_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/application_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -46,23 +45,23 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent"><![CDATA[{
-  "keyToString": {
-    "ModuleVcsDetector.initialDetectionPerformed": "true",
-    "Python.display_ui.executor": "Run",
-    "Python.engine.executor": "Run",
-    "Python.main.executor": "Run",
-    "Python.main_app.executor": "Run",
-    "Python.solver_tab.executor": "Run",
-    "Python.ui_state_handler.executor": "Debug",
-    "RunOnceActivity.ShowReadmeOnStart": "true",
-    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
-    "RunOnceActivity.git.unshallow": "true",
-    "git-widget-placeholder": "master",
-    "ignore.virus.scanning.warn.message": "true",
-    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
+  <component name="PropertiesComponent">{
+  &quot;keyToString&quot;: {
+    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
+    &quot;Python.display_ui.executor&quot;: &quot;Run&quot;,
+    &quot;Python.engine.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main.executor&quot;: &quot;Run&quot;,
+    &quot;Python.main_app.executor&quot;: &quot;Run&quot;,
+    &quot;Python.solver_tab.executor&quot;: &quot;Run&quot;,
+    &quot;Python.ui_state_handler.executor&quot;: &quot;Debug&quot;,
+    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
+    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
+    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
+    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
+    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
   }
-}]]></component>
+}</component>
   <component name="RunManager">
     <configuration name="solver_tab" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="MARS_" />
@@ -299,7 +298,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761654827560</updated>
     </task>
-    <option name="localTasksCounter" value="25" />
+    <task id="LOCAL-00025" summary="- Corrected node number bug (duplicate nodes).">
+      <option name="closed" value="true" />
+      <created>1761684409066</created>
+      <option name="number" value="00025" />
+      <option name="presentableId" value="LOCAL-00025" />
+      <option name="project" value="LOCAL" />
+      <updated>1761684409066</updated>
+    </task>
+    <option name="localTasksCounter" value="26" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -324,7 +331,8 @@
     <MESSAGE value="- Refactored Material Profile Dialog for Modularity." />
     <MESSAGE value="- Trying the first implementation of plasticity correction engine (still very buggy and messy)." />
     <MESSAGE value="- Modified IBG algorithm." />
-    <option name="LAST_COMMIT_MESSAGE" value="- Modified IBG algorithm." />
+    <MESSAGE value="- Corrected node number bug (duplicate nodes)." />
+    <option name="LAST_COMMIT_MESSAGE" value="- Corrected node number bug (duplicate nodes)." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

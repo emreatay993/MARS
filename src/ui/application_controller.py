@@ -8,7 +8,7 @@ for solver and display functionality.
 from PyQt5.QtCore import Qt, QDir, pyqtSlot
 from PyQt5.QtGui import QPalette, QColor
 from PyQt5.QtWidgets import (
-    QAction, QDockWidget, QFileSystemModel,
+    QAction, QDialog, QDockWidget, QFileSystemModel,
     QMainWindow, QMenuBar, QMessageBox, QTabWidget, QTreeView
 )
 
@@ -195,7 +195,7 @@ class ApplicationController(QMainWindow):
     def open_advanced_settings(self, checked=False):
         """Open advanced settings dialog."""
         dialog = AdvancedSettingsDialog(self)
-        if dialog.exec_() == AdvancedSettingsDialog.Accepted:
+        if dialog.exec_() == QDialog.Accepted:
             settings = dialog.get_settings()
             self.settings_handler.apply_advanced_settings(settings)
             QMessageBox.information(

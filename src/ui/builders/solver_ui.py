@@ -289,6 +289,17 @@ class SolverTabUIBuilder:
         method_label = QLabel("Select Method:")
         method_combo = QComboBox()
         method_combo.addItems(["Neuber", "Glinka", "Incremental Buczynski-Glinka (IBG)"])
+        
+        # TODO: IBG (Incremental Buczynski-Glinka) algorithm is currently disabled
+        # in this version of MARS. It requires further development, verification,
+        # and validation before being made available to users. The implementation
+        # exists in the codebase but is deactivated at the UI level. Future work
+        # will focus on improving the algorithm's robustness and accuracy.
+        # See PLASTICITY_INTEGRATION_PLAN.md for details.
+        model = method_combo.model()
+        ibg_item = model.item(2)  # IBG is at index 2
+        ibg_item.setEnabled(False)  # Disable and grey out the IBG option
+        
         method_row.addWidget(method_label)
         method_row.addWidget(method_combo)
         method_row.addStretch()
