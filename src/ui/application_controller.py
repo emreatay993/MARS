@@ -5,8 +5,10 @@ Provides the main application window with menu bar, navigator, and tab widgets
 for solver and display functionality.
 """
 
+from pathlib import Path
+
 from PyQt5.QtCore import Qt, QDir, pyqtSlot
-from PyQt5.QtGui import QPalette, QColor
+from PyQt5.QtGui import QPalette, QColor, QIcon
 from PyQt5.QtWidgets import (
     QAction, QDialog, QDockWidget, QFileSystemModel,
     QMainWindow, QMenuBar, QMessageBox, QTabWidget, QTreeView
@@ -44,14 +46,34 @@ class ApplicationController(QMainWindow):
         self.plotting_handler = PlottingHandler()
 
         # Window configuration
-        self.setWindowTitle('MARS: Modal Analysis Response Solver - v1.0.0 (Modular)')
+        self.setWindowTitle('MARS: Modal Analysis Response Solver - v0.95')
         self.setGeometry(40, 40, 600, 800)
+        
+        # Set application icon
+        self._set_window_icon()
         
         # Create UI components (order matters - navigator before menu bar)
         self._create_tabs()
         self._create_navigator()
         self._create_menu_bar()
         self._connect_signals()
+    
+    def _set_window_icon(self):
+        """Set the application window icon."""
+        # Get path to icon file (relative to project root)
+        icon_dir = Path(__file__).parent.parent.parent / "resources" / "icons"
+        
+        # Try .ico first (best for Windows), then fall back to PNG
+        icon_paths = [
+            icon_dir / "mars_icon.ico",
+            icon_dir / "mars_128.png",
+            icon_dir / "mars_64.png"
+        ]
+        
+        for icon_path in icon_paths:
+            if icon_path.exists():
+                self.setWindowIcon(QIcon(str(icon_path)))
+                break
     
     def _create_menu_bar(self):
         """Create the menu bar with File, View, and Settings menus."""

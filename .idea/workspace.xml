@@ -4,11 +4,20 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Corrected node number bug (duplicate nodes).">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Advanced Settings Dialog&#10;- Disable IBG correction algorithm for the current version of the code.&#10;- Updated docs accordingly.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/PLASTICITY_INTEGRATION_PLAN.md" beforeDir="false" afterPath="$PROJECT_DIR$/PLASTICITY_INTEGRATION_PLAN.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ARCHITECTURE.md" beforeDir="false" afterPath="$PROJECT_DIR$/ARCHITECTURE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/COMPLETE_100_PERCENT.md" beforeDir="false" afterPath="$PROJECT_DIR$/COMPLETE_100_PERCENT.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/DELIVERY_MANIFEST.md" beforeDir="false" afterPath="$PROJECT_DIR$/DELIVERY_MANIFEST.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FILE_INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/FILE_INDEX.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FINAL_DELIVERY_COMPLETE.md" beforeDir="false" afterPath="$PROJECT_DIR$/FINAL_DELIVERY_COMPLETE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FINAL_DELIVERY_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/FINAL_DELIVERY_SUMMARY.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/START_HERE.md" beforeDir="false" afterPath="$PROJECT_DIR$/START_HERE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/TRANSFORMATION_SUMMARY.md" beforeDir="false" afterPath="$PROJECT_DIR$/TRANSFORMATION_SUMMARY.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" afterPath="$PROJECT_DIR$/requirements.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/ui/application_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/application_controller.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/MANUAL_TESTING_CHECKLIST.md" beforeDir="false" afterPath="$PROJECT_DIR$/tests/MANUAL_TESTING_CHECKLIST.md" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -306,7 +315,15 @@
       <option name="project" value="LOCAL" />
       <updated>1761684409066</updated>
     </task>
-    <option name="localTasksCounter" value="26" />
+    <task id="LOCAL-00026" summary="- Advanced Settings Dialog&#10;- Disable IBG correction algorithm for the current version of the code.&#10;- Updated docs accordingly.">
+      <option name="closed" value="true" />
+      <created>1763320630410</created>
+      <option name="number" value="00026" />
+      <option name="presentableId" value="LOCAL-00026" />
+      <option name="project" value="LOCAL" />
+      <updated>1763320630410</updated>
+    </task>
+    <option name="localTasksCounter" value="27" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
@@ -332,7 +349,8 @@
     <MESSAGE value="- Trying the first implementation of plasticity correction engine (still very buggy and messy)." />
     <MESSAGE value="- Modified IBG algorithm." />
     <MESSAGE value="- Corrected node number bug (duplicate nodes)." />
-    <option name="LAST_COMMIT_MESSAGE" value="- Corrected node number bug (duplicate nodes)." />
+    <MESSAGE value="- Advanced Settings Dialog&#10;- Disable IBG correction algorithm for the current version of the code.&#10;- Updated docs accordingly." />
+    <option name="LAST_COMMIT_MESSAGE" value="- Advanced Settings Dialog&#10;- Disable IBG correction algorithm for the current version of the code.&#10;- Updated docs accordingly." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>

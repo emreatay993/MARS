@@ -1,5 +1,7 @@
 # 🚀 START HERE - MARS: Modal Analysis Response Solver
 
+**Version:** 0.95
+
 **Welcome to MARS, the modular successor to the legacy MSUP Smart Solver.**
 
 This document is your starting point for understanding and using the refactored application.
@@ -205,10 +207,11 @@ A: See ARCHITECTURE.md "Extension Points" section
 |--------|-------|
 | **Source modules** | 36 Python modules (45 files including `__init__.py`) |
 | **UI handler modules** | 15 dedicated handlers across solver and display flows |
-| **Lines of Python code** | ≈9,100 across non-`__init__` modules |
+| **Lines of Python code** | ≈9,200 across non-`__init__` modules |
 | **Unit test modules** | 4 (`test_data_models`, `test_file_utils`, `test_node_utils`, `test_validators`) |
 | **Manual tests** | ~250 checklist items in `tests/MANUAL_TESTING_CHECKLIST.md` |
 | **Documentation files** | 20+ living guides (README, architecture, migration, status snapshots) |
+| **Application resources** | Custom Mars-themed icon system in `resources/icons/` |
 | **Bug fixes retained** | Hover annotations, scalar bar refresh, time-history plotting, animation stability |
 | **Feature parity** | 100% workflow parity with the legacy MSUP Smart Solver |
 

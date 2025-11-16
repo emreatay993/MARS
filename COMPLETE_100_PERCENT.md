@@ -1,8 +1,11 @@
 # 🎉 MARS Modernisation — 100% Complete
 
+> **Historical Document**: This document captures the initial 100% complete refactor milestone.  
+> **Current Version**: 0.95 (see `RELEASE_NOTES_v0.95.md` for latest updates and IBG status)
+
 **Status:** ✅ All planned refactor work delivered  
 **Focus:** Legacy MSUP Smart Solver → MARS (Modal Analysis Response Solver)  
-**Quality:** Production-ready, all known issues resolved
+**Quality:** Production-ready, all known issues resolved (Initial Release)
 
 ---
 
@@ -25,9 +28,9 @@
 
 ---
 
-## Quick Verification Checklist
+## Quick Verification Checklist (Historical - v1.0.0 Milestone)
 
-- [x] Launch with `python src/main.py`; window title shows **“MARS: Modal Analysis Response Solver - v1.0.0 (Modular)”**.
+- [x] Launch with `python src/main.py`; window title shows **"MARS: Modal Analysis Response Solver - v1.0.0 (Modular)"** (now v0.95 without "Modular").
 - [x] Load modal coordinate, stress, deformation, and steady-state files; run batch and time-history solves.
 - [x] Trigger animation precomputation, playback, and export.
 - [x] Use hotspot finder, selection box, point picking, and go-to-node actions in the display tab.

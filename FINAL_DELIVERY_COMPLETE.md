@@ -1,8 +1,11 @@
 # 🎊 Final Delivery — MARS: Modal Analysis Response Solver
 
+> **Historical Document**: This document captures the initial modular refactor delivery.  
+> **Current Version**: 0.95 (see `RELEASE_NOTES_v0.95.md` for latest updates)
+
 **Status:** ✅ Delivered  
-**Version:** v1.0.0 (Modular Architecture)  
-**Date:** Current session
+**Version:** v1.0.0 (Modular Architecture) - Historical Milestone  
+**Date:** October 2025
 
 ---
 

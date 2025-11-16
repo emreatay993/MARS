@@ -16,7 +16,7 @@ This document captures how the legacy MSUP Smart Solver codebase evolved into th
 ## Current Snapshot (After Refactor)
 
 - Modular source tree under `src/` with dedicated packages for UI, core computation, file I/O, solver bindings, and utilities.
-- Central window controller in `src/ui/application_controller.py` (~210 lines) mediates tabs, menus, and navigation.
+- Central window controller in `src/ui/application_controller.py` (~217 lines) mediates tabs, menus, navigation, and icon loading.
 - Solver workflow encapsulated in `src/ui/solver_tab.py` (~517 lines) with dedicated handlers, builders, and data models.
 - Visualization responsibilities distributed across `src/ui/display_tab.py` (602-line view), six display handler modules (~2,100 lines), and `src/core/visualization.py` (332 lines) for mesh, animation, and hotspot management.
 - Reusable UI builders (`src/ui/builders/*.py`) provide deterministic widget layouts.
@@ -35,11 +35,11 @@ legacy/original_baseline_20251012/        src/
 ├── solver_engine.py (1023 lines)         │   ├── computation.py (228 lines)
 └── fea_utilities.py (41 lines)           │   └── visualization.py (332 lines)
                                           ├── ui/
-                                          │   ├── application_controller.py (~210 lines)
+                                          │   ├── application_controller.py (~217 lines)
                                           │   ├── solver_tab.py (~517 lines)
                                           │   ├── display_tab.py (602 lines)
                                           │   ├── handlers/ (analysis, display_*, navigator, plotting, settings)
-                                          │   ├── builders/ (`solver_ui.py` 379 lines, `display_ui.py` 304 lines)
+                                          │   ├── builders/ (`solver_ui.py` 468 lines, `display_ui.py` 304 lines)
                                           │   ├── widgets/ (console, dialogs, plotting)
                                           │   └── styles/ (`style_constants.py` 418 lines)
                                           ├── file_io/ (validators, loaders, exporters)

@@ -130,7 +130,7 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: Construct complex UI layouts
 
 **Modules**:
-1. `solver_ui.py` - SolverTabUIBuilder (379 lines)
+1. `solver_ui.py` - SolverTabUIBuilder (468 lines - includes plasticity options with IBG disabled)
    - Builds: file inputs, outputs, fatigue params, node selection
    - 8 builder methods, each <25 lines
 
@@ -958,14 +958,15 @@ config = SolverConfig(
 
 ---
 
-**Document Version**: 1.1  
-**Last Updated**: October 2025 (Post Bug Fixes)  
+**Document Version**: 1.2  
+**Last Updated**: November 2025 (v0.95 Release)  
 **Status**: ✅ Complete and Current
 
-**Recent Updates**:
-- Updated file size statistics (display_tab.py: 1804 lines, solver_tab.py: 1728 lines)
-- Marked completed features in Future Enhancements
-- Added note about UI module size exceptions
-- Documented 9 bug fixes in architecture overview
-- Updated plotting.py statistics (546 lines)
+**Recent Updates (v0.95)**:
+- Added application icon system in `resources/icons/`
+- Updated application_controller.py to 217 lines (added icon loading)
+- Updated solver_ui.py to 468 lines (added IBG disable logic)
+- Documented IBG plasticity algorithm status (disabled pending validation)
+- Updated version numbering to v0.95
+- Overall codebase: ~9,200 lines (was ~9,100)
 

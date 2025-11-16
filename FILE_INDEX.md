@@ -2,12 +2,13 @@
 
 This reference captures every Python module that ships with the refactored MARS codebase. Line counts were refreshed from the current `src/` tree to help you find the right file quickly.
 
-## Snapshot (Current)
+## Snapshot (Current - v0.95)
 
 - 36 Python modules (45 Python files including package initialisers) live under `src/`
-- ~9,100 lines of implementation code (9,093 excluding `__init__.py` markers)
-- UI layer spans 24 Python files (~6,546 lines) split across controller/tab views, builders, 15 handler modules, widgets, and centralised style constants
+- ~9,200 lines of implementation code (9,189 excluding `__init__.py` markers)
+- UI layer spans 24 Python files (~6,642 lines) split across controller/tab views, builders, 15 handler modules, widgets, and centralised style constants
 - Automated tests: 4 unit-test modules plus 3 living guides in `tests/`
+- Application resources: Icon system in `resources/icons/` with SVG source, PNG/ICO outputs, and generation script
 
 ---
 
@@ -43,23 +44,23 @@ This reference captures every Python module that ships with the refactored MARS 
 
 ---
 
-## UI Shell (4 files – 1,325 lines)
+## UI Shell (4 files – 1,332 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/application_controller.py` | 210 | Main window controller managing menus, navigator dock, and cross-tab signal wiring |
+| `src/ui/application_controller.py` | 217 | Main window controller managing menus, navigator dock, cross-tab signal wiring, and application icon loading |
 | `src/ui/display_tab.py` | 602 | Display tab view constructing widgets and delegating to specialised handlers |
 | `src/ui/solver_tab.py` | 517 | Solver tab view handling UI wiring, signal emission, and console integration |
 | `src/ui/__init__.py` | 2 | Package docstring / marker |
 
 ---
 
-## UI Builders (3 files – 685 lines)
+## UI Builders (3 files – 774 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
 | `src/ui/builders/display_ui.py` | 304 | Builder for display tab layouts (file controls, PyVista panel, time-point, animation groups) |
-| `src/ui/builders/solver_ui.py` | 379 | Builder for solver tab layouts (file inputs, output toggles, fatigue params, plots, progress) |
+| `src/ui/builders/solver_ui.py` | 468 | Builder for solver tab layouts (file inputs, output toggles, fatigue params, plots, progress, plasticity options with IBG disabled) |
 | `src/ui/builders/__init__.py` | 2 | Package initialiser |
 
 ---

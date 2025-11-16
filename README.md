@@ -1,4 +1,6 @@
-# MARS: Modal Analysis Response Solver (Modular Architecture)
+# MARS: Modal Analysis Response Solver
+
+**Version:** 0.95
 
 MARS is the modern, modular evolution of the legacy MSUP Smart Solver for transient structural analysis using the Mode Superposition (MSUP) method.
 
@@ -14,6 +16,12 @@ This codebase refactors the original MSUP Smart Solver into a clean, maintainabl
 - ✅ **Targeted Testing**: Unit coverage for validators, data models, and utilities plus structured manual GUI checklists
 - ✅ **Documentation Refresh**: README, architecture, migration, and testing guides align with the current package layout
 - ✅ **Bug Fixes Retained**: Hover annotations, scalar bar refresh, time-history plotting, and related stability fixes remain in place
+
+### Important Notes (v0.95)
+
+- 🔴 **IBG Plasticity Algorithm**: The Incremental Buczynski-Glinka (IBG) plasticity correction method is currently **disabled** in this version. While the implementation exists in the codebase, it has been deactivated pending further development, verification, and validation. Users should rely on Neuber or Glinka methods for plasticity corrections. See `PLASTICITY_INTEGRATION_PLAN.md` for details.
+
+- 🎨 **Application Icon**: MARS now features a custom Mars-themed icon located in `resources/icons/`. The icon is automatically applied to the application window on startup.
 
 ## 📁 Project Structure
 
@@ -65,6 +73,8 @@ src/
 └── main.py                # Application entry point
 
 tests/                     # Unit tests
+resources/                 # Application resources
+│   └── icons/                - Application icons (SVG, PNG, ICO)
 legacy/                    # Original code (preserved for reference)
 ```
 

@@ -1,6 +1,6 @@
 # MARS: Manual GUI Testing Checklist
 
-**Version**: 2.0.0 (Modular)  
+**Version**: 0.95  
 **Date**: ___________  
 **Tester**: ___________
 
@@ -21,7 +21,8 @@
 
 - [ ] Application starts without errors
 - [ ] Main window appears maximized
-- [ ] Title shows "MARS: Modal Analysis Response Solver - v1.0.0 (Modular)"
+- [ ] Title shows "MARS: Modal Analysis Response Solver - v0.95"
+- [ ] Window shows Mars-themed icon in title bar and taskbar
 - [ ] Two tabs visible: "Main Window" and "Display"
 - [ ] Navigator dock visible on left
 - [ ] Menu bar shows: File, View, Settings
