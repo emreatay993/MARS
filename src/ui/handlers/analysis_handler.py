@@ -962,9 +962,21 @@ class SolverAnalysisHandler:
                     scale_factor = params.get('scale_factor', 1.0)
 
                     original_coords_reshaped = self.tab.stress_data.node_coords[:, :, np.newaxis]
-                    ux_anim -= ux_anim[:, [0]]
-                    uy_anim -= uy_anim[:, [0]]
-                    uz_anim -= uz_anim[:, [0]]
+                    
+                    # Apply zero-referencing based on user preference
+                    # By default (show_absolute_deformation=False), animations show relative motion
+                    # from the start frame, making the first frame appear at "zero" deformation.
+                    # When show_absolute_deformation=True, animations preserve absolute deformation
+                    # values from the undeformed geometry.
+                    show_absolute = params.get('show_absolute_deformation', False)
+                    if not show_absolute:
+                        # Zero-reference to first animation frame (relative motion mode)
+                        ux_anim -= ux_anim[:, [0]]
+                        uy_anim -= uy_anim[:, [0]]
+                        uz_anim -= uz_anim[:, [0]]
+                        print("Animation mode: Relative deformations (zero-referenced to start frame)")
+                    else:
+                        print("Animation mode: Absolute deformations (from undeformed geometry)")
 
                     displacements_stacked = np.stack([ux_anim, uy_anim, uz_anim], axis=1)
                     precomputed_coords = original_coords_reshaped + scale_factor * displacements_stacked

@@ -38,6 +38,60 @@ MARS now features a professional, custom-designed icon with a Mars-themed aesthe
 
 ---
 
+### ✨ Animation Deformation Display Mode
+
+**New Feature: User-Selectable Absolute vs. Relative Deformation Visualization**
+
+Added a new checkbox control that gives users explicit control over how deformations are displayed during animation playback.
+
+**Feature Overview:**
+- **Location:** Display Tab → Visualization Controls → "Show Absolute Deformations" checkbox
+- **Default:** Unchecked (Relative Mode) - maintains backward compatibility
+- **Purpose:** Choose between two visualization modes for animation playback
+
+**Two Visualization Modes:**
+
+1. **Relative Mode (Unchecked - Default)**
+   - Animation shows motion relative to the first animation frame
+   - First frame appears at "zero" position (undeformed appearance)
+   - Ideal for visualizing motion patterns, dynamics, and vibration modes
+   - Better clarity when absolute offsets would obscure small motions
+
+2. **Absolute Mode (Checked)**
+   - Animation shows true deformation from undeformed geometry
+   - Preserves absolute displacement magnitudes
+   - Shows accumulated deformation history
+   - Better for quantitative analysis and understanding total displacement
+
+**Important Clarifications:**
+- ✅ **Only affects mesh coordinate visualization** during animation playback
+- ✅ **Does NOT affect** velocity or acceleration scalar field values
+- ✅ **Does NOT affect** initial condition (IC) export (uses separate time point calculations)
+- ✅ **Does NOT affect** any stress or physics calculations
+- ✅ Default behavior matches previous version for backward compatibility
+
+**User Interface:**
+- Descriptive tooltip explains both modes and their use cases
+- Checkbox becomes visible when animation controls are enabled
+- Console output confirms which mode is active during animation precomputation
+
+**Use Cases:**
+- **Relative Mode:** Motion visualization, presentations, dynamics studies
+- **Absolute Mode:** Quantitative analysis, steady-state + transient cases, validation
+
+**Files Modified:**
+- `src/ui/builders/display_ui.py` - Added checkbox UI component
+- `src/ui/handlers/display_animation_handler.py` - Parameter collection
+- `src/ui/handlers/analysis_handler.py` - Conditional zero-referencing logic
+- `src/ui/display_tab.py` - Component reference setup
+
+**Documentation Added:**
+- `ANIMATION_DEFORMATION_MODE_IMPLEMENTATION.md` - Technical details
+- `USER_GUIDE_ANIMATION_MODES.md` - User guide with examples
+- `IMPLEMENTATION_SUMMARY.md` - Change summary
+
+---
+
 ## Changes
 
 ### 🔧 User Interface
@@ -69,6 +123,31 @@ The **Incremental Buczynski-Glinka (IBG)** plasticity correction method has been
 - `src/ui/builders/solver_ui.py`: IBG combobox item disabled with `setEnabled(False)`
 - Added TODO comment explaining the rationale and future work
 - Updated `PLASTICITY_INTEGRATION_PLAN.md` with prominent status notice
+
+---
+
+### 🐛 Bug Fixes
+
+**Fixed: Deformation Controls Visibility**
+
+**Issue:** Deformation scale factor and "Show Absolute Deformations" checkbox were visible even when modal deformations were not loaded, causing UI clutter and user confusion.
+
+**Fix:** 
+- Deformation controls now properly hide when modal deformations are not loaded
+- Controls only appear when deformation data is actually available
+- Provides clear visual feedback about feature availability
+
+**Impact:**
+- Cleaner UI when deformations not loaded
+- Reduced confusion about non-functional controls
+- Better alignment with user expectations
+
+**Files Modified:**
+- `src/ui/display_tab.py` - Enhanced `_update_deformation_controls()` method to manage visibility
+- `src/ui/display_tab.py` - Removed unconditional visibility in `on_time_values_ready()`
+
+**Documentation:**
+- `BUGFIX_DEFORMATION_CONTROLS_VISIBILITY.md` - Complete fix documentation with testing checklist
 
 ---
 

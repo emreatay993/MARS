@@ -71,6 +71,9 @@
   - [ ] Actual Data Time Steps (with "Every nth" throttling)
 - [ ] Set Interval (ms) for playback speed
 - [ ] Set Start and End time range
+- [ ] Choose Deformation Display Mode:
+  - [ ] Relative Mode (motion from start frame) - default
+  - [ ] Absolute Mode (true deformation from undeformed geometry)
 - [ ] Play / Pause / Stop controls
 - [ ] Save as Video (MP4) or GIF
 

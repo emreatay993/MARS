@@ -209,12 +209,26 @@
 - [ ] Min cannot exceed Max
 - [ ] Max cannot be less than Min
 
-### Deformation Scale
-- [ ] Field disabled if no deformation data
-- [ ] Shows "0" when disabled
-- [ ] Enabled when deformation loaded
+### Deformation Controls Visibility (Bug Fix v0.95)
+**Test: Controls hidden when deformations NOT loaded**
+- [ ] Load ONLY coordinates and stresses (no deformations)
+- [ ] Switch to Display Tab
+- [ ] Verify "Deformation Scale Factor" label is HIDDEN
+- [ ] Verify scale factor input field is HIDDEN
+- [ ] Verify "Show Absolute Deformations" checkbox is HIDDEN
+
+**Test: Controls visible when deformations loaded**
+- [ ] Load coordinates, stresses, AND deformations
+- [ ] Switch to Display Tab
+- [ ] Verify "Deformation Scale Factor" label is VISIBLE
+- [ ] Verify scale factor input field is VISIBLE and ENABLED
+- [ ] Verify "Show Absolute Deformations" checkbox is VISIBLE
+
+### Deformation Scale Functionality
 - [ ] Can enter scale factor
 - [ ] Invalid input reverts to last valid value
+- [ ] Scale factor applies to animation
+- [ ] Default value shown when first enabled
 
 ---
 

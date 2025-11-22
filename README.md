@@ -13,6 +13,7 @@ This codebase refactors the original MSUP Smart Solver into a clean, maintainabl
 - ✅ **Modular Architecture**: 36 focused modules (45 Python files including package initialisers) organised into `core/`, `file_io/`, `solver/`, `ui/`, and `utils/`
 - ✅ **UI Separation**: Solver and display workflows delegate heavy lifting to 15 handler modules, builders, and specialised PyVista managers
 - ✅ **Legacy Solver Preserved**: `MSUPSmartSolverTransient` remains in `src/solver/engine.py` (1011 lines) with a lightweight orchestration layer
+- ✅ **Enhanced Animation Controls**: User-selectable absolute vs. relative deformation visualization modes for clearer motion analysis
 - ✅ **Targeted Testing**: Unit coverage for validators, data models, and utilities plus structured manual GUI checklists
 - ✅ **Documentation Refresh**: README, architecture, migration, and testing guides align with the current package layout
 - ✅ **Bug Fixes Retained**: Hover annotations, scalar bar refresh, time-history plotting, and related stability fixes remain in place
@@ -22,6 +23,8 @@ This codebase refactors the original MSUP Smart Solver into a clean, maintainabl
 - 🔴 **IBG Plasticity Algorithm**: The Incremental Buczynski-Glinka (IBG) plasticity correction method is currently **disabled** in this version. While the implementation exists in the codebase, it has been deactivated pending further development, verification, and validation. Users should rely on Neuber or Glinka methods for plasticity corrections. See `PLASTICITY_INTEGRATION_PLAN.md` for details.
 
 - 🎨 **Application Icon**: MARS now features a custom Mars-themed icon located in `resources/icons/`. The icon is automatically applied to the application window on startup.
+
+- ✨ **Animation Deformation Modes**: Display tab now includes a "Show Absolute Deformations" checkbox (Visualization Controls) that lets users choose between relative motion visualization (default) and absolute deformation display. See `USER_GUIDE_ANIMATION_MODES.md` for detailed usage guidance.
 
 ## 📁 Project Structure
 

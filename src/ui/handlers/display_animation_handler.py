@@ -138,6 +138,7 @@ class DisplayAnimationHandler(DisplayBaseHandler):
             if main_tab.skip_modes_combo.currentText() else 0,
             "scale_factor": float(tab.deformation_scale_edit.text()),
             "anim_indices": anim_indices,
+            "show_absolute_deformation": tab.absolute_deformation_checkbox.isChecked(),
         }
 
         QApplication.setOverrideCursor(Qt.WaitCursor)

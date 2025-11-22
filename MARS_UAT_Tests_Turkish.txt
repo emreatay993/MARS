@@ -510,3 +510,63 @@ BEKLENEN SONUÇLAR:
 
 GEREKSINIM NO: N/A
 
+================================================================================
+
+TEST NO: 13
+
+BAŞLIK: Animation Deformation Görüntüleme Modları - Relative ve Absolute
+
+AÇIKLAMA: "Show Absolute Deformations" checkbox'ının, animasyon oynatma sırasında deformed mesh koordinatlarının nasıl görüntüleneceğini doğru şekilde kontrol ettiğini doğrular; kullanıcıların relative hareket görselleştirmesi ile absolute deformation görüntülemesi arasında seçim yapmasına olanak tanır
+
+GİRDİLER:
+
+- Modal coordinates, stresses ve deformations başarıyla yüklenmiştir
+- Solver, Von-Mises stress çıktısıyla tamamlanmıştır
+- Animasyon zaman aralığı: 0.3s ila 0.8s (farkı göstermek için kasıtlı olarak t=0'da başlatılmamıştır)
+- Deformation scale factor: 2.0
+- Custom time step modu, 0.05s aralıklarla
+
+TEST ADIMLARI:
+
+1. Von-Mises stress ve Include Deformations etkin olarak solver çalıştırmasını tamamlayın
+2. Solver tamamlandıktan sonra Display sekmesine geçin
+3. Visualization Controls grubunda "Show Absolute Deformations" checkbox'ını bulun
+4. Checkbox'ın görünür olduğunu ve varsayılan olarak işaretlenmediğini (Relative Mode) doğrulayın
+5. Animasyon zaman aralığını ayarlayın: Start = 0.3 saniye, End = 0.8 saniye
+6. Time step modunu "Custom Time Step" olarak ayarlayın, step = 0.05 saniye
+7. Deformation scale factor'ü 2.0 olarak ayarlayın
+8. Relative Mode'da animasyonu başlatmak için Play'e tıklayın (checkbox işaretlenmemiş)
+9. İlk animasyon frame'inin undeformed mesh pozisyonunda göründüğünü gözlemleyin ve not edin
+10. Birkaç frame gözlemledikten sonra animasyonu durdurun
+11. "Show Absolute Deformations" checkbox'ını İŞARETLEYİN (Absolute Mode'a geçin)
+12. Absolute Mode'da animasyonu tekrar başlatmak için Play'e tıklayın
+13. İlk animasyon frame'inin deformed pozisyonu gösterdiğini gözlemleyin ve not edin
+14. Gösterilen stress skaler değerlerinin her iki modda da özdeş olduğunu doğrulayın
+15. Her iki modda da time text overlay'inin doğru şekilde güncellendiğini doğrulayın
+16. Animasyonu durdurun
+
+BEKLENEN SONUÇLAR:
+
+Relative Mode (Checkbox İşaretlenmemiş - Varsayılan):
+- İlk görünür olduğunda checkbox işaretlenmemiştir
+- İlk animasyon frame'i (t=0.3s), orijinal undeformed mesh pozisyonunda görünür
+- Animasyon, t=0.3s başlangıç zamanına göre hareketi gösterir
+- Hareket kalıplarını ve dinamikleri görselleştirmek için kullanışlıdır
+- Salınımları ve vibrasyonları vurgulamaya yardımcı olur
+
+Absolute Mode (Checkbox İşaretli):
+- İlk animasyon frame'i (t=0.3s), gerçek deformed pozisyonu gösterir
+- t=0'dan t=0.3s'ye kadar birikmiş önceden var olan herhangi bir deformation içerir
+- Animasyon boyunca absolute yer değiştirme değerlerini gösterir
+- Kantitatif analiz için daha iyidir
+
+Her İki Mod:
+- Stress skaler değerleri (Von-Mises) özdeştir - checkbox'tan etkilenmez
+- Time text overlay, mevcut zamanı doğru şekilde gösterir
+- Animasyon oynatma her iki modda da düzgündür
+- Deformation scale factor (2.0) her iki modda da eşit şekilde uygulanır
+- Pause, Play ve Stop kontrolleri özdeş şekilde çalışır
+- Checkbox üzerindeki tooltip her iki modu da açıkça açıklar
+
+GEREKSINIM NO: N/A
+

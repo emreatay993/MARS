@@ -16,6 +16,7 @@ Your legacy MSUP Smart Solver codebase now lives on as **MARS: Modal Analysis Re
 - ✅ **Handler-driven UI**: 15 handler modules manage solver orchestration, state, PyVista rendering, animation, and exports
 - ✅ **Legacy solver preserved**: Numerical core remains in `src/solver/engine.py` (1011 lines) for parity with the original engine
 - ✅ **All features preserved**: Identical workflows for batch solves, time history, visualisation, hotspots, and exports
+- ✅ **Enhanced animation controls**: User-selectable absolute vs. relative deformation modes for better visualization
 - ✅ **Documentation & testing refreshed**: README, architecture, migration, and testing guides align with the latest `src/` layout
 - ✅ **Bug fixes retained**: Hover annotation, scalar bar refresh, and time-history stability improvements remain in place
 - ✅ **Comprehensive Documentation**: User manuals, theory manual, feature checklists, and UAT tests

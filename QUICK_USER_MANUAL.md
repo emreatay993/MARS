@@ -63,6 +63,7 @@ Changes apply on next SOLVE. Use defaults unless experiencing performance issues
 - **Load Mesh/Results**: Use *Open File* button or double-click exports in Navigator.
 - **Adjust Scalars**: Use min/max spin boxes.
 - **Deformation Scale**: Enter factor and press <kbd>Enter</kbd>; keep values modest (≤5) to avoid distortion.
+- **Deformation Display Mode**: Check "Show Absolute Deformations" for true displacement values; leave unchecked (default) for relative motion from animation start
 - **Animation**: 
   - *Custom Time Step*: Uniform intervals
   - *Actual Data Time Steps*: Use "Every nth" to throttle frames (e.g., "Every 10th")

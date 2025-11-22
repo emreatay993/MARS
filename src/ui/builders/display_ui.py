@@ -8,7 +8,7 @@ display tab, organizing the 3D visualization controls.
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QDoubleValidator, QFont
 from PyQt5.QtWidgets import (
-    QComboBox, QDoubleSpinBox, QGroupBox, QHBoxLayout, QLabel,
+    QCheckBox, QComboBox, QDoubleSpinBox, QGroupBox, QHBoxLayout, QLabel,
     QLineEdit, QPushButton, QSpinBox, QVBoxLayout
 )
 from pyvistaqt import QtInteractor
@@ -88,6 +88,24 @@ class DisplayTabUIBuilder:
         deformation_scale_label.setVisible(False)
         deformation_scale_edit.setVisible(False)
         
+        # Absolute deformation checkbox for animations
+        absolute_deformation_checkbox = QCheckBox("Show Absolute Deformations")
+        absolute_deformation_checkbox.setToolTip(
+            "Controls how deformed mesh coordinates are displayed during animation:\n\n"
+            "When UNCHECKED (Relative mode - default):\n"
+            "  • First animation frame appears at 'zero' position\n"
+            "  • Shows motion pattern relative to animation start time\n"
+            "  • Better for visualizing dynamics and vibration modes\n\n"
+            "When CHECKED (Absolute mode):\n"
+            "  • Shows true deformation from undeformed geometry\n"
+            "  • Preserves absolute displacement magnitudes\n"
+            "  • Better for quantitative analysis\n\n"
+            "Note: This only affects mesh position visualization.\n"
+            "Velocity/acceleration values and IC export are unaffected."
+        )
+        absolute_deformation_checkbox.setChecked(False)  # Default to relative deformations
+        absolute_deformation_checkbox.setVisible(False)  # Hidden until animation is relevant
+        
         # Layout
         graphics_control_layout = QHBoxLayout()
         graphics_control_layout.addWidget(QLabel("Node Point Size:"))
@@ -97,6 +115,7 @@ class DisplayTabUIBuilder:
         graphics_control_layout.addWidget(scalar_max_spin)
         graphics_control_layout.addWidget(deformation_scale_label)
         graphics_control_layout.addWidget(deformation_scale_edit)
+        graphics_control_layout.addWidget(absolute_deformation_checkbox)
         graphics_control_layout.addStretch()
         
         graphics_control_group = QGroupBox("Visualization Controls")
@@ -109,6 +128,7 @@ class DisplayTabUIBuilder:
         self.components['scalar_max_spin'] = scalar_max_spin
         self.components['deformation_scale_label'] = deformation_scale_label
         self.components['deformation_scale_edit'] = deformation_scale_edit
+        self.components['absolute_deformation_checkbox'] = absolute_deformation_checkbox
         self.components['graphics_control_layout'] = graphics_control_layout
         self.components['graphics_control_group'] = graphics_control_group
         

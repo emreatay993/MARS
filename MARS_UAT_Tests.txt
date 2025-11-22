@@ -666,3 +666,71 @@ EXPECTED RESULTS:
 
 REQUIREMENT NO: N/A
 
+================================================================================
+
+TEST NO: 14
+
+TITLE: Animation Deformation Display Modes - Relative vs Absolute
+
+DESCRIPTION: Validates that the "Show Absolute Deformations" checkbox correctly controls how deformed mesh coordinates are displayed during animation playback, with two distinct modes for different visualization needs
+
+INPUTS:
+
+- Modal coordinates, stresses, and deformations all loaded
+- Solver completed with Von-Mises stress output
+- Animation time range: 0.3s to 0.8s (not starting at t=0 to demonstrate difference)
+- Deformation scale factor: 2.0
+- Custom time step mode with 0.05s intervals
+
+TEST STEPS:
+
+1. Complete solver run with Von-Mises stress and Include Deformations enabled
+2. Switch to Display tab after solver completion
+3. Locate "Show Absolute Deformations" checkbox in Visualization Controls group
+4. Verify checkbox is visible and unchecked by default (Relative mode)
+5. Hover over checkbox to verify tooltip explains both modes
+6. Set animation time range: Start = 0.3 seconds, End = 0.8 seconds  
+7. Set time step mode to "Custom Time Step" with step = 0.05 seconds
+8. Set deformation scale factor to 2.0
+9. Click Play to start animation in Relative mode (checkbox unchecked)
+10. Observe that first animation frame appears at undeformed mesh position
+11. Note the motion pattern during animation playback
+12. Stop animation after a few frames
+13. CHECK the "Show Absolute Deformations" checkbox (switch to Absolute mode)
+14. Click Play again to start animation in Absolute mode
+15. Observe that first animation frame now shows deformed position
+16. Compare motion pattern - should show same relative motion but from different starting position
+17. Stop animation and verify stress scalar values displayed on mesh
+18. Toggle checkbox back to unchecked (Relative mode)
+19. Play animation briefly and note scalar values remain unchanged
+20. Verify time text overlay updates correctly in both modes
+
+EXPECTED RESULTS:
+
+Relative Mode (Checkbox Unchecked - Default):
+- Checkbox is unchecked when controls first become visible
+- Tooltip explains "Shows motion relative to start frame" when hovering
+- First animation frame (t=0.3s) appears at original undeformed mesh position
+- Animation shows motion pattern relative to animation start time
+- Visualization emphasizes dynamics and oscillations
+- Better for presentations showing motion behavior
+
+Absolute Mode (Checkbox Checked):
+- Checkbox becomes checked when clicked
+- First animation frame (t=0.3s) shows true deformed position
+- Animation includes pre-existing deformation from t=0 to t=0.3s
+- Shows absolute displacement values throughout animation
+- Better for quantitative analysis and validation
+
+Both Modes (Critical Verification):
+- Stress scalar values (Von-Mises) are IDENTICAL - checkbox does NOT affect physics
+- Time text overlay updates correctly showing current simulation time
+- Animation playback is smooth without stuttering in both modes
+- Deformation scale factor (2.0) applies equally in both modes
+- Animation controls (Pause, Play, Stop) work identically
+- Frame rate and playback speed are identical
+- Scalar bar range remains consistent
+- Exported animations preserve the selected mode
+
+REQUIREMENT NO: N/A
+

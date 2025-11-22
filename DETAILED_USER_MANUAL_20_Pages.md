@@ -374,9 +374,31 @@ Use this to compare alternatives or post-process snapshots.
 
 If deformations were provided, geometry deforms during playback.
 
-**Tip**: For presentations, use Custom Time Step with 0.01s intervals and 50ms playback interval for smooth 20fps animations.
+#### Deformation Display Mode
 
-[Image Placeholder: Animation controls — play/pause/stop]
+When animating with deformations, you can choose how the deformed mesh is displayed using the **"Show Absolute Deformations"** checkbox in the Visualization Controls:
+
+**Relative Mode (Unchecked - Default):**
+- First animation frame appears at the original mesh position ("zero" deformation)
+- Shows motion pattern relative to the animation start time
+- **Best for:** Visualizing dynamics, vibration modes, motion patterns
+- **Example:** If your animation runs from t=0.3s to t=0.8s, the structure appears undeformed at t=0.3s and shows only the motion that occurs during the animation window
+
+**Absolute Mode (Checked):**
+- Shows true deformation from the undeformed geometry
+- Preserves absolute displacement magnitudes at all times
+- **Best for:** Quantitative analysis, cases with pre-loading, steady-state + transient
+- **Example:** If your animation runs from t=0.3s to t=0.8s, the structure shows its true deformed state at t=0.3s including any prior loading history
+
+**Important Notes:**
+- This setting only affects mesh position visualization
+- Velocity and acceleration values are always computed correctly regardless of this setting
+- Initial condition exports are unaffected (they use time point calculations, not animation data)
+- Default (relative) mode maintains backward compatibility with previous versions
+
+**Tip**: For presentations, use Custom Time Step with 0.01s intervals and 50ms playback interval for smooth 20fps animations. Use Relative Mode to make motion patterns clearer.
+
+[Image Placeholder: Animation controls — play/pause/stop, with absolute deformation checkbox highlighted]
 
 ---
 

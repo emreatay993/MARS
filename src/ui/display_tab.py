@@ -124,6 +124,7 @@ class DisplayTab(QWidget):
         self.scalar_max_spin = self.components['scalar_max_spin']
         self.deformation_scale_label = self.components['deformation_scale_label']
         self.deformation_scale_edit = self.components['deformation_scale_edit']
+        self.absolute_deformation_checkbox = self.components['absolute_deformation_checkbox']
         
         # Time point controls
         self.time_point_spinbox = self.components['time_point_spinbox']
@@ -253,19 +254,26 @@ class DisplayTab(QWidget):
         # Show controls
         self.anim_group.setVisible(True)
         self.time_point_group.setVisible(True)
-        self.deformation_scale_label.setVisible(True)
-        self.deformation_scale_edit.setVisible(True)
+        # Note: Deformation controls visibility is managed by _update_deformation_controls()
     
     def _update_deformation_controls(self, deformation_loaded):
         """Update deformation scale controls based on availability."""
         if deformation_loaded:
+            # Show and enable deformation controls when deformations are loaded
+            self.deformation_scale_label.setVisible(True)
+            self.deformation_scale_edit.setVisible(True)
             self.deformation_scale_edit.setEnabled(True)
             self.deformation_scale_edit.setText(
                 str(self.last_valid_deformation_scale)
             )
+            self.absolute_deformation_checkbox.setVisible(True)
         else:
+            # Hide deformation controls when deformations are not loaded
+            self.deformation_scale_label.setVisible(False)
+            self.deformation_scale_edit.setVisible(False)
             self.deformation_scale_edit.setEnabled(False)
             self.deformation_scale_edit.setText("0")
+            self.absolute_deformation_checkbox.setVisible(False)
     
     @pyqtSlot(bool)
     def load_file(self, checked=False):
