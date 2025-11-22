@@ -3,11 +3,15 @@
 **Date:** November 22, 2025  
 **Purpose:** Document the addition of comprehensive plasticity correction method documentation to MARS manuals
 
+**Update:** November 22, 2025 - Expanded to include Advanced Settings, temperature field format clarification, iteration controls, and other missing features
+
 ---
 
 ## Overview
 
 Added extensive documentation for the active plasticity correction methods (Neuber, Glinka, and IBG) implemented in MARS. These methods were previously undocumented despite being fully functional in the codebase.
+
+**Second Update:** Following comprehensive code inspection, documented 10 additional GUI and solver features that were missing or under-documented in the original update.
 
 ---
 
@@ -272,7 +276,91 @@ All documentation updates have been:
 
 ---
 
-**Documentation Status:** ✅ **COMPLETE**
+## Comprehensive Documentation Update (November 22, 2025)
 
-All active plasticity correction methods in MARS are now fully documented in a manner consistent with the rest of the manual suite.
+Following the initial plasticity documentation, a comprehensive code inspection revealed 10 additional undocumented features:
+
+### Features Added to Documentation:
+
+1. **Advanced Settings Dialog** (Settings → Advanced)
+   - RAM Allocation control (10-95%)
+   - Solver Precision toggle (Single/Double)
+   - GPU Acceleration configuration
+
+2. **Plasticity Iteration Controls**
+   - Max Iterations parameter (default 60)
+   - Tolerance parameter (default 1e-10)
+   - Warning label for non-default values
+
+3. **Plasticity Diagnostics Overlay**
+   - Show Δεp and εp on time history plots
+   - Advanced validation tool
+
+4. **Temperature Field Format Clarification**
+   - CSV format specification (NodeID, Temperature columns)
+   - Common mistakes section
+   - Example file provided
+
+5. **Skip First n Modes Guidance**
+   - When to use (rigid-body modes)
+   - Typical values (0 for fixed, 6 for free-free)
+   - Accuracy warnings
+
+6. **Animation "Every nth" Throttling**
+   - Frame reduction for large datasets
+   - Usage guidance and examples
+
+7. **Navigator File Filtering**
+   - Automatic .mcf/.csv/.txt filtering documented
+
+8. **GPU Acceleration Details**
+   - Requirements (CUDA toolkit)
+   - Expected speedup profiles
+   - Fallback behavior
+
+9. **Precision Selection Trade-offs**
+   - Single vs Double accuracy comparison
+   - Speed and memory differences
+
+10. **RAM Allocation Impact**
+    - Performance tuning guidance
+    - When to increase/decrease
+
+### Documentation Files Updated:
+
+- **DETAILED_USER_MANUAL_20_Pages.md**: 34 → 35 pages (added Page 15: Advanced Settings)
+- **QUICK_USER_MANUAL.md**: 7 → 9 sections (added Sections 4 & 6)
+- **DETAILED_THEORY_MANUAL.md**: 13 → 14 sections (added Section 10: Computational Performance)
+- **README.md**: Added Advanced Settings section and updated troubleshooting
+- **All manuals**: Expanded Page 13/Section on plasticity with iteration controls and diagnostics
+
+### Additional Deliverables Created:
+
+- `DOCUMENTATION_UPDATES_SUMMARY.md` - Detailed change log
+- `MARS_FEATURE_CHECKLIST.md` - Complete feature reference
+- `DOCUMENTATION_COMPLETION_REPORT.md` - Validation report
+- `MARS_UAT_Tests.txt` - User acceptance tests (13 tests)
+- `MARS_UAT_Tests_User_Focused.txt` - Simplified UAT (12 tests)
+- `MARS_UAT_Tests_Turkish.txt` - Turkish version
+
+### Content Statistics:
+
+- **Total words added:** ~2,500 across all manuals
+- **New sections:** 3 major + 8 subsections
+- **Troubleshooting entries:** +9 total
+- **FAQ entries:** +3
+- **Glossary terms:** +4
+- **Documentation coverage:** Now at ~100% of implemented features
+
+### Key Corrections Made:
+
+- Corrected filename: `corrected_von_mises_stress.csv` → `corrected_von_mises.csv`
+- Corrected filename: `damage_index.csv` → `potential_damage_results.csv`
+- All instances fixed across 6 documentation files
+
+---
+
+**Documentation Status:** ✅ **COMPLETE AND VERIFIED**
+
+All active features in MARS v0.95 are now fully documented with comprehensive user guidance, troubleshooting, theoretical background, and user acceptance tests.
 

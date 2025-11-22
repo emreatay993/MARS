@@ -1,0 +1,511 @@
+TEST NO: 1
+
+TITLE: File Loading and Project Setup
+
+DESCRIPTION: Validates loading of all required input files and proper project directory setup through Navigator and file dialogs
+
+INPUTS:
+
+- Application launched with MARS v0.95
+- Test files available: valid .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
+- Project directory contains mixed file types for filtering validation
+
+TEST STEPS:
+
+1. Set project directory via File > Select Project Directory and verify Navigator updates with folder contents
+2. Verify Navigator displays only .mcf, .csv, and .txt files (automatic filtering behavior)
+3. Load modal coordinate file by clicking Read Modal Coordinate File button and selecting valid .mcf
+4. Load modal stress file by clicking Read Modal Stress File button and selecting valid .csv
+5. Enable Include Deformations checkbox and verify deformations file controls become visible
+6. Load deformations .csv file using the now-visible button
+7. Enable Include Steady-State Stress Field checkbox and verify steady-state file controls appear
+8. Load steady-state .txt file using the now-visible button
+9. Verify all file paths display correctly in read-only text fields
+
+EXPECTED RESULTS:
+
+- Navigator shows only filtered files (.mcf, .csv, .txt) matching project directory
+- Console displays success messages for each loaded file
+- File path fields populate with correct absolute paths
+- Stress output checkboxes (Von-Mises, Max Principal, Min Principal) become enabled after stress file loads
+- Deformation output checkboxes (Deformation, Velocity, Acceleration) become enabled after deformations file loads
+- Optional file controls (steady-state, deformations) are hidden until checkboxes enabled
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 2
+
+TITLE: Output Selection and Solver Execution
+
+DESCRIPTION: Validates output selection, solver configuration parameters including skip modes, and successful execution of analysis with progress monitoring
+
+INPUTS:
+
+- Modal coordinate and stress files loaded successfully
+- Skip modes: 6 (for free-free structure with 6 rigid-body modes)
+- Fatigue parameters: σ'f = 1000 MPa, b = -0.12
+- Node ID for time history: 1001
+- Deformations file loaded for full output testing
+
+TEST STEPS:
+
+1. Select multiple output options: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
+2. Enable Damage Index checkbox and verify fatigue parameters fields appear
+3. Enter fatigue parameters: σ'f = 1000 MPa and b = -0.12
+4. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
+5. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
+6. Enter Node ID 1001 in Scoping field
+7. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
+8. Click SOLVE button to execute solver
+9. Monitor Console tab for processing messages and validation steps
+10. Observe progress bar advancement from 0% to 100%
+11. Wait for solver completion and verify success message appears in Console
+
+EXPECTED RESULTS:
+
+- All selected output checkboxes are checked and remain enabled
+- Fatigue parameters section appears when Damage Index selected
+- Skip modes dropdown shows values from 0 to maximum mode count from .mcf file
+- Time History Mode scoping controls appear when checkbox enabled
+- SOLVE button becomes enabled when minimum requirements met
+- Progress bar advances smoothly from 0% to 100% during execution
+- Console displays validation messages, processing steps, and completion status
+- Time History plot tab appears in Main Window showing node 1001 history
+- Output CSV files are generated in solver output directory
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 3
+
+TITLE: Plasticity Correction Complete Workflow
+
+DESCRIPTION: Validates complete plasticity correction workflow including material profile entry, temperature field loading, method selection, and iteration control tuning
+
+INPUTS:
+
+- Von-Mises Stress output selected (required for plasticity correction)
+- Temperature field CSV file with NodeID and Temperature columns available
+- Material profile data: 3 temperatures (25°C, 200°C, 400°C) with 8 stress-strain points each
+- Plasticity method: Glinka (energy-based correction)
+- Max Iterations: 80 (increased from default 60)
+- Tolerance: 1e-9 (tightened from default 1e-10)
+
+TEST STEPS:
+
+1. Enable Plasticity Correction checkbox and verify Plasticity Correction Options group becomes visible
+2. Open Select Method dropdown and choose Glinka method
+3. Click Enter Material Profile button to open material definition dialog
+4. Input temperature-dependent stress-strain curves: enter 3 temperatures with 8 points each
+5. Select Extrapolation mode as Linear from dropdown in plasticity options
+6. Click Read Temperature Field File button and select temperature CSV file
+7. Verify temperature field file path displays in text field
+8. Modify Max Iterations field to 80 (clearing default and entering new value)
+9. Modify Tolerance field to 1e-9
+10. Verify warning label appears stating "Warning: Relaxed iteration settings may impact accuracy"
+11. Enable Show plasticity diagnostics checkbox for time history overlay
+12. Execute solver and monitor Console for plasticity-specific messages
+13. Verify corrected results are generated in output directory
+
+EXPECTED RESULTS:
+
+- Plasticity Correction Options group becomes visible when checkbox enabled
+- Glinka method displays as selected in dropdown
+- Material Profile dialog opens and accepts multi-temperature curve data
+- Temperature field file path displays correctly after loading
+- Warning label appears in orange/yellow color when iteration settings changed from defaults
+- Solver generates corrected_von_mises.csv and plastic_strain.csv files
+- Time history plot shows Δεp and εp overlays on secondary axis when diagnostics enabled
+- Console displays plasticity convergence information for each node
+- Corrected stress values are lower than elastic stress at notches
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 4
+
+TITLE: Advanced Settings and Performance Tuning
+
+DESCRIPTION: Validates performance tuning controls including RAM allocation, solver precision selection, and GPU acceleration configuration
+
+INPUTS:
+
+- Application launched with default settings
+- Target RAM Allocation: 85% (increased from default 70%)
+- Target Solver Precision: Single (changed from default Double)
+- GPU Acceleration: Enabled (if NVIDIA CUDA available)
+
+TEST STEPS:
+
+1. Navigate to Settings menu and click Advanced to open Advanced Settings dialog
+2. Observe current settings display shows default values (RAM: 70%, Precision: Double, GPU: Disabled)
+3. Change RAM Allocation spinbox from 70 to 85
+4. Open Solver Precision dropdown and select Single from available options
+5. Enable GPU Acceleration checkbox
+6. Click OK button to apply settings
+7. Verify confirmation dialog appears with message about settings being applied
+8. Re-open Advanced Settings dialog via Settings > Advanced
+9. Confirm all changes persisted (RAM: 85%, Precision: Single, GPU: Enabled)
+
+EXPECTED RESULTS:
+
+- Advanced Settings dialog opens showing current settings label at top
+- RAM spinbox accepts values from 10 to 95
+- Solver Precision dropdown offers Single and Double options
+- GPU Acceleration checkbox can be toggled on/off
+- OK button closes dialog and displays confirmation message
+- Settings persist across dialog re-opening
+- Console shows applied settings when next SOLVE is executed
+- If GPU not available, solver falls back to CPU with console message
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 5
+
+TITLE: 3D Visualization and Camera Navigation
+
+DESCRIPTION: Validates 3D display controls including visualization parameters, camera manipulation, legend range adjustment, and node hover inspection
+
+INPUTS:
+
+- Solver completed with Von-Mises stress results
+- Display tab active with results automatically loaded
+- Target Node Point Size: 10 (increased from default 5)
+- Target Legend Range: Min 0, Max 500 MPa
+- Deformation Scale Factor: 2.5 (if deformations included)
+
+TEST STEPS:
+
+1. Switch to Display tab after solver completion
+2. Verify 3D visualization loads automatically with color-mapped results using jet colormap
+3. Adjust Node Point Size spinbox from default 5 to 10
+4. Verify point size increases visibly in 3D view
+5. Set Legend Range Min spinbox to 0 and Max spinbox to 500
+6. Verify color scale adjusts to show specified range with gray for below-min and magenta for above-max
+7. If deformations included: enter Deformation Scale Factor value of 2.5 and press Enter
+8. Verify geometry deforms by specified scale factor
+9. Hover mouse over various nodes in 3D view
+10. Verify tooltips appear showing NodeID and current scalar value
+11. Test camera rotation by left-dragging on 3D view
+12. Test camera panning by right-dragging on 3D view
+13. Test zoom by scrolling mouse wheel forward and backward
+14. Right-click to open context menu and select Reset Camera
+15. Verify view returns to default position and orientation
+
+EXPECTED RESULTS:
+
+- Display tab shows 3D point cloud with jet colormap (blue=low, red=high)
+- Point size increases visibly when spinbox value increased to 10
+- Color legend adjusts to specified min/max range (0-500)
+- Values below 0 appear gray, values above 500 appear magenta
+- Geometry deforms by factor of 2.5 when deformations present and scale applied
+- Hover tooltips appear showing accurate NodeID and current scalar value
+- Camera rotates smoothly around model center with left-drag
+- Camera pans across scene with right-drag
+- Zoom responds to mouse wheel scroll
+- Reset Camera returns view to default isometric orientation
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 6
+
+TITLE: Time Point Analysis and Export
+
+DESCRIPTION: Validates time point computation, result display at specific time instant, and export of results to CSV and APDL formats
+
+INPUTS:
+
+- Solver completed with time-history results available
+- Target time point: 0.5 seconds (within analysis time range)
+- Velocity data available from deformations file
+- Export file paths will be specified by user during test
+
+TEST STEPS:
+
+1. Verify Initialization & Time Point Controls group is visible on Display tab after solver completion
+2. Set Time spinbox to 0.5 seconds using arrow buttons or direct entry
+3. Click Update button to compute results at specified time instant
+4. Verify 3D view updates to show node-wise results at t=0.5 seconds
+5. Verify colormap updates to reflect values at that instant
+6. Click Save Time Point as CSV button
+7. In save dialog, specify location and filename, then click Save
+8. Click Export Velocity as Initial Condition button (visible only if velocity data exists)
+9. In save dialog, specify location for APDL command file, then click Save
+
+EXPECTED RESULTS:
+
+- Initialization & Time Point Controls group becomes visible after solver completion
+- Time spinbox displays with appropriate range based on analysis duration
+- Update button computes and displays node values at specified time (0.5s)
+- 3D view updates immediately showing spatial distribution at that time
+- Save Time Point CSV exports successfully
+- CSV file is created at specified location
+- Export Velocity IC button is visible only when velocity data available
+- APDL IC file is created at specified location
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 7
+
+TITLE: Animation Playback and Export
+
+DESCRIPTION: Validates animation playback with time step modes, frame throttling, and animation export to video formats
+
+INPUTS:
+
+- Solver results available with time-history data
+- Animation mode: Actual Data Time Steps
+- Every nth: 10 (to reduce frame count for smoother playback)
+- Animation interval: 100 ms (10 fps playback)
+- Time range: 0.0 to 5.0 seconds
+- FFmpeg installed for MP4 export
+
+TEST STEPS:
+
+1. Verify Animation Controls group is visible on Display tab after solver completion
+2. Open Time Step Mode dropdown and select "Actual Data Time Steps"
+3. Verify "Every nth" spinbox appears when Actual Data Time Steps selected
+4. Set Every nth value to 10 to use every 10th data point
+5. Set Animation Interval spinbox to 100 ms
+6. Set Start time spinbox to 0.0 seconds
+7. Set End time spinbox to 5.0 seconds
+8. Click Play button to start animation
+9. Verify animation begins playing with time text overlay advancing
+10. Click Pause button during playback and verify animation freezes at current frame
+11. Click Play again to Resume from paused position
+12. Click Stop button to halt animation and verify it returns to start frame
+13. Click Save as Video/GIF button after animation plays once
+14. Select MP4 format in save dialog, specify location, click Save
+15. Wait for export to complete
+
+EXPECTED RESULTS:
+
+- Animation Controls group becomes visible with all playback controls
+- Every nth spinbox appears for Actual Data Time Steps mode
+- Every nth = 10 reduces frame count to every 10th data point
+- Play button starts animation with visible time text overlay
+- Animation plays smoothly at 100ms intervals
+- Pause freezes at current frame, Resume continues from paused position
+- Stop returns to start frame and resets time counter
+- Save as Video/GIF dialog opens with MP4 and GIF format options
+- MP4 video file is created at specified location
+- Exported animation includes time text overlay and matches playback
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 8
+
+TITLE: Selection Box and Region Tools
+
+DESCRIPTION: Validates selection box widget creation, manipulation via handles, and interactive positioning through point picking
+
+INPUTS:
+
+- Results loaded on Display tab with scalar data visible
+- Selection box will be positioned over specific region of interest
+
+TEST STEPS:
+
+1. Right-click on 3D view to open context menu
+2. Select "Add Selection Box" from Selection Tools section
+3. Verify orange box widget appears in 3D view with visible corner and edge handles
+4. Drag corner handles to resize the selection box to desired dimensions
+5. Verify box resizes interactively as handles are dragged
+6. Right-click again and select "Pick Box Center" from context menu
+7. Verify cursor changes to crosshair indicating picking mode is active
+8. Click on a specific point in 3D view to reposition box
+9. Verify selection box moves so its center is at clicked location while maintaining size
+10. Right-click and select "Remove Selection Box" from context menu
+11. Verify box widget disappears from 3D view
+
+EXPECTED RESULTS:
+
+- Context menu opens with Selection Tools section
+- Selection box appears as orange wireframe cube with corner handles
+- Box resizes smoothly when corner handles dragged
+- Pick Box Center mode changes cursor to crosshair
+- Box repositions immediately to clicked location
+- Box size is preserved during repositioning
+- Remove Selection Box makes widget disappear from view
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 9
+
+TITLE: Hotspot Detection and Analysis
+
+DESCRIPTION: Validates hotspot detection on full visible mesh and within selection box regions, with interactive navigation to critical nodes
+
+INPUTS:
+
+- Mesh loaded with Von-Mises stress scalar data active
+- Hotspot count: 10 nodes (top 10 by value)
+- Selection box positioned over specific region
+
+TEST STEPS:
+
+1. Right-click on 3D view and select "Find Hotspots (on current view)" from Hotspot Analysis section
+2. In dialog that appears, enter 10 for number of hotspots to find
+3. Click OK to execute hotspot detection
+4. Review Hotspot Dialog table showing top 10 nodes sorted by descending value
+5. Click on a node row in the hotspot table
+6. Verify camera flies to that node location and label appears showing NodeID
+7. Click different rows and observe camera flying to each hotspot node
+8. Close hotspot dialog
+9. Verify selection box is positioned over a specific region
+10. Right-click and select "Find Hotspots in Selection"
+11. Enter 10 for count and click OK
+12. Verify hotspot dialog now shows top 10 nodes only from within the box region
+13. Click rows to navigate to hotspots within the selected region
+
+EXPECTED RESULTS:
+
+- Hotspot dialog opens showing table with NodeID and scalar value columns
+- Find Hotspots analyzes all visible points in current camera view
+- Top 10 nodes are sorted by descending value (highest stress first)
+- Clicking a row causes camera to fly to that node with label
+- Find Hotspots in Selection analyzes only points within selection box
+- Selection-based hotspots may differ from full-view hotspots
+- Dialog allows easy identification and navigation to critical regions
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 10
+
+TITLE: Interactive Node Analysis Tools
+
+DESCRIPTION: Validates Go To Node navigation, camera locking for animation tracking, and time history plotting via point picking
+
+INPUTS:
+
+- Mesh loaded with NodeID data
+- Target Node ID: 5042
+- Time history data available from previous solver run
+- Animation precomputed for camera locking test
+
+TEST STEPS:
+
+1. Right-click on 3D view and select "Go To Node" from View Control section
+2. In dialog that appears, enter Node ID 5042 and click OK
+3. Verify camera flies to node 5042 and marker appears at node location
+4. Right-click again and check "Lock Camera for Animation (freeze node)" checkbox
+5. Verify checkmark appears next to menu item
+6. Play animation using animation controls
+7. Verify camera follows node 5042 motion through animation frames
+8. Stop animation
+9. Right-click and uncheck "Lock Camera for Animation" to unlock
+10. Right-click and select "Plot Time History for Selected Node"
+11. Click on a different node in 3D view
+12. Switch to Main Window tab
+13. Verify Time History plot appears showing clicked node's history over time
+
+EXPECTED RESULTS:
+
+- Go To Node dialog accepts node ID input
+- Camera flies smoothly to specified node with marker and label
+- Lock Camera checkbox appears checked in context menu when enabled
+- Locked camera maintains node at center throughout animation
+- Camera follows node motion in all three dimensions
+- Unlocking camera restores normal stationary view
+- Plot Time History picking mode enables node selection
+- Clicking node displays its time history plot in Main Window tab
+- Plot shows time on x-axis and metric value on y-axis
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 11
+
+TITLE: Data Export Functionality
+
+DESCRIPTION: Validates data export features including time point CSV, velocity initial conditions for APDL, and animation video export
+
+INPUTS:
+
+- Solver completed with results generated
+- Time point computed at 0.5 seconds
+- Velocity data available from deformations
+- Animation precomputed by playing once
+
+TEST STEPS:
+
+1. Set time point to 0.5 seconds and click Update button
+2. Click "Save Time Point as CSV" button
+3. Specify export location and filename (e.g., timepoint_0p5s.csv), click Save
+4. Click "Export Velocity as Initial Condition in APDL" button
+5. Specify export location and filename (e.g., velocity_ic.txt), click Save
+6. Click "Save as Video/GIF" button after animation has played once
+7. Select MP4 format in dropdown
+8. Specify export location and filename (e.g., animation.mp4), click Save
+9. Wait for export progress to complete
+
+EXPECTED RESULTS:
+
+- Time point CSV exports successfully to specified location
+- APDL IC file exports successfully to specified location
+- Animation export dialog offers MP4 and GIF format options
+- MP4 video file is created at specified location (requires ffmpeg)
+- GIF animation can be created as fallback if MP4 fails
+- Exported video includes time text overlay matching playback
+- All exported files can be opened in appropriate applications
+
+REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 12
+
+TITLE: Console Monitoring and User Guidance
+
+DESCRIPTION: Validates console message display and progress monitoring during normal solver execution workflow
+
+INPUTS:
+
+- Modal coordinate and stress files loaded
+- At least one output selected (Von-Mises)
+- Valid configuration ready for solver execution
+
+TEST STEPS:
+
+1. Load all required files (coordinate and stress) and select Von-Mises output
+2. Click SOLVE button with valid configuration
+3. Switch to Console tab
+4. Observe Console displays validation messages confirming loaded files
+5. Observe progress bar below SOLVE button advancing from 0%
+6. Monitor Console for processing step messages during execution
+7. Wait for completion and verify success message appears
+8. Note total execution time displayed in Console
+9. If Time History Mode enabled: verify Time History plot tab appears
+10. Click Plot (Time History) tab and verify plot displays correctly
+
+EXPECTED RESULTS:
+
+- Console shows validation success messages after SOLVE clicked
+- Validation messages list each loaded file with basic info
+- Progress bar advances smoothly from 0% to 100%
+- Console displays processing messages during execution
+- Completion message clearly states "Solver completed successfully"
+- Total execution time displayed in Console
+- Time History plot tab becomes visible when that mode is used
+- Plot displays with labeled axes (time in seconds, metric with units)
+- Console retains full log history for reference
+
+REQUIREMENT NO: N/A
+

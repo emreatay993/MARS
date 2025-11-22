@@ -1,0 +1,129 @@
+Test Group,Test ID,Title,Preconditions,Steps,Expected
+
+TEST CASE 1: FILE LOADING AND PROJECT SETUP,,,,
+,UAT-FILE-001,Load modal coordinate file,Application launched,Click Read Modal Coordinate File > Select valid .mcf file,File path displays in text field and Console shows success message
+,UAT-FILE-002,Load modal stress file,Application launched,Click Read Modal Stress File > Select valid .csv file,File path displays and stress output checkboxes become enabled
+,UAT-FILE-003,Enable steady-state stress option,Application launched,Check Include Steady-State Stress Field checkbox,Steady-state file button and path field become visible
+,UAT-FILE-004,Load steady-state file,Steady-state checkbox enabled,Click Read Full Stress Tensor File > Select valid .txt file,File path displays in text field
+,UAT-FILE-005,Enable deformations option,Application launched,Check Include Deformations checkbox,Deformations file button and path field become visible
+,UAT-FILE-006,Load deformations file,Deformations checkbox enabled,Click Read Modal Deformations File > Select valid .csv file,File path displays and deformation output checkboxes become enabled
+,UAT-NAV-001,Set project directory,Application launched,Click File menu > Select Project Directory > Choose folder,Navigator updates to show folder contents
+,UAT-NAV-002,Navigator shows filtered files,Project directory set with mixed file types,View Navigator panel,Only .mcf .csv and .txt files are visible
+,UAT-NAV-003,Double-click file in Navigator,Project directory set with .mcf file,Double-click .mcf file in Navigator,File loads into appropriate field
+,UAT-NAV-004,Toggle Navigator visibility,Application launched,Click View menu > Navigator,Navigator panel toggles visible/hidden
+,UAT-NAV-005,Sort Navigator by name,Navigator visible with multiple files,Click Name column header in Navigator,Files sort alphabetically
+
+TEST CASE 2: OUTPUT SELECTION AND CONFIGURATION,,,,
+,UAT-OUT-001,Select Von-Mises output,Modal coordinate and stress files loaded,Check Von-Mises Stress checkbox,Checkbox becomes checked
+,UAT-OUT-002,Select Max Principal output,Modal coordinate and stress files loaded,Check Max Principal Stress checkbox,Checkbox becomes checked
+,UAT-OUT-003,Select Min Principal output,Modal coordinate and stress files loaded,Check Min Principal Stress checkbox,Checkbox becomes checked
+,UAT-OUT-004,Select Deformation output,Deformations file loaded,Check Deformation checkbox,Checkbox becomes checked
+,UAT-OUT-005,Select Velocity output,Deformations file loaded,Check Velocity checkbox,Checkbox becomes checked
+,UAT-OUT-006,Select Acceleration output,Deformations file loaded,Check Acceleration checkbox,Checkbox becomes checked
+,UAT-OUT-007,Select Damage Index output,Von-Mises checkbox selected,Check Damage Index checkbox,Checkbox becomes checked and fatigue parameters section appears
+,UAT-OUT-008,Enable Time History Mode,Modal coordinate and stress files loaded,Check Enable Time History Mode checkbox,Scoping section with Node ID field appears
+,UAT-OUT-009,Set skip modes,Modal coordinate file loaded,Open Skip first n modes dropdown > Select value,Selected value displays
+
+TEST CASE 3: PLASTICITY CORRECTION WORKFLOW,,,,
+,UAT-PLAST-001,Enable plasticity correction,Von-Mises checkbox selected,Check Enable Plasticity Correction checkbox,Plasticity Correction Options group becomes visible
+,UAT-PLAST-002,Select Neuber method,Plasticity correction enabled,Open Select Method dropdown > Choose Neuber,Neuber displays as selected method
+,UAT-PLAST-003,Select Glinka method,Plasticity correction enabled,Open Select Method dropdown > Choose Glinka,Glinka displays as selected method
+,UAT-PLAST-004,Open material profile dialog,Plasticity correction enabled,Click Enter Material Profile button,Material Profile Dialog opens
+,UAT-PLAST-005,Load temperature field file,Plasticity correction enabled,Click Read Temperature Field File button > Select .csv file,File path displays in text field
+,UAT-PLAST-006,Adjust max iterations,Plasticity correction enabled,Clear Max Iterations field > Enter 100,Value updates to 100 and warning label appears
+,UAT-PLAST-007,Adjust tolerance,Plasticity correction enabled,Clear Tolerance field > Enter 1e-8,Value updates to 1e-8 and warning label appears
+,UAT-PLAST-008,Enable plasticity diagnostics,Plasticity correction enabled,Check Show plasticity diagnostics checkbox,Checkbox becomes checked
+,UAT-PLAST-009,Select extrapolation mode,Plasticity correction enabled,Open Extrapolation dropdown > Select Plateau,Plateau displays as selected
+
+TEST CASE 4: ADVANCED SETTINGS AND PERFORMANCE,,,,
+,UAT-SET-001,Open Advanced Settings,Application launched,Click Settings menu > Advanced,Advanced Settings dialog opens
+,UAT-SET-002,Adjust RAM allocation,Advanced Settings dialog open,Change RAM spinbox value to 85,Value updates to 85
+,UAT-SET-003,Select Single precision,Advanced Settings dialog open,Open Solver Precision dropdown > Select Single,Single displays as selected
+,UAT-SET-004,Select Double precision,Advanced Settings dialog open,Open Solver Precision dropdown > Select Double,Double displays as selected
+,UAT-SET-005,Enable GPU acceleration,Advanced Settings dialog open,Check Enable GPU Acceleration checkbox,Checkbox becomes checked
+,UAT-SET-006,Apply Advanced Settings,Settings modified in dialog,Click OK button,Dialog closes and confirmation message displays
+,UAT-SET-007,Cancel Advanced Settings,Settings modified in dialog,Click Cancel button,Dialog closes without applying changes
+
+TEST CASE 5: SOLVER EXECUTION AND MONITORING,,,,
+,UAT-SOLV-001,Solve button enabled,Modal coordinate and stress files loaded with at least one output selected,Observe SOLVE button state,SOLVE button is enabled and clickable
+,UAT-SOLV-002,Execute solver,SOLVE button enabled,Click SOLVE button,Progress bar appears and advances > Console shows processing messages > Completion message displays
+,UAT-SOLV-003,View console messages,Solver running or completed,Click Console tab in Main Window,Console displays log messages
+,UAT-SOLV-004,Enter Node ID for time history,Time History Mode enabled,Enter node ID in Scoping field,Node ID value displays in field
+,UAT-SOLV-005,Enter fatigue parameter A,Damage Index selected,Enter value in A field,Value displays in field
+,UAT-SOLV-006,Enter fatigue parameter m,Damage Index selected,Enter value in m field,Value displays in field
+,UAT-UI-003,Progress bar updates during solve,Solver running,Observe progress bar below SOLVE button,Progress bar advances from 0% to 100%
+,UAT-UI-005,Console shows validation errors,No files loaded,Click SOLVE button,Console displays error messages about missing files
+,UAT-UI-010,Time history plot appears,Time history mode solved,Click Plot (Time History) tab in Main Window,Plot displays with time on x-axis and metric on y-axis
+
+TEST CASE 6: 3D VISUALIZATION AND DISPLAY CONTROLS,,,,
+,UAT-DISP-001,Switch to Display tab,Solver completed,Click Display tab,Display tab becomes active showing 3D view
+,UAT-DISP-002,Load visualization file,Display tab active,Click Load Visualization File > Select .csv file,File loads and 3D points display with color mapping
+,UAT-DISP-003,Adjust point size,Visualization loaded,Change Node Point Size spinbox value to 10,Point size increases in 3D view
+,UAT-DISP-004,Set legend min value,Visualization loaded with scalar data,Change Legend Range Min spinbox value,Color scale adjusts to new minimum
+,UAT-DISP-005,Set legend max value,Visualization loaded with scalar data,Change Legend Range Max spinbox value,Color scale adjusts to new maximum
+,UAT-DISP-006,Adjust deformation scale,Deformation results loaded,Change Deformation Scale Factor to 2 > Press Enter,Geometry deforms by factor of 2
+,UAT-DISP-007,Hover over node,Visualization loaded,Move mouse over a point in 3D view,Tooltip displays Node ID and scalar value
+,UAT-VIZ-001,Visualization controls visible,Display tab active,Observe Visualization Controls group,Group is visible with point size and legend controls
+,UAT-VIZ-002,Graphics control group exists,Display tab active,Observe Graphics Control layout,Point size and legend range controls are present
+,UAT-VIZ-003,Deformation scale shows when needed,Deformation results loaded on Display,Observe Visualization Controls,Deformation Scale Factor label and field are visible
+,UAT-VIZ-004,Deformation scale hidden initially,Display tab with no deformation data,Observe Visualization Controls,Deformation Scale Factor controls are hidden
+
+TEST CASE 7: CAMERA NAVIGATION AND MANIPULATION,,,,
+,UAT-DISP-008,Rotate camera,Visualization loaded,Left-drag on 3D view,Camera rotates around model
+,UAT-DISP-009,Pan camera,Visualization loaded,Right-drag on 3D view,Camera pans across scene
+,UAT-DISP-010,Zoom camera,Visualization loaded,Scroll mouse wheel on 3D view,Camera zooms in or out
+,UAT-CTX-014,Reset camera,Camera moved or zoomed,Right-click > Click Reset Camera,Camera returns to default position and orientation
+,UAT-CTX-011,Go to node,Mesh loaded with NodeID data,Right-click > Click Go To Node > Enter node ID > Click OK,Camera flies to specified node and marker appears
+,UAT-CTX-012,Lock camera for animation,Node targeted with Go To Node,Right-click > Click Lock Camera for Animation,Camera locks to follow node during animation
+,UAT-CTX-013,Unlock camera,Camera locked to node,Right-click > Click Lock Camera for Animation again,Camera unlocks and checkmark clears
+
+TEST CASE 8: TIME POINT ANALYSIS,,,,
+,UAT-TIME-001,Show time point controls,Solver completed with results,Observe Initialization & Time Point Controls group,Group is visible with time spinbox
+,UAT-TIME-002,Set time point,Time point controls visible,Change Time spinbox to 0.5 seconds,Value updates to 0.5
+,UAT-TIME-003,Update time point,Time value set,Click Update button,3D view updates to show results at specified time
+,UAT-TIME-004,Save time point CSV,Time point computed,Click Save Time Point as CSV button,File save dialog opens > CSV file created after save
+,UAT-TIME-005,Export velocity IC,Time point computed with velocity data,Click Export Velocity as Initial Condition button,File save dialog opens > APDL file created after save
+
+TEST CASE 9: ANIMATION PLAYBACK AND EXPORT,,,,
+,UAT-ANIM-001,Show animation controls,Solver completed with results,Observe Animation Controls group,Group is visible with playback controls
+,UAT-ANIM-002,Select Custom Time Step mode,Animation controls visible,Open Time Step Mode dropdown > Select Custom Time Step,Custom step spinbox becomes visible
+,UAT-ANIM-003,Select Actual Data Time Steps mode,Animation controls visible,Open Time Step Mode dropdown > Select Actual Data Time Steps,Every nth spinbox becomes visible
+,UAT-ANIM-004,Set custom time step,Custom Time Step mode selected,Change Step spinbox to 0.01 seconds,Value updates to 0.01
+,UAT-ANIM-005,Set Every nth value,Actual Data Time Steps mode selected,Change Every nth spinbox to 10,Value updates to 10
+,UAT-ANIM-006,Set animation interval,Animation controls visible,Change Interval spinbox to 100 ms,Value updates to 100
+,UAT-ANIM-007,Set animation start time,Animation controls visible,Change Start spinbox to 0.1 seconds,Value updates to 0.1
+,UAT-ANIM-008,Set animation end time,Animation controls visible,Change End spinbox to 5.0 seconds,Value updates to 5.0
+,UAT-ANIM-009,Play animation,Animation parameters set,Click Play button,Animation begins playing > Time advances > Pause and Stop buttons become enabled
+,UAT-ANIM-010,Pause animation,Animation playing,Click Pause button,Animation pauses at current frame
+,UAT-ANIM-011,Resume animation,Animation paused,Click Play button,Animation resumes from paused frame
+,UAT-ANIM-012,Stop animation,Animation playing or paused,Click Stop button,Animation stops and returns to start frame
+,UAT-ANIM-013,Save animation as video,Animation precomputed,Click Save as Video/GIF button,File save dialog opens with MP4 and GIF format options
+
+TEST CASE 10: SELECTION BOX AND REGION TOOLS,,,,
+,UAT-CTX-001,Open context menu,Display tab active with mesh,Right-click on 3D view,Context menu appears with multiple sections
+,UAT-CTX-002,Add selection box,Context menu open,Click Add Selection Box,Orange box widget appears in 3D view with handles
+,UAT-CTX-003,Remove selection box,Selection box visible,Right-click > Click Remove Selection Box,Box widget disappears from view
+,UAT-CTX-004,Enable Pick Box Center,Context menu open with box visible,Click Pick Box Center,Cursor changes to crosshair
+,UAT-CTX-005,Position box by picking,Pick Box Center mode active,Click on a point in 3D view,Selection box moves to clicked location
+
+TEST CASE 11: HOTSPOT DETECTION AND ANALYSIS,,,,
+,UAT-CTX-006,Find hotspots on view,Mesh loaded with scalar data,Right-click > Click Find Hotspots on current view > Enter count > Click OK,Hotspot dialog opens showing top nodes by value
+,UAT-CTX-007,Find hotspots in selection,Selection box positioned,Right-click > Click Find Hotspots in Selection > Enter count > Click OK,Hotspot dialog shows top nodes within box only
+,UAT-CTX-008,Click hotspot in dialog,Hotspot dialog open with results,Click a node row in hotspot table,Camera flies to node and label appears
+,UAT-CTX-009,Enable time history picking,Mesh loaded,Right-click > Click Plot Time History for Selected Node,Point picking mode activates
+,UAT-CTX-010,Pick node for time history,Time history picking enabled,Click on a node in 3D view,Signal emits to solver tab to plot history for that node
+
+TEST CASE 12: DATA EXPORT FUNCTIONALITY,,,,
+,UAT-EXP-001,Export time point to CSV,Time point results computed,Click Save Time Point as CSV > Choose location > Click Save,CSV file created with NodeID coordinates and scalar values
+,UAT-EXP-002,Export velocity IC to APDL,Time point with velocity data computed,Click Export Velocity IC button > Choose location > Click Save,APDL command file created with IC statements
+,UAT-EXP-003,Export animation to MP4,Animation frames precomputed and ffmpeg available,Click Save as Video/GIF > Select MP4 format > Choose location > Save,MP4 video file created with animation
+,UAT-EXP-004,Export animation to GIF,Animation frames precomputed,Click Save as Video/GIF > Select GIF format > Choose location > Save,GIF animation file created
+
+TEST CASE 13: UI BEHAVIOR AND VALIDATION,,,,
+,UAT-UI-001,Main window title displays,Application launched,Observe window title bar,Title shows MARS: Modal Analysis Response Solver - v0.95
+,UAT-UI-002,Navigator dock movable,Application launched,Drag Navigator title bar to right side,Navigator docks to right side of window
+,UAT-UI-004,Tabs switch properly,Application launched,Click Display tab > Click Main Window tab,Tabs switch and show correct content
+,UAT-UI-006,Checkboxes disabled initially,Application launched before file loading,Observe output checkboxes,All output checkboxes are disabled
+,UAT-UI-007,File path fields read-only,Application launched,Try to type in modal coordinate file path field,Field does not accept keyboard input
+,UAT-UI-008,Skip modes dropdown populates,Modal coordinate file loaded,Open Skip first n modes dropdown,Dropdown shows values 0 through maximum mode count
+,UAT-UI-009,Plasticity options hidden initially,Application launched,Observe Main Window tab,Plasticity Correction Options group is not visible

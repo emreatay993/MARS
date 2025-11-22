@@ -163,10 +163,18 @@ pytest tests/test_validators.py -v
 
 ### Advanced Features
 
+#### Advanced Settings (Performance Tuning)
+- Access via **Settings → Advanced** menu
+- **RAM Allocation**: Adjust percentage (10-95%) for large datasets
+- **Solver Precision**: Choose Single (faster) or Double (more accurate)
+- **GPU Acceleration**: Enable NVIDIA CUDA for 2-10× speedup on large models
+
 #### Plasticity Correction
 - Apply Neuber or Glinka corrections to account for local yielding at notches
 - Define temperature-dependent material hardening curves
 - Load temperature field file (CSV with NodeID and Temperature)
+- Adjust iteration controls (Max Iterations, Tolerance) for convergence tuning
+- Enable plasticity diagnostics overlay for time history validation
 - Output includes corrected von Mises stress and plastic strain
 
 #### Mode Skipping
@@ -349,13 +357,30 @@ TAB_STYLE = "..."          # Tab widget appearance
 
 ## 📚 Additional Documentation
 
+### User Manuals
+- `QUICK_USER_MANUAL.md` - Quick reference for experienced users
+- `DETAILED_USER_MANUAL_20_Pages.md` - Comprehensive step-by-step GUI guide (35 pages)
+- `DETAILED_THEORY_MANUAL.md` - Theoretical background and engineering guidance
+- `MARS_FEATURE_CHECKLIST.md` - Complete feature inventory
+- `MARS_UAT_Tests_User_Focused.txt` - User acceptance test scenarios
+
+### Developer Documentation
+- `ARCHITECTURE.md` - Technical deep dive into design patterns
+- `MIGRATION_GUIDE.md` - Guide for transitioning from legacy code
+- `SIGNAL_SLOT_REFERENCE.md` - Signal/slot map covering solver, display, and handler interactions
+- `FILE_INDEX.md` - Complete file inventory
+
+### Project Documentation
 - `REFACTORING_PROGRESS.md` - Detailed refactoring progress
 - `PROGRESS_SUMMARY.md` - High-level overview
 - `STATUS_REPORT.md` - Technical status report
-- `SIGNAL_SLOT_REFERENCE.md` - Signal/slot map covering solver, display, and handler interactions
-- `EXECUTIVE_SUMMARY_ENGINEERING.md` - Business case for adopting MARS within mechanical design/analysis teams
+- `EXECUTIVE_SUMMARY_ENGINEERING.md` - Business case for adopting MARS
+- `RELEASE_NOTES_v0.95.md` - Current release notes
+
+### Testing Documentation
 - `tests/TESTING_GUIDE.md` - Testing procedures
-- `tests/MANUAL_TESTING_CHECKLIST.md` - GUI testing checklist
+- `tests/MANUAL_TESTING_CHECKLIST.md` - GUI testing checklist (~250 items)
+- `MARS_UAT_Tests_User_Focused.txt` - Consolidated user acceptance tests
 
 ## 🐛 Troubleshooting
 
@@ -382,9 +407,14 @@ pip install -r requirements.txt
 - Set `IS_GPU_ACCELERATION_ENABLED = True` in constants.py
 
 **Memory Errors**:
-- Reduce `RAM_PERCENT` in Advanced Settings
-- Use Single precision instead of Double
+- Reduce `RAM_PERCENT` in `utils/constants.py` or via Settings → Advanced menu
+- Use Single precision instead of Double (Settings → Advanced)
 - Process smaller datasets or fewer time points
+
+**Slow Performance**:
+- Increase RAM allocation to 85-90% via Settings → Advanced
+- Switch to Single precision if accuracy permits
+- Enable GPU Acceleration if NVIDIA CUDA is available
 
 ## 🤝 Contributing
 
@@ -422,12 +452,15 @@ For issues, questions, or contributions:
 
 ## 🔄 Version History
 
-### v2.0.0 (Current) - Modular Architecture
+### v0.95 (Current) - Modular Architecture
 - Complete refactoring to modular architecture
-- 31 modules with clear separation of concerns
+- 36 modules (45 files) with clear separation of concerns
 - Comprehensive documentation and tests
+- Advanced Settings for performance tuning (RAM, Precision, GPU)
+- Plasticity correction with Neuber and Glinka methods
 - Zero behavioral changes from legacy
 - All complexity metrics met
+- IBG plasticity method disabled pending validation
 
 ### v0.97.8 (Legacy)
 - Original monolithic implementation

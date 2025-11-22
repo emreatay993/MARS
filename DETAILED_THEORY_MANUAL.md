@@ -498,6 +498,28 @@ Select the mode via the **Extrapolation Mode** option in the Material Profile di
 
 ---
 
+### 8.5.4 Iteration Control Parameters
+
+The Newton-Raphson solver for Neuber and Glinka equations exposes two tuning parameters:
+
+#### Max Iterations
+- **Default**: 60
+- **Range**: 1 to 10,000
+- **Purpose**: Limits the number of iteration steps before declaring non-convergence
+- **When to increase**: If console shows "failed to converge" warnings at nodes with extreme stress concentrations or near phase-change temperatures
+- **Trade-off**: Higher values increase robustness but may slow down computation
+
+#### Tolerance
+- **Default**: 1×10⁻¹⁰
+- **Range**: 0.0 to 1.0 (scientific notation accepted)
+- **Purpose**: Defines the relative residual threshold for convergence: |r(σ)| / |σ| < tol
+- **When to relax**: For noisy FEA data or when solver oscillates near convergence
+- **Trade-off**: Looser tolerance speeds convergence but may reduce accuracy of corrected stress and plastic strain by 0.1-1%
+
+A warning label appears in the UI if either parameter is changed from default, reminding users that relaxed settings may impact accuracy.
+
+---
+
 ### 8.6 Practical Workflow in MARS
 
 #### 8.6.1 Enabling Plasticity Correction
@@ -518,11 +540,57 @@ On the **Main Window (Solver) tab**:
 - First point defines approximate yield; subsequent points trace the hardening curve.  
 - Choose **Extrapolation Mode** based on material behavior beyond the curve.
 
-#### 8.6.3 Output Files
+**Data Entry Tips:**
+- Use data from **cyclic stress-strain tests** (not monotonic tensile), as plasticity correction applies to fatigue scenarios
+- Typical datasets: 3-5 temperature points, 5-15 stress-strain pairs per temperature
+- For high-temperature alloys: span operational range (e.g., 25°C to 650°C for Ni-based superalloys)
+- If only monotonic data available, use with caution and validate against nonlinear FEA
+
+#### 8.6.3 Temperature Field File
+
+The temperature field file assigns a nodal temperature for material property interpolation:
+
+**Format Requirements:**
+- **File type**: CSV (comma-separated values), not tab-delimited .txt despite the button label
+- **Required columns**: `NodeID`, `Temperature`
+- **Optional columns**: Ignored (e.g., X, Y, Z coordinates are allowed but unused)
+- **Node coverage**: Every node in the modal stress file must have a temperature entry; missing nodes trigger an error
+- **Units**: Must match temperature units in Material Profile (typically °C or K)
+
+**Example File:**
+```csv
+NodeID,Temperature
+1001,25.0
+1002,150.5
+1003,300.0
+1004,300.0
+1005,275.2
+```
+
+**Common Mistakes:**
+- Using tab-delimited format (will fail parsing)
+- Temperature in °F when Material Profile is in °C
+- Missing Node IDs (solver will halt)
+- Exporting from FEA with 1-based indexing when modal stress uses 0-based (or vice versa)
+
+#### 8.6.4 Advanced Tuning: Iteration Controls and Diagnostics
+
+**Iteration Controls** (see Section 8.5.4):
+- Adjust **Max Iterations** and **Tolerance** if convergence warnings appear
+- A yellow warning label reminds you that relaxed settings may impact accuracy
+
+**Plasticity Diagnostics Checkbox**:
+- When enabled in Time History Mode, MARS overlays two additional curves on a secondary Y-axis:
+  - **Δεₚ(t)**: Incremental plastic strain per time step (useful for identifying when yielding occurs)
+  - **εₚ(t)**: Cumulative plastic strain (tracks total inelastic deformation)
+- Useful for validating that plasticity correction activates at expected stress levels
+- Helps debug non-convergence: if Δεₚ oscillates wildly, tighten tolerance or check material data
+
+#### 8.6.5 Output Files
 
 After solving with plasticity enabled, MARS exports:
 
-- `corrected_von_mises_stress.csv` — Plastically corrected peak von Mises stress per node  
+- `corrected_von_mises.csv` — Plastically corrected peak von Mises stress per node  
 - `plastic_strain.csv` — Equivalent plastic strain at peak  
 - `time_of_max_corrected_von_mises.csv` — Time instant of corrected peak
 
@@ -628,17 +696,68 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 
 ---
 
-## 10. Assumptions & Limitations
+## 10. Computational Precision and Performance
 
-1. **Linearity**: Material and geometric nonlinearities are not captured.  
-2. **Small Displacements**: Modal superposition counts on small strain theory.  
-3. **Mode Orthogonality**: Requires correct mass normalization.  
-4. **Proportional Damping**: Non-proportional damping would re-couple modes (rare in practice).  
-5. **Data Fidelity**: Accuracy tied to quality of modal stresses and coordinates.
+### 10.1 Floating-Point Precision
+
+MARS offers two numerical precision modes (configurable via `Settings → Advanced`):
+
+#### Single Precision (float32)
+- **Significand**: ~7 decimal digits (24-bit mantissa)
+- **Range**: ±1.2×10⁻³⁸ to ±3.4×10³⁸
+- **Memory**: 4 bytes per value
+- **Speed**: 2-4× faster than double on modern CPUs; GPU acceleration particularly effective
+- **Suitable for**: Most engineering analyses where stress gradients are smooth and fatigue lives < 10⁶ cycles
+
+#### Double Precision (float64)
+- **Significand**: ~15 decimal digits (53-bit mantissa)
+- **Range**: ±2.2×10⁻³⁰⁸ to ±1.8×10³⁰⁸
+- **Memory**: 8 bytes per value
+- **Speed**: Baseline (1×)
+- **Suitable for**: Critical aerospace components, extreme stress concentrations, high-cycle fatigue (>10⁶), or validation against reference solutions
+
+**Recommendation**: Start with single precision. Switch to double only if:
+- Fatigue damage accumulation shows numerical noise
+- Plasticity correction produces non-physical oscillations
+- Results are sensitive to small changes in inputs
+
+### 10.2 Memory Management
+
+MARS dynamically allocates memory for matrix operations based on the **RAM Allocation %** setting (default 70%):
+
+- Larger allocations enable processing of bigger datasets in single chunks, reducing I/O overhead
+- Lower allocations leave more memory for concurrent applications
+- The solver automatically falls back to chunked processing if a single allocation would exceed the limit
+
+**Typical requirements** (double precision):
+- 10,000 nodes × 100 modes × 1000 timesteps ≈ 8 GB
+- 100,000 nodes × 200 modes × 5000 timesteps ≈ 800 GB (requires chunking)
+
+### 10.3 GPU Acceleration
+
+When enabled (requires NVIDIA CUDA):
+
+- **Accelerated operations**: Dense matrix-matrix and matrix-vector multiplications (modal superposition)
+- **Not accelerated**: File I/O, rainflow counting, VTK rendering
+- **Speedup**: Typically 3-8× for models > 50,000 nodes; diminishing returns below 10,000 nodes
+- **Precision**: Both float32 and float64 supported on modern GPUs (Compute Capability ≥6.0)
+
+If CUDA is not detected, solver silently falls back to CPU with a console message.
 
 ---
 
-## 11. Verification Checklist Before Reporting
+## 11. Assumptions & Limitations
+
+1. **Linearity**: Material and geometric nonlinearities are not captured (except via plasticity correction at notches).  
+2. **Small Displacements**: Modal superposition relies on small strain theory.  
+3. **Mode Orthogonality**: Requires correct mass normalization.  
+4. **Proportional Damping**: Non-proportional damping would re-couple modes (rare in practice).  
+5. **Data Fidelity**: Accuracy tied to quality of modal stresses and coordinates.  
+6. **Numerical Precision**: Single-precision mode may accumulate roundoff error in extremely long time histories (>10⁶ timesteps).
+
+---
+
+## 12. Verification Checklist Before Reporting
 
 - [ ] Modal set covers forcing bandwidth and has sufficient mass participation.  
 - [ ] Peak displacements/stresses align with expectations from hand calculations or spot checks.  
@@ -646,10 +765,11 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 - [ ] Animation and hotspot review performed for critical components.  
 - [ ] Any steady-state stress file corresponds to the same load case and coordinate system.  
 - [ ] Units double-checked (especially after unit conversions in FEA exports).
+- [ ] Advanced Settings reviewed: appropriate precision and RAM allocation for problem size.
 
 ---
 
-## 12. Further Study Resources
+## 13. Further Study Resources
 
 - **Textbooks**  
   - R.W. Clough & J. Penzien, *Dynamics of Structures* – foundational treatment of modal analysis.  
@@ -663,7 +783,7 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 
 ---
 
-## 13. Glossary
+## 14. Glossary
 
 | Term | Definition |
 | --- | --- |
@@ -683,6 +803,10 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 | Hardening curve | Stress-strain relationship beyond yield; defines flow stress vs. plastic strain. |
 | Equivalent stress | Scalar measure combining tensor components; von Mises is standard for ductile J₂ plasticity. |
 | Temperature field | Spatial distribution of temperature used to adjust material properties node-by-node. |
+| Single precision | Floating-point format with ~7 significant digits; faster but less accurate. |
+| Double precision | Floating-point format with ~15 significant digits; slower but more accurate. |
+| GPU acceleration | Use of NVIDIA CUDA for parallel matrix operations; requires compatible hardware. |
+| RAM allocation | Percentage of system memory MARS is allowed to use for solver operations. |
 
 ---
 

@@ -57,6 +57,7 @@ Tip: Keep Node IDs and units consistent across files.
 - Double-click files to load them into appropriate fields.
 - Sort by name or type; resize columns.
 - Use View → Navigator to hide/show the panel.
+- **Note**: The Navigator automatically filters to show only `.mcf`, `.csv`, and `.txt` files. Other file types in the project directory will be hidden.
 
 [Image Placeholder: Navigator with .mcf, .csv, .txt highlighted]
 
@@ -121,7 +122,16 @@ Under Outputs:
 - Deformation / Velocity / Acceleration — require deformations loaded
 - Damage Index / Potential Damage — appears when Von-Mises is selected (if enabled)
 
-Use Skip first n modes to exclude initial modes if desired.
+### Skip First n Modes
+
+Use **Skip first n modes** to exclude initial modes from the analysis. The dropdown appears after loading the modal coordinate file.
+
+**When to use:**
+- Skip **rigid-body modes** (modes with near-zero frequency that represent free translation/rotation)
+- Skip modes with erroneous data from FEA export
+- Typical values: 0 (include all), 6 (skip 6 rigid-body modes for free-free structures)
+
+**Warning**: Skipping modes that contribute to the response will reduce accuracy. Review modal participation factors from your FEA tool before deciding.
 
 [Image Placeholder: Outputs group with checkboxes annotated]
 
@@ -180,10 +190,38 @@ If your structure has **stress concentrations** (notches, holes, fillets) where 
   - **Linear** (default) — for strain-hardening alloys
   - **Plateau** — for limited-hardening materials
 
+### Temperature Field File Format
+
+The temperature field file must be a **CSV** with the following structure:
+- **Required columns**: `NodeID`, `Temperature`
+- Temperature units must match those used in the Material Profile
+- Node IDs must match those in your modal stress file
+- Example:
+  ```
+  NodeID,Temperature
+  1001,25.0
+  1002,150.5
+  1003,300.0
+  ```
+
+### Iteration Controls (Advanced)
+
+For difficult convergence cases, adjust:
+- **Max Iterations** (default: 60) — increase if solver fails to converge
+- **Tolerance** (default: 1e-10) — numerical convergence threshold
+
+A warning appears if you change these from defaults. Relaxed settings may reduce accuracy.
+
+### Plasticity Diagnostics
+
+For advanced validation, tick **Show plasticity diagnostics (Δεp, εp)**:
+- When Time History Mode is active, this overlays incremental plastic strain (Δεp) and cumulative plastic strain (εp) on a secondary axis
+- Useful for debugging convergence or validating material models
+
 ### Output Files
 
 When plasticity is enabled, MARS produces:
-- `corrected_von_mises_stress.csv` — Reduced stress accounting for plasticity
+- `corrected_von_mises.csv` — Reduced stress accounting for plasticity
 - `plastic_strain.csv` — Equivalent plastic strain at each node
 - `time_of_max_corrected_von_mises.csv` — Time of corrected peak
 
@@ -211,7 +249,46 @@ When finished, proceed to the Display tab to explore results.
 
 ---
 
-## Page 15 – Console & Plot Tabs (Main Window)
+## Page 15 – Advanced Settings (Performance Tuning)
+
+Access via **Settings → Advanced** in the menu bar. This dialog controls global solver performance parameters.
+
+### RAM Allocation
+
+- **Set RAM Allocation (%)**: Control how much system memory MARS can use (default: 70%)
+- Range: 10% to 95%
+- **When to adjust**:
+  - Increase to 90% for large datasets (millions of data points)
+  - Decrease to 50% if running other memory-intensive applications simultaneously
+- Changes apply to the next SOLVE operation
+
+### Solver Precision
+
+- **Single Precision**: Faster, uses less memory, sufficient for most engineering analyses (~7 significant digits)
+- **Double Precision**: Slower, uses 2× memory, provides maximum accuracy (~15 significant digits)
+- **When to use Double**: Extremely sensitive stress gradients, fatigue life > 10⁶ cycles, or critical aerospace components
+
+### GPU Acceleration
+
+- **Enable GPU Acceleration**: Uses NVIDIA CUDA for matrix operations
+- **Requirements**: NVIDIA GPU with CUDA support, CUDA toolkit installed
+- **Speed improvement**: 2-10× faster for large models (>100k nodes)
+- If GPU is not detected, solver automatically falls back to CPU
+
+### Applying Changes
+
+1) Modify desired settings
+2) Click OK
+3) Settings take effect on the next SOLVE operation
+4) Current settings are saved and persist across sessions
+
+**Tip**: Start with default settings. Only adjust if experiencing performance issues or running very large models.
+
+[Image Placeholder: Advanced Settings dialog with labeled sections]
+
+---
+
+## Page 16 – Console & Plot Tabs (Main Window)
 
 - Console: shows load/validation messages and processing steps
 - Plot (Time History): appears when Time History mode is active
@@ -223,7 +300,7 @@ Use these for quick validation before switching to the Display tab.
 
 ---
 
-## Page 16 – Switch to Display Tab
+## Page 17 – Switch to Display Tab
 
 Click the Display tab to see the 3D view and controls:
 - Load Visualization File (for CSV-based meshes)
@@ -235,7 +312,7 @@ Click the Display tab to see the 3D view and controls:
 
 ---
 
-## Page 17 – Hover, Colorbar, and Point Size
+## Page 18 – Hover, Colorbar, and Point Size
 
 - Hover over points to see Node ID and current scalar value
 - Adjust Node Point Size for clarity
@@ -247,7 +324,7 @@ Tip: Reset camera after large changes for a clean view.
 
 ---
 
-## Page 18 – Compute a Time Point Field
+## Page 19 – Compute a Time Point Field
 
 When initialization is complete (after SOLVE), enable time point workflows:
 1) In Initialization & Time Point Controls, set Time (seconds)
@@ -260,7 +337,7 @@ If deformations exist, you can also Export Velocity as Initial Condition in APDL
 
 ---
 
-## Page 19 – Load External CSV Results
+## Page 20 – Load External CSV Results
 
 To visualize an external CSV:
 1) Click Load Visualization File
@@ -273,23 +350,37 @@ Use this to compare alternatives or post-process snapshots.
 
 ---
 
-## Page 20 – Animate Your Results
+## Page 21 – Animate Your Results
 
-1) Choose Time Step Mode:
-   - Custom Time Step (enter Step in seconds)
-   - Actual Data Time Steps (throttle with Every nth)
-2) Set Interval (ms)
-3) Set Start and End times
-4) Click Play; Pause or Stop as needed
-5) Click Save as Video/GIF to export (MP4 needs ffmpeg)
+### Time Step Modes
+
+1) **Custom Time Step**: Specify a uniform time step in seconds
+   - Enter desired **Step (secs)** value (e.g., 0.01 for 100 frames/second)
+   - MARS interpolates values at these uniform intervals
+   
+2) **Actual Data Time Steps**: Use the exact time values from your modal coordinate file
+   - Use **Every nth** to reduce frame count (e.g., "Every 2nd" shows every other frame)
+   - Recommended for large datasets: set "Every 10th" or "Every 20th" for smoother playback
+   - Lower "Every nth" values = more frames = slower playback but smoother
+
+### Animation Controls
+
+1) Set **Interval (ms)**: Delay between frames (50ms = 20 fps, 100ms = 10 fps)
+2) Set **Start** and **End** times to focus on a time window of interest
+3) Click **Play**; use **Pause** or **Stop** as needed
+4) Click **Save as Video/GIF** to export:
+   - **MP4**: Requires ffmpeg installed on your system
+   - **GIF**: Always available, larger file size
 
 If deformations were provided, geometry deforms during playback.
+
+**Tip**: For presentations, use Custom Time Step with 0.01s intervals and 50ms playback interval for smooth 20fps animations.
 
 [Image Placeholder: Animation controls — play/pause/stop]
 
 ---
 
-## Page 21 – Right-Click Context Menu (Display)
+## Page 22 – Right-Click Context Menu (Display)
 
 Right-click anywhere on the 3D view to access:
 - Selection Tools: Add/Remove Selection Box, Pick Box Center
@@ -301,7 +392,7 @@ Right-click anywhere on the 3D view to access:
 
 ---
 
-## Page 22 – Find Hotspots
+## Page 23 – Find Hotspots
 
 1) Right-click → Find Hotspots (on current view) or in Selection
 2) Enter how many top nodes to find
@@ -314,7 +405,7 @@ Use hotspots to shortlist critical regions for detailed checks.
 
 ---
 
-## Page 23 – Select an Area with a Box
+## Page 24 – Select an Area with a Box
 
 1) Right-click → Add Selection Box
 2) Right-click → Pick Box Center, then click to position
@@ -327,7 +418,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 24 – Go To Node & Track During Animation
+## Page 25 – Go To Node & Track During Animation
 
 1) Right-click → Go To Node
 2) Enter a Node ID to fly the camera there
@@ -338,7 +429,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 25 – Batch Workflow (Checklist)
+## Page 26 – Batch Workflow (Checklist)
 
 1) Load .mcf
 2) Load stress .csv
@@ -353,7 +444,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 26 – Time History Workflow (Checklist)
+## Page 27 – Time History Workflow (Checklist)
 
 1) Load .mcf and stress .csv
 2) Tick Time History Mode
@@ -366,7 +457,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 27 – Export Your Results
+## Page 28 – Export Your Results
 
 - Save Time Point as CSV — includes NodeID, coordinates, and active scalar
 - Export Velocity as Initial Condition in APDL — generates velocity IC commands
@@ -378,7 +469,7 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 28 – Troubleshooting (At a Glance)
+## Page 29 – Troubleshooting (At a Glance)
 
 | Symptom | Cause | What to try |
 | --- | --- | --- |
@@ -389,12 +480,15 @@ Keep exports in project-specific folders for traceability.
 | Hotspots disabled | No active scalar | Apply a scalar via CSV or results |
 | Plasticity won't enable | Von Mises not selected or temp field missing | Select Von Mises output and load temperature file |
 | Corrected stress > elastic | Material data incorrect or solver didn't converge | Check material curves and increase max iterations |
+| GPU not being used | CUDA not installed or no NVIDIA GPU | Check Settings → Advanced; install CUDA toolkit or disable GPU option |
+| Solver very slow | RAM allocation too low or precision too high | Go to Settings → Advanced; increase RAM % or switch to Single precision |
+| Temperature file error | Wrong format or missing columns | Ensure CSV format with NodeID and Temperature columns (see Page 13) |
 
 [Image Placeholder: Troubleshooting grid]
 
 ---
 
-## Page 29 – Tips for Clear Visuals
+## Page 30 – Tips for Clear Visuals
 
 - Keep deformation scale ≤ 5 for realistic visuals
 - Use consistent color ranges across comparisons
@@ -405,7 +499,7 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 30 – Keyboard & Mouse Basics
+## Page 31 – Keyboard & Mouse Basics
 
 - Left-drag: Rotate
 - Right-drag: Pan
@@ -417,7 +511,7 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 31 – Review Checklist Before Reporting
+## Page 32 – Review Checklist Before Reporting
 
 - [ ] Inputs validated; Node IDs consistent
 - [ ] Outputs selected match the report scope
@@ -429,18 +523,25 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 32 – File Format Notes (For Reference)
+## Page 33 – File Format Notes (For Reference)
 
-- .mcf: Modal coordinates with a Time column
-- Stress .csv: NodeID (+ optional X,Y,Z) and component series
-- Deformation .csv: NodeID with ux_, uy_, uz_ series
-- Steady-state .txt: Tab-delimited with labeled components
+- **.mcf**: Modal coordinates with a Time column
+- **Stress .csv**: NodeID (+ optional X,Y,Z) and component series (sx_1, sy_1, etc.)
+- **Deformation .csv**: NodeID with ux_, uy_, uz_ series
+- **Steady-state .txt**: Tab-delimited with labeled components
+- **Temperature field .csv**: NodeID, Temperature columns (for plasticity correction)
+  - Example:
+    ```
+    NodeID,Temperature
+    1001,25.0
+    1002,150.5
+    ```
 
 [Image Placeholder: File snippet samples]
 
 ---
 
-## Page 33 – FAQs
+## Page 34 – FAQs
 
 Q: Which outputs require deformations?
 A: Deformation, Velocity, and Acceleration.
@@ -457,11 +558,20 @@ A: When elastic stress exceeds yield at notches/holes and you need realistic str
 Q: Which plasticity method should I choose?
 A: Start with Neuber (faster); use Glinka if you need energy-based conservatism. IBG is currently experimental.
 
+Q: How do I speed up large analyses?
+A: Go to Settings → Advanced. Increase RAM allocation to 90%, switch to Single precision, or enable GPU acceleration if you have NVIDIA CUDA.
+
+Q: What does "Skip first n modes" do?
+A: Excludes the first n modes from analysis. Use this to skip rigid-body modes (usually 6 for free-free structures) or modes with bad data.
+
+Q: Why can't I see all files in the Navigator?
+A: Navigator automatically filters to show only .mcf, .csv, and .txt files relevant to MARS workflows.
+
 [Image Placeholder: FAQ cards]
 
 ---
 
-## Page 34 – Getting Help
+## Page 35 – Getting Help
 
 If you encounter issues:
 - Note buttons clicked and inputs used

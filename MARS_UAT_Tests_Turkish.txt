@@ -1,0 +1,512 @@
+TEST NO: 1
+
+BAŞLIK: Dosya Yükleme ve Proje Kurulumu
+
+AÇIKLAMA: Tüm gerekli girdi dosyalarının yüklenmesini ve Navigator ile dosya diyalogları üzerinden uygun proje dizini kurulumunu doğrular
+
+GİRDİLER:
+
+- MARS v0.95 ile başlatılmış uygulama
+- Test dosyaları mevcut: geçerli .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
+- Proje dizini filtreleme doğrulaması için karışık dosya türleri içermektedir
+
+TEST ADIMLARI:
+
+1. File > Select Project Directory üzerinden proje dizinini ayarlayın ve Navigator'ın klasör içeriğiyle güncellendiğini doğrulayın
+2. Navigator'ın yalnızca .mcf, .csv ve .txt dosyalarını gösterdiğini doğrulayın (otomatik filtreleme davranışı)
+3. Read Modal Coordinate File düğmesine tıklayarak ve geçerli bir .mcf dosyası seçerek modal koordinat dosyasını yükleyin
+4. Read Modal Stress File düğmesine tıklayarak ve geçerli bir .csv dosyası seçerek modal stress dosyasını yükleyin
+5. Include Deformations checkbox'ını etkinleştirin ve deformations dosya kontrollerinin görünür hale geldiğini doğrulayın
+6. Artık görünür olan düğmeyi kullanarak deformations .csv dosyasını yükleyin
+7. Include Steady-State Stress Field checkbox'ını etkinleştirin ve steady-state dosya kontrollerinin göründüğünü doğrulayın
+8. Artık görünür olan düğmeyi kullanarak steady-state .txt dosyasını yükleyin
+9. Tüm dosya yollarının salt okunur metin alanlarında doğru şekilde görüntülendiğini doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Navigator, proje diziniyle eşleşen yalnızca filtrelenmiş dosyaları (.mcf, .csv, .txt) gösterir
+- Console, yüklenen her dosya için başarı mesajları görüntüler
+- Dosya yolu alanları doğru mutlak yollarla doldurulur
+- Stress çıktı checkbox'ları (Von-Mises, Max Principal, Min Principal), stress dosyası yüklendikten sonra etkinleşir
+- Deformation çıktı checkbox'ları (Deformation, Velocity, Acceleration), deformations dosyası yüklendikten sonra etkinleşir
+- Opsiyonel dosya kontrolleri (steady-state, deformations), checkbox'lar etkinleştirilene kadar gizlidir
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 2
+
+BAŞLIK: Çıktı Seçimi ve Solver Çalıştırma
+
+AÇIKLAMA: Çıktı seçimini, skip modes dahil solver konfigürasyon parametrelerini ve ilerleme izleme ile analizin başarılı şekilde yürütülmesini doğrular
+
+GİRDİLER:
+
+- Modal coordinate ve stress dosyaları başarıyla yüklenmiştir
+- Skip modes: 6 (6 rijit-cisim modu olan free-free yapı için)
+- Fatigue parametreleri: σ'f = 1000 MPa, b = -0.12
+- Time history için Node ID: 1001
+- Tam çıktı testi için deformations dosyası yüklenmiştir
+
+TEST ADIMLARI:
+
+1. Birden fazla çıktı seçeneği seçin: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
+2. Damage Index checkbox'ını etkinleştirin ve fatigue parametreleri alanlarının göründüğünü doğrulayın
+3. Fatigue parametrelerini girin: σ'f = 1000 MPa ve b = -0.12
+4. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
+5. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
+6. Scoping alanına Node ID 1001'i girin
+7. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
+8. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
+9. İşleme mesajları ve doğrulama adımları için Console sekmesini izleyin
+10. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
+11. Solver'ın tamamlanmasını bekleyin ve Console'da başarı mesajının göründüğünü doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Seçilen tüm çıktı checkbox'ları işaretlidir ve etkin kalır
+- Damage Index seçildiğinde fatigue parametreleri bölümü görünür
+- Skip modes dropdown, .mcf dosyasından gelen maksimum mod sayısına kadar 0'dan başlayan değerleri gösterir
+- Time History Mode scoping kontrolleri, checkbox etkinleştirildiğinde görünür
+- Minimum gereksinimler karşılandığında SOLVE düğmesi etkinleşir
+- Progress bar, çalıştırma sırasında %0'dan %100'e düzgün bir şekilde ilerler
+- Console, doğrulama mesajlarını, işleme adımlarını ve tamamlanma durumunu görüntüler
+- Main Window'da node 1001 geçmişini gösteren Time History plot sekmesi görünür
+- Çıktı CSV dosyaları solver çıktı dizininde oluşturulur
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 3
+
+BAŞLIK: Plasticity Correction Tam İş Akışı
+
+AÇIKLAMA: Material profile girişi, temperature field yükleme, metod seçimi ve iterasyon kontrol ayarlaması dahil olmak üzere tam plasticity correction iş akışını doğrular
+
+GİRDİLER:
+
+- Von-Mises Stress çıktısı seçilmiştir (plasticity correction için gereklidir)
+- NodeID ve Temperature sütunlarına sahip temperature field CSV dosyası mevcuttur
+- Material profile verisi: 3 sıcaklık (25°C, 200°C, 400°C), her biri için 8 stress-strain noktası
+- Plasticity metodu: Glinka (enerji tabanlı düzeltme)
+- Max Iterations: 80 (varsayılan 60'tan artırılmıştır)
+- Tolerance: 1e-9 (varsayılan 1e-10'dan sıkılaştırılmıştır)
+
+TEST ADIMLARI:
+
+1. Enable Plasticity Correction checkbox'ını etkinleştirin ve Plasticity Correction Options grubunun görünür hale geldiğini doğrulayın
+2. Select Method dropdown'unu açın ve Glinka metodunu seçin
+3. Malzeme tanımlama diyaloğunu açmak için Enter Material Profile düğmesine tıklayın
+4. Sıcaklığa bağlı stress-strain eğrilerini girin: her biri için 8 nokta ile 3 sıcaklık girin
+5. Plasticity seçeneklerinde dropdown'dan Extrapolation modunu Linear olarak seçin
+6. Read Temperature Field File düğmesine tıklayın ve temperature CSV dosyasını seçin
+7. Temperature field dosya yolunun metin alanında görüntülendiğini doğrulayın
+8. Max Iterations alanını 80 olarak değiştirin (varsayılanı temizleyip yeni değeri girin)
+9. Tolerance alanını 1e-9 olarak değiştirin
+10. "Warning: Relaxed iteration settings may impact accuracy" belirten uyarı etiketinin göründüğünü doğrulayın
+11. Time history overlay için Show plasticity diagnostics checkbox'ını etkinleştirin
+12. Solver'ı çalıştırın ve plasticity'ye özgü mesajlar için Console'u izleyin
+13. Çıktı dizininde düzeltilmiş sonuçların oluşturulduğunu doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Checkbox etkinleştirildiğinde Plasticity Correction Options grubu görünür hale gelir
+- Glinka metodu dropdown'da seçili olarak görüntülenir
+- Material Profile diyalogu açılır ve çok sıcaklıklı eğri verisini kabul eder
+- Temperature field dosya yolu yüklendikten sonra doğru şekilde görüntülenir
+- Iterasyon ayarları varsayılandan değiştirildiğinde turuncu/sarı renkte uyarı etiketi görünür
+- Solver, düşürülmüş stress değerlerine sahip corrected_von_mises.csv dosyasını oluşturur
+- Solver, her düğümde eşdeğer plastik strain içeren plastic_strain.csv dosyasını oluşturur
+- Time history plot, diagnostics etkinleştirildiğinde ikincil eksende Δεp ve εp katmanlarını gösterir
+- Console, her düğüm için plasticity yakınsama bilgilerini görüntüler
+- Düzeltilmiş stress değerleri, çentikte elastik stress'ten daha düşüktür
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 4
+
+BAŞLIK: Gelişmiş Ayarlar ve Performans Ayarlaması
+
+AÇIKLAMA: RAM tahsisi, solver hassasiyet seçimi ve GPU hızlandırma konfigürasyonu dahil olmak üzere performans ayarlama kontrollerini doğrular
+
+GİRDİLER:
+
+- Varsayılan ayarlarla başlatılmış uygulama
+- Hedef RAM Allocation: %85 (varsayılan %70'ten artırılmıştır)
+- Hedef Solver Precision: Single (varsayılan Double'dan değiştirilmiştir)
+- GPU Acceleration: Enabled (NVIDIA CUDA mevcutsa)
+
+TEST ADIMLARI:
+
+1. Settings menüsüne gidin ve Advanced Settings diyaloğunu açmak için Advanced'e tıklayın
+2. Mevcut ayarlar görüntüsünün varsayılan değerleri gösterdiğini gözlemleyin (RAM: %70, Precision: Double, GPU: Disabled)
+3. RAM Allocation spinbox'ını 70'ten 85'e değiştirin
+4. Solver Precision dropdown'unu açın ve mevcut seçeneklerden Single'ı seçin
+5. GPU Acceleration checkbox'ını etkinleştirin
+6. Ayarları uygulamak için OK düğmesine tıklayın
+7. Ayarların uygulandığına dair mesaj içeren onay diyalogunun göründüğünü doğrulayın
+8. Settings > Advanced üzerinden Advanced Settings diyalogunu yeniden açın
+9. Tüm değişikliklerin kalıcı olduğunu onaylayın (RAM: %85, Precision: Single, GPU: Enabled)
+
+BEKLENEN SONUÇLAR:
+
+- Advanced Settings diyalogu en üstte mevcut ayarlar etiketini göstererek açılır
+- RAM spinbox'ı 10'dan 95'e kadar değerleri kabul eder
+- Solver Precision dropdown Single ve Double seçeneklerini sunar
+- GPU Acceleration checkbox açılıp kapatılabilir
+- OK düğmesi diyalogu kapatır ve onay mesajı görüntüler
+- Ayarlar, diyalog yeniden açıldığında kalıcıdır
+- Console, bir sonraki SOLVE çalıştırıldığında uygulanan ayarları gösterir
+- GPU mevcut değilse, solver bir console mesajıyla CPU'ya geri döner
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 5
+
+BAŞLIK: 3D Görselleştirme ve Kamera Navigasyonu
+
+AÇIKLAMA: Görselleştirme parametreleri, kamera manipülasyonu, legend aralığı ayarlama ve node hover incelemesi dahil olmak üzere 3D görüntü kontrollerini doğrular
+
+GİRDİLER:
+
+- Solver, Von-Mises stress sonuçlarıyla tamamlanmıştır
+- Display tab, sonuçlar otomatik olarak yüklenmiş şekilde aktiftir
+- Hedef Node Point Size: 10 (varsayılan 5'ten artırılmıştır)
+- Hedef Legend Range: Min 0, Max 500 MPa
+- Deformation Scale Factor: 2.5 (deformations dahil edilmişse)
+
+TEST ADIMLARI:
+
+1. Solver tamamlandıktan sonra Display sekmesine geçin
+2. 3D görselleştirmenin jet colormap kullanarak renk eşlemeli sonuçlarla otomatik olarak yüklendiğini doğrulayın
+3. Node Point Size spinbox'ını varsayılan 5'ten 10'a ayarlayın
+4. Nokta boyutunun 3D görünümde görünür şekilde arttığını doğrulayın
+5. Legend Range Min spinbox'ını 0'a ve Max spinbox'ını 500'e ayarlayın
+6. Renk ölçeğinin, minimumun altı için gri ve maksimumun üstü için magenta ile belirtilen aralığı gösterecek şekilde ayarlandığını doğrulayın
+7. Deformations dahil edilmişse: Deformation Scale Factor değerini 2.5 girin ve Enter'a basın
+8. Geometrinin belirtilen ölçek faktörüyle deforme olduğunu doğrulayın
+9. 3D görünümde çeşitli node'ların üzerine fareyi getirin
+10. NodeID ve mevcut scalar değerini gösteren tooltip'lerin göründüğünü doğrulayın
+11. 3D görünümde sol tuşla sürükleyerek kamera rotasyonunu test edin
+12. 3D görünümde sağ tuşla sürükleyerek kamera kaydırmayı test edin
+13. Fare tekerleğini ileri ve geri kaydırarak zoom'u test edin
+14. Context menüsünü açmak için sağ tıklayın ve Reset Camera'yı seçin
+15. Görünümün varsayılan konum ve yönelime döndüğünü doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Display tab, jet colormap ile 3D nokta bulutunu gösterir (mavi=düşük, kırmızı=yüksek)
+- Spinbox değeri 10'a artırıldığında nokta boyutu görünür şekilde artar
+- Renk legend'i belirtilen min/max aralığına ayarlanır (0-500)
+- 0'ın altındaki değerler gri, 500'ün üstündeki değerler magenta görünür
+- Deformations mevcutsa ve ölçek uygulandığında geometri 2.5 faktörüyle deforme olur
+- Hover tooltip'leri doğru NodeID ve mevcut scalar değeri gösterir
+- Kamera, sol sürükleme ile model merkezi etrafında düzgün bir şekilde döner
+- Kamera, sağ sürükleme ile sahne boyunca kayar
+- Zoom, fare tekerleği kaydırmasına yanıt verir
+- Reset Camera, görünümü varsayılan izometrik yönelime döndürür
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 6
+
+BAŞLIK: Time Point Analizi ve Dışa Aktarma
+
+AÇIKLAMA: Belirli bir zaman anında time point hesaplamasını, sonuç görüntülemeyi ve sonuçların CSV ve APDL formatlarına dışa aktarılmasını doğrular
+
+GİRDİLER:
+
+- Solver, time-history sonuçları mevcut olacak şekilde tamamlanmıştır
+- Hedef time point: 0.5 saniye (analiz zaman aralığı içinde)
+- Velocity verisi deformations dosyasından mevcuttur
+- Dışa aktarma dosya yolları test sırasında kullanıcı tarafından belirtilecektir
+
+TEST ADIMLARI:
+
+1. Solver tamamlandıktan sonra Display sekmesinde Initialization & Time Point Controls grubunun görünür olduğunu doğrulayın
+2. Ok düğmelerini veya doğrudan girişi kullanarak Time spinbox'ını 0.5 saniye olarak ayarlayın
+3. Belirtilen zaman anında sonuçları hesaplamak için Update düğmesine tıklayın
+4. 3D görünümün t=0.5 saniyede node bazlı sonuçları gösterecek şekilde güncellendiğini doğrulayın
+5. Colormap'in o andaki değerleri yansıtacak şekilde güncellendiğini doğrulayın
+6. Save Time Point as CSV düğmesine tıklayın
+7. Kaydetme diyalogunda konum ve dosya adını belirtin, ardından Save'e tıklayın
+8. Export Velocity as Initial Condition düğmesine tıklayın (yalnızca velocity verisi mevcutsa görünür)
+9. Kaydetme diyalogunda APDL komut dosyası için konum belirtin, ardından Save'e tıklayın
+
+BEKLENEN SONUÇLAR:
+
+- Solver tamamlandıktan sonra Initialization & Time Point Controls grubu görünür hale gelir
+- Time spinbox, analiz süresine göre uygun aralıkla görüntülenir
+- Update düğmesi, belirtilen zamandaki (0.5s) node değerlerini hesaplar ve görüntüler
+- 3D görünüm, o zamandaki mekansal dağılımı gösterecek şekilde hemen güncellenir
+- Save Time Point CSV başarıyla dışa aktarılır
+- CSV dosyası belirtilen konumda oluşturulur
+- Export Velocity IC düğmesi yalnızca velocity verisi mevcutsa görünür
+- APDL IC dosyası belirtilen konumda oluşturulur
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 7
+
+BAŞLIK: Animasyon Oynatma ve Dışa Aktarma
+
+AÇIKLAMA: Time step modları, frame azaltma ve animasyonun video formatlarına dışa aktarılması ile animasyon oynatmayı doğrular
+
+GİRDİLER:
+
+- Solver sonuçları time-history verisi ile mevcuttur
+- Animation modu: Actual Data Time Steps
+- Every nth: 10 (daha düzgün oynatma için frame sayısını azaltmak için)
+- Animation interval: 100 ms (10 fps oynatma)
+- Time aralığı: 0.0'dan 5.0 saniyeye
+- MP4 dışa aktarma için FFmpeg yüklüdür
+
+TEST ADIMLARI:
+
+1. Solver tamamlandıktan sonra Display sekmesinde Animation Controls grubunun görünür olduğunu doğrulayın
+2. Time Step Mode dropdown'unu açın ve "Actual Data Time Steps"'i seçin
+3. Actual Data Time Steps seçildiğinde "Every nth" spinbox'ının göründüğünü doğrulayın
+4. Her 10. veri noktasını kullanmak için Every nth değerini 10 olarak ayarlayın
+5. Animation Interval spinbox'ını 100 ms olarak ayarlayın
+6. Start time spinbox'ını 0.0 saniye olarak ayarlayın
+7. End time spinbox'ını 5.0 saniye olarak ayarlayın
+8. Animasyonu başlatmak için Play düğmesine tıklayın
+9. Animasyonun 3D görünümde ilerleyen time text overlay ile oynatmaya başladığını doğrulayın
+10. Oynatma sırasında Pause düğmesine tıklayın ve animasyonun mevcut frame'de donduğunu doğrulayın
+11. Duraklatılan konumdan devam etmek için tekrar Play'e tıklayın
+12. Animasyonu durdurmak için Stop düğmesine tıklayın ve başlangıç frame'ine döndüğünü doğrulayın
+13. Animasyon bir kez oynatıldıktan sonra Save as Video/GIF düğmesine tıklayın
+14. Kaydetme diyalogunda MP4 formatını seçin, konum belirtin, Save'e tıklayın
+15. Dışa aktarmanın tamamlanmasını bekleyin
+
+BEKLENEN SONUÇLAR:
+
+- Animation Controls grubu tüm oynatma kontrolleriyle görünür hale gelir
+- Actual Data Time Steps modu için Every nth spinbox'ı görünür
+- Every nth = 10, frame sayısını her 10. veri noktasına düşürür
+- Play düğmesi, görünür time text overlay ile animasyonu başlatır
+- Animasyon 100ms aralıklarla düzgün bir şekilde oynatılır
+- Pause mevcut frame'de dondurur, Resume duraklatılan konumdan devam eder
+- Stop başlangıç frame'ine döner ve time sayacını sıfırlar
+- Save as Video/GIF diyalogu MP4 ve GIF format seçenekleriyle açılır
+- MP4 video dosyası belirtilen konumda oluşturulur
+- Dışa aktarılan animasyon time text overlay içerir ve oynatmayla eşleşir
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 8
+
+BAŞLIK: Selection Box ve Bölge Araçları
+
+AÇIKLAMA: Selection box widget'ının oluşturulmasını, handle'lar aracılığıyla manipülasyonunu ve nokta seçimi yoluyla interaktif konumlandırmayı doğrular
+
+GİRDİLER:
+
+- Display tab'de scalar veri görünür şekilde sonuçlar yüklenmiştir
+- Selection box ilgilenilen belirli bir bölge üzerine konumlandırılacaktır
+
+TEST ADIMLARI:
+
+1. Context menüsünü açmak için 3D görünümde sağ tıklayın
+2. Selection Tools bölümünden "Add Selection Box"'ı seçin
+3. 3D görünümde görünür köşe ve kenar handle'ları olan turuncu box widget'ının göründüğünü doğrulayın
+4. Selection box'ı istenen boyutlara yeniden boyutlandırmak için köşe handle'larını sürükleyin
+5. Handle'lar sürüklendikçe box'ın interaktif olarak yeniden boyutlandığını doğrulayın
+6. Tekrar sağ tıklayın ve context menüsünden "Pick Box Center"'ı seçin
+7. İmlecin seçim modunun aktif olduğunu gösteren artı işaretine dönüştüğünü doğrulayın
+8. Box'ı yeniden konumlandırmak için 3D görünümde belirli bir noktaya tıklayın
+9. Selection box'ın, boyutunu korurken merkezi tıklanan konumda olacak şekilde hareket ettiğini doğrulayın
+10. Sağ tıklayın ve context menüsünden "Remove Selection Box"'ı seçin
+11. Box widget'ının 3D görünümden kaybolduğunu doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Context menü Selection Tools bölümüyle açılır
+- Selection box, köşe handle'larına sahip turuncu wireframe küp olarak görünür
+- Köşe handle'ları sürüklendiğinde box düzgün bir şekilde yeniden boyutlandırılır
+- Pick Box Center modu imleci artı işaretine dönüştürür
+- Box, tıklanan konuma hemen yeniden konumlandırılır
+- Yeniden konumlandırma sırasında box boyutu korunur
+- Remove Selection Box, widget'ı görünümden tamamen kaldırır
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 9
+
+BAŞLIK: Hotspot Tespiti ve Analizi
+
+AÇIKLAMA: Tam görünür mesh üzerinde ve selection box bölgeleri içinde hotspot tespitini, kritik node'lara interaktif navigasyonla birlikte doğrular
+
+GİRDİLER:
+
+- Von-Mises stress scalar verisi aktif olarak mesh yüklenmiştir
+- Hotspot sayısı: 10 node (değere göre en yüksek 10)
+- Selection box belirli bir bölge üzerine konumlandırılmıştır
+
+TEST ADIMLARI:
+
+1. 3D görünümde sağ tıklayın ve Hotspot Analysis bölümünden "Find Hotspots (on current view)"'i seçin
+2. Görünen diyalogda bulunacak hotspot sayısı için 10 girin
+3. Hotspot tespitini çalıştırmak için OK'ye tıklayın
+4. Azalan değere göre sıralanmış en yüksek 10 node'u gösteren Hotspot Dialog tablosunu inceleyin
+5. Hotspot tablosundaki bir node satırına tıklayın
+6. Kameranın o node konumuna uçtuğunu ve NodeID'yi gösteren etiketin göründüğünü doğrulayın
+7. Farklı satırlara tıklayın ve kameranın her bir hotspot node'una uçtuğunu gözlemleyin
+8. Hotspot diyalogunu kapatın
+9. Selection box'ın belirli bir bölge üzerine konumlandırıldığını doğrulayın
+10. Sağ tıklayın ve "Find Hotspots in Selection"'ı seçin
+11. Sayı için 10 girin ve OK'ye tıklayın
+12. Hotspot diyalogunun artık YALNIZCA box bölgesi içindeki en yüksek 10 node'u gösterdiğini doğrulayın
+13. Seçilen bölge içindeki hotspot'lara gitmek için satırlara tıklayın
+
+BEKLENEN SONUÇLAR:
+
+- Hotspot diyalogu NodeID ve scalar değer sütunlarıyla tablo gösterir
+- Find Hotspots mevcut kamera görünümündeki tüm görünür noktaları analiz eder
+- En yüksek 10 node azalan değere göre sıralanır (en yüksek stress ilk sırada)
+- Tablodaki bir satıra tıklamak kameranın o node'a etiketle birlikte uçmasına neden olur
+- Find Hotspots in Selection yalnızca selection box içindeki noktaları analiz eder
+- Selection tabanlı hotspot'lar tam görünüm hotspot'larından farklı olabilir
+- Diyalog, kritik bölgelerin kolay tanımlanmasını ve navigasyonunu sağlar
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 10
+
+BAŞLIK: İnteraktif Node Analiz Araçları
+
+AÇIKLAMA: Go To Node navigasyonunu, animasyon takibi için kamera kilitlemeyi ve nokta seçimi yoluyla time history çizimini doğrular
+
+GİRDİLER:
+
+- NodeID verisiyle mesh yüklenmiştir
+- Hedef Node ID: 5042
+- Önceki solver çalıştırmasından time history verisi mevcuttur
+- Kamera kilitleme testi için animasyon önceden hesaplanmıştır
+
+TEST ADIMLARI:
+
+1. 3D görünümde sağ tıklayın ve View Control bölümünden "Go To Node"'u seçin
+2. Görünen diyalogda Node ID 5042'yi girin ve OK'ye tıklayın
+3. Kameranın node 5042'ye uçtuğunu ve node konumunda marker'ın göründüğünü doğrulayın
+4. Tekrar sağ tıklayın ve "Lock Camera for Animation (freeze node)" checkbox'ını işaretleyin
+5. Menü öğesinin yanında onay işaretinin göründüğünü doğrulayın
+6. Animasyon kontrollerini kullanarak animasyonu oynatın
+7. Kameranın animasyon frame'leri boyunca node 5042 hareketini takip ettiğini doğrulayın
+8. Animasyonu durdurun
+9. Kilidi açmak için sağ tıklayın ve "Lock Camera for Animation"'ın işaretini kaldırın
+10. Sağ tıklayın ve "Plot Time History for Selected Node"'u seçin
+11. 3D görünümde farklı bir node'a tıklayın
+12. Main Window sekmesine geçin
+13. Tıklanan node'un zaman içindeki geçmişini gösteren Time History plot'unun göründüğünü doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Go To Node diyalogu node ID girişini kabul eder
+- Kamera marker ve etiketle birlikte belirtilen node'a düzgün bir şekilde uçar
+- Lock Camera checkbox'ı etkinleştirildiğinde context menüde işaretli görünür
+- Kilitli kamera, animasyon boyunca node'u merkezde tutar
+- Kamera, üç boyutta (X, Y, Z) node hareketini takip eder
+- Kameranın kilidini açmak normal sabit görünümü geri yükler
+- Plot Time History seçim modu node seçimini etkinleştirir
+- Node'a tıklamak Main Window sekmesinde time history plot'unu görüntüler
+- Plot, x ekseninde time ve y ekseninde metric değerini gösterir
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 11
+
+BAŞLIK: Veri Dışa Aktarma İşlevselliği
+
+AÇIKLAMA: Time point CSV, APDL için velocity initial conditions ve animasyon video dışa aktarma dahil olmak üzere veri dışa aktarma özelliklerini doğrular
+
+GİRDİLER:
+
+- Solver, oluşturulmuş sonuçlarla tamamlanmıştır
+- Time point 0.5 saniyede hesaplanmıştır
+- Velocity verisi deformations'tan mevcuttur
+- Animasyon bir kez oynatılarak önceden hesaplanmıştır
+
+TEST ADIMLARI:
+
+1. Time point'i 0.5 saniye olarak ayarlayın ve Update düğmesine tıklayın
+2. "Save Time Point as CSV" düğmesine tıklayın
+3. Dışa aktarma konumunu ve dosya adını belirtin (örn. timepoint_0p5s.csv), Save'e tıklayın
+4. "Export Velocity as Initial Condition in APDL" düğmesine tıklayın
+5. Dışa aktarma konumunu ve dosya adını belirtin (örn. velocity_ic.txt), Save'e tıklayın
+6. Animasyon bir kez oynatıldıktan sonra "Save as Video/GIF" düğmesine tıklayın
+7. Dropdown'da MP4 formatını seçin
+8. Dışa aktarma konumunu ve dosya adını belirtin (örn. animation.mp4), Save'e tıklayın
+9. Dışa aktarma işleminin tamamlanmasını bekleyin
+
+BEKLENEN SONUÇLAR:
+
+- Time point CSV belirtilen konuma başarıyla dışa aktarılır
+- APDL IC dosyası belirtilen konuma başarıyla dışa aktarılır
+- Animation dışa aktarma diyalogu MP4 ve GIF format seçeneklerini sunar
+- MP4 video dosyası belirtilen konumda oluşturulur (ffmpeg gerektirir)
+- MP4 başarısız olursa yedek olarak GIF animasyonu oluşturulabilir
+- Dışa aktarılan video, oynatmayla eşleşen time text overlay içerir
+- Dışa aktarılan tüm dosyalar uygun uygulamalarda açılabilir
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 12
+
+BAŞLIK: Console İzleme ve Kullanıcı Rehberliği
+
+AÇIKLAMA: Normal solver çalıştırma iş akışı sırasında console mesaj görüntüleme ve ilerleme izlemeyi doğrular
+
+GİRDİLER:
+
+- Modal coordinate ve stress dosyaları yüklenmiştir
+- En az bir çıktı seçilmiştir (Von-Mises)
+- Solver çalıştırma için geçerli konfigürasyon hazırdır
+
+TEST ADIMLARI:
+
+1. Tüm gerekli dosyaları yükleyin (coordinate ve stress) ve Von-Mises çıktısını seçin
+2. Geçerli konfigürasyonla SOLVE düğmesine tıklayın
+3. Console sekmesine geçin
+4. Console'un yüklenen dosyaları onaylayan doğrulama mesajlarını görüntülediğini gözlemleyin
+5. SOLVE düğmesinin altındaki progress bar'ın %0'dan ilerlemesini gözlemleyin
+6. Çalıştırma sırasında işleme adımı mesajları için Console'u izleyin
+7. Tamamlanmayı bekleyin ve başarı mesajının göründüğünü doğrulayın
+8. Console'da görüntülenen toplam çalıştırma süresini not edin
+9. Time History Mode etkinse: Time History plot sekmesinin göründüğünü doğrulayın
+10. Plot (Time History) sekmesine tıklayın ve plot'un doğru şekilde görüntülendiğini doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- SOLVE tıklandıktan sonra Console doğrulama başarı mesajlarını gösterir
+- Doğrulama mesajları, her yüklenen dosyayı temel bilgilerle listeler
+- Progress bar %0'dan %100'e düzgün bir şekilde ilerler
+- Console, çalıştırma sırasında işleme mesajlarını görüntüler
+- Tamamlanma mesajı açıkça "Solver completed successfully" ifadesini belirtir
+- Toplam çalıştırma süresi Console'da görüntülenir
+- Bu mod kullanıldığında Time History plot sekmesi görünür hale gelir
+- Plot, etiketli eksenlerle görüntülenir (saniye cinsinden time, birimlerle metric)
+- Console, referans için tam log geçmişini korur
+
+GEREKSINIM NO: N/A
+

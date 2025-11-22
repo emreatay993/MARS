@@ -18,8 +18,10 @@ Your legacy MSUP Smart Solver codebase now lives on as **MARS: Modal Analysis Re
 - ✅ **All features preserved**: Identical workflows for batch solves, time history, visualisation, hotspots, and exports
 - ✅ **Documentation & testing refreshed**: README, architecture, migration, and testing guides align with the latest `src/` layout
 - ✅ **Bug fixes retained**: Hover annotation, scalar bar refresh, and time-history stability improvements remain in place
+- ✅ **Comprehensive Documentation**: User manuals, theory manual, feature checklists, and UAT tests
+- ✅ **Performance Controls**: Advanced Settings for RAM, precision, and GPU acceleration
 
-**Bottom line**: Same functionality you relied on, better code, with additional bug fixes!
+**Bottom line**: Same functionality you relied on, better code, with comprehensive documentation and performance tuning!
 
 ---
 
@@ -86,12 +88,20 @@ That's it! The application launches exactly as before.
    - Design patterns
    - How everything works
 
-### Reference Documentation
+### User Documentation
 
-5. **MIGRATION_GUIDE.md** - For developers transitioning from legacy
-6. **tests/TESTING_GUIDE.md** - For QA and testing
-7. **FILE_INDEX.md** - Complete file inventory
-8. **PROJECT_COMPLETE.md** - Detailed completion report
+5. **QUICK_USER_MANUAL.md** (5 min read) - Quick workflow reference for experienced users
+6. **DETAILED_USER_MANUAL_20_Pages.md** (30 min read) - Comprehensive step-by-step GUI guide
+7. **DETAILED_THEORY_MANUAL.md** (45 min read) - Theoretical background and engineering guidance
+8. **MARS_FEATURE_CHECKLIST.md** - Complete feature inventory with checkboxes
+
+### Developer & Testing Documentation
+
+9. **MIGRATION_GUIDE.md** - For developers transitioning from legacy
+10. **tests/TESTING_GUIDE.md** - For QA and testing
+11. **MARS_UAT_Tests_User_Focused.txt** - User acceptance test scenarios
+12. **FILE_INDEX.md** - Complete file inventory
+13. **PROJECT_COMPLETE.md** - Detailed completion report
 
 ---
 
