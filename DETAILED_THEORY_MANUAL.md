@@ -267,9 +267,346 @@ When `D` approaches 1, fatigue failure is expected. This is a **linear damage ac
 
 ---
 
-## 8. Interpreting MARS Outputs
+## 8. Active Plasticity Correction Methods
 
-### 8.1 Peak Values and Time Stamps
+### 8.1 The Notch Problem: Why Elastic Stresses Overpredict Reality
+
+Modal analysis yields **elastic** stresses that assume linear material behavior. At stress concentrations (notches, fillets, holes), the elastic stress field can locally exceed yield. In reality, plastic flow redistributes stress and reduces peak values. Reporting elastic stress at notches therefore overpredicts the actual stress and may mislead fatigue assessments.
+
+**Plasticity correction methods** address this by computing a reduced, **plastically corrected stress** and an associated **plastic strain** using notch-root approximations. These methods rely on the observation that the elastic stress-strain product (proportional to strain energy) must equal the sum of elastic plus plastic energy in the real material.
+
+MARS implements three correction methods:
+
+1. **Neuber's Rule** (peak-value, scalar)  
+2. **Glinka's Energy-Density Method** (peak-value, scalar)  
+3. **Incremental Buczynski–Glinka (IBG)** (time-history, tensor) — *currently experimental*
+
+All three incorporate **temperature-dependent material hardening curves** to handle spatially varying thermal fields typical of aerospace and power-generation components.
+
+---
+
+### 8.2 Neuber's Rule
+
+#### 8.2.1 Classical Formulation
+
+Neuber's rule states that the product of the elastic stress concentration factor and the elastic strain concentration factor equals the square of the theoretical (elastic) stress concentration factor:
+
+\[
+K_\sigma \cdot K_\varepsilon = K_t^2
+\]
+
+For a notch root, this translates to:
+
+\[
+\frac{\sigma}{\sigma_{\text{nom}}} \cdot \frac{\varepsilon}{\varepsilon_{\text{nom}}} = \left(\frac{\sigma_e}{\sigma_{\text{nom}}}\right)^2
+\]
+
+where:
+- \(\sigma_e\) = elastic (uncorrected) stress at the notch  
+- \(\sigma\) = true (corrected) stress accounting for plasticity  
+- \(\varepsilon\) = true total strain \(= \sigma / E + \varepsilon_p\)  
+
+Simplifying, Neuber's rule becomes:
+
+\[
+\sigma \cdot \left(\frac{\sigma}{E} + \varepsilon_p(\sigma)\right) = \frac{\sigma_e^2}{E}
+\]
+
+This is a **nonlinear algebraic equation** in \(\sigma\) because plastic strain \(\varepsilon_p\) depends on \(\sigma\) via the material's **cyclic stress-strain curve** (or multilinear hardening table).
+
+#### 8.2.2 Solving the Neuber Equation
+
+MARS uses a **Newton-Raphson iterative solver** (see `solve_neuber_vector_core` in `src/solver/plasticity_engine.py`):
+
+1. Start with an initial guess \(\sigma_0 = \min(\sigma_e, \sigma_y(T))\) where \(\sigma_y(T)\) is the temperature-dependent yield.  
+2. At each iteration \(i\):
+   - Compute \(\varepsilon_p(\sigma_i)\) by interpolating the hardening curve at the current temperature \(T\).  
+   - Evaluate residual \(r(\sigma) = \frac{\sigma}{E} + \varepsilon_p(\sigma) - \frac{\sigma_e^2}{\sigma \cdot E}\).  
+   - Compute numerical derivative \(r'(\sigma)\) via finite difference.  
+   - Update \(\sigma_{i+1} = \sigma_i - r / r'\).  
+3. Stop when \(|r| / |\sigma| < \text{tol}\) or maximum iterations reached.
+
+Temperature-dependence enters via:
+- Young's modulus \(E(T)\)  
+- Yield stress \(\sigma_y(T)\)  
+- Hardening curve \(\sigma(\varepsilon_p, T)\)  
+
+all linearly interpolated between user-provided temperature rows.
+
+#### 8.2.3 When to Use Neuber
+
+- **Ductile metals** with well-defined cyclic stress-strain behavior.  
+- **Peak-value assessments** (max stress over a time history).  
+- **Proportional loading** where stress components maintain fixed ratios.  
+- Situations where notch-root plasticity is expected to be **local and confined**.
+
+---
+
+### 8.3 Glinka's Energy-Density Method
+
+#### 8.3.1 Energy Equality Principle
+
+Glinka's method equates **total strain energy density** rather than stress×strain directly. The elastic strain energy density at the notch is:
+
+\[
+U_e^{\text{elastic}} = \frac{\sigma_e^2}{2E}
+\]
+
+In the real (elastic-plastic) material, total strain energy density is:
+
+\[
+U_{\text{total}} = U_e^{\text{corrected}} + U_p = \frac{\sigma^2}{2E} + \int_0^{\varepsilon_p(\sigma)} \sigma_{\text{flow}}(\varepsilon_p') \, d\varepsilon_p'
+\]
+
+The correction principle is:
+
+\[
+\frac{\sigma^2}{2E} + U_p(\sigma, T) = \frac{\sigma_e^2}{2E}
+\]
+
+where \(U_p(\sigma, T)\) is the **plastic strain energy** accumulated up to stress \(\sigma\) at temperature \(T\).
+
+#### 8.3.2 Computing Plastic Strain Energy
+
+The plastic energy integral is evaluated via **trapezoidal rule** over the piecewise-linear hardening curve:
+
+\[
+U_p = \sum_{k=1}^{n} \frac{1}{2} \left(\sigma_k + \sigma_{k-1}\right) \left(\varepsilon_{p,k} - \varepsilon_{p,k-1}\right)
+\]
+
+For stresses beyond the last curve point, linear extrapolation is applied (or plateau mode if selected).
+
+#### 8.3.3 Solving the Glinka Equation
+
+Similar to Neuber, an iterative solver finds \(\sigma\) such that:
+
+\[
+r(\sigma) = \frac{\sigma^2}{2E} + U_p(\sigma, T) - \frac{\sigma_e^2}{2E} = 0
+\]
+
+The derivative is computed numerically, and Newton iterations proceed until convergence.
+
+#### 8.3.4 When to Use Glinka
+
+- Preferred when **energy-based fatigue models** (e.g., Smith-Watson-Topper, strain-life) are used.  
+- More physically consistent for **nonproportional loading** or complex multiaxial states (when used with equivalent stress measures).  
+- Generally **more conservative** than Neuber for highly notched geometries because it accounts for the full hardening curve shape.
+
+---
+
+### 8.4 Incremental Buczynski–Glinka (IBG) Method
+
+#### 8.4.1 Motivation for Time-History Correction
+
+Neuber and Glinka apply to **peak values**. For time-varying stress histories (e.g., transient thermal-mechanical cycles), a single peak correction may not capture:
+- **Plasticity accumulation** over multiple cycles  
+- **Loading path dependence** (load-unload hysteresis)  
+- **Full tensor state** at each time step
+
+The **Incremental Buczynski–Glinka (IBG)** method extends Glinka's energy principle to a **step-by-step, tensor-aware** framework.
+
+#### 8.4.2 Incremental Energy Balance
+
+At each time step \(k\), the elastic strain energy increment is:
+
+\[
+\Delta U_e^{\text{elastic}} = \frac{1}{2} \left(\boldsymbol{\sigma}_k^e + \boldsymbol{\sigma}_{k-1}^e\right) : \left(\boldsymbol{\varepsilon}_k^e - \boldsymbol{\varepsilon}_{k-1}^e\right)
+\]
+
+In von Mises (J₂) plasticity, only the **deviatoric part** contributes to plastic flow. The IBG algorithm:
+
+1. Computes \(\Delta U_e\) from the deviatoric components.  
+2. Solves for the **incremental plastic strain** \(\Delta \varepsilon_p\) via:
+
+\[
+\Delta U_e = \int_{\varepsilon_{p,k-1}}^{\varepsilon_{p,k}} \sigma_{\text{flow}}(\varepsilon_p, T) \, d\varepsilon_p
+\]
+
+3. Accumulates total plastic strain: \(\varepsilon_{p,k} = \varepsilon_{p,k-1} + \Delta \varepsilon_p\).  
+4. Computes a **radial scaling factor** \(s\) to reduce the deviatoric stress:
+
+\[
+s = \frac{1}{1 + E \varepsilon_{p,k} / \max(\sigma_{\text{vm}}^{\text{corr}}, \sigma_{\text{flow}})}
+\]
+
+5. Applies scaling **only to the deviatoric part**, preserving hydrostatic (mean) stress:
+
+\[
+\boldsymbol{\sigma}_k^{\text{corr}} = \boldsymbol{\sigma}_k^{\text{hydro}} + s \cdot \boldsymbol{\sigma}_k^{\text{dev}}
+\]
+
+This tensor update is repeated for all time steps, producing a **corrected stress history** and **plastic strain history**.
+
+#### 8.4.3 Status in MARS
+
+**⚠️ IBG is currently DISABLED** at the UI level. While the core algorithm (`ibg_solver_tensor_core`) is implemented, it is **greyed out** in the plasticity method dropdown pending:
+- Further validation against transient FEA benchmarks  
+- Robustness improvements (convergence, numerical stability)  
+- Tuning of the empirical \(k\)-factor used in energy partitioning
+
+See `PLASTICITY_INTEGRATION_PLAN.md` for details on future re-enablement.
+
+#### 8.4.4 When IBG Will Be Appropriate (Future)
+
+- **Transient thermal-mechanical cycles** with significant plasticity at each step.  
+- **Multiaxial nonproportional loading** where tensor history matters.  
+- **Ratcheting or shakedown assessment** requiring accumulated strain tracking.
+
+---
+
+### 8.5 Temperature-Dependent Material Curves
+
+#### 8.5.1 Material Database Structure
+
+All three methods rely on a **multilinear hardening database** (`MaterialDB` in `src/solver/plasticity_engine.py`) that stores:
+
+| Array | Shape | Description |
+|-------|-------|-------------|
+| `TEMP` | `(NT,)` | Temperatures in ascending order |
+| `E_tab` | `(NT,)` | Young's modulus at each temperature |
+| `SIG` | `(NT, NP)` | True stress values (NP points per curve) |
+| `EPSP` | `(NT, NP)` | Plastic strain values corresponding to `SIG` |
+
+Each row defines a **piecewise-linear hardening curve** at a specific temperature. The first point in each curve approximates **yield** (\(\varepsilon_p \approx 0\)).
+
+#### 8.5.2 Temperature Interpolation
+
+For a node at temperature \(T\):
+
+1. Locate bracketing temperatures: \(T_i \leq T < T_{i+1}\).  
+2. Compute linear weight: \(w = (T - T_i) / (T_{i+1} - T_i)\).  
+3. Blend properties:
+
+\[
+E(T) = (1 - w) E_i + w E_{i+1}
+\]
+
+\[
+\sigma(\varepsilon_p, T) = (1 - w) \sigma_i(\varepsilon_p) + w \sigma_{i+1}(\varepsilon_p)
+\]
+
+This ensures smooth variation across the thermal field.
+
+#### 8.5.3 Extrapolation Modes
+
+Beyond the last point of a hardening curve, MARS offers two modes:
+
+- **Linear extrapolation** (default): Continue the slope from the last two points. Suitable for strain-hardening alloys.  
+- **Plateau**: Clamp stress to the last value. Suitable for perfectly plastic or limited-hardening materials.
+
+Select the mode via the **Extrapolation Mode** option in the Material Profile dialog.
+
+---
+
+### 8.6 Practical Workflow in MARS
+
+#### 8.6.1 Enabling Plasticity Correction
+
+On the **Main Window (Solver) tab**:
+
+1. Tick **Plasticity Correction**.  
+2. Select a method: **Neuber**, **Glinka**, or ~~Incremental Buczynski-Glinka (IBG)~~ (greyed out).  
+3. Click **Enter Material Profile** to define hardening curves at multiple temperatures.  
+4. Load a **Temperature Field File** (CSV with NodeID and Temperature columns) to assign \(T\) to each node.  
+5. (Optional) Adjust **Max Iterations** and **Tolerance** for solver tuning.  
+6. Ensure **Von Mises Stress** output is selected (plasticity correction operates on von Mises equivalent stress).
+
+#### 8.6.2 Material Profile Dialog
+
+- Enter temperature values (in consistent units, e.g., °C).  
+- For each temperature, specify pairs of **(True Stress, Plastic Strain)**.  
+- First point defines approximate yield; subsequent points trace the hardening curve.  
+- Choose **Extrapolation Mode** based on material behavior beyond the curve.
+
+#### 8.6.3 Output Files
+
+After solving with plasticity enabled, MARS exports:
+
+- `corrected_von_mises_stress.csv` — Plastically corrected peak von Mises stress per node  
+- `plastic_strain.csv` — Equivalent plastic strain at peak  
+- `time_of_max_corrected_von_mises.csv` — Time instant of corrected peak
+
+In **Time History Mode**, the corrected history replaces the elastic history for plotting and export.
+
+---
+
+### 8.7 Interpreting Corrected Results
+
+#### 8.7.1 Stress Reduction
+
+Corrected stress \(\sigma_{\text{corr}} < \sigma_e\) reflects plasticity's stress-redistributing effect. Typical reductions:
+- **5–15%** for low plastic strains (\(\varepsilon_p < 0.1\%\))  
+- **20–40%** for moderate plasticity (\(\varepsilon_p \sim 1\%\))  
+- **>50%** for gross yielding (rare in design-allowable structures)
+
+If corrected stress remains above allowable limits, the notch may require redesign (radius increase, material upgrade).
+
+#### 8.7.2 Plastic Strain as a Design Metric
+
+Plastic strain indicates **local inelastic deformation**. Design thresholds:
+- \(\varepsilon_p < 0.2\%\) — Elastic shakedown likely; low-cycle fatigue governs  
+- \(0.2\% < \varepsilon_p < 2\%\) — Controlled plasticity; use strain-life methods  
+- \(\varepsilon_p > 2\%\) — Ductile exhaustion or ratcheting risk; verify with nonlinear FEA
+
+Combine plastic strain with rainflow-counted stress ranges for **strain-based fatigue** (Coffin-Manson, Morrow).
+
+#### 8.7.3 Comparison with Elastic Results
+
+Always compare:
+- **Elastic von Mises** vs. **Corrected von Mises** to quantify notch effect  
+- **Peak locations** (elastic vs. corrected) — plasticity may shift hot spots slightly  
+- **Time of peak** — corrected peaks can occur at different instants due to history effects
+
+Use side-by-side visualizations in the Display tab to assess impact.
+
+---
+
+### 8.8 Limitations and Assumptions
+
+1. **Monotonic or proportional loading**: Neuber/Glinka assume stress components scale together. Nonproportional multiaxial paths reduce accuracy.  
+2. **Notch-root approximation**: Methods model a **single material point**. Steep gradients or large plastic zones require full FEA.  
+3. **Isotropic J₂ plasticity**: Anisotropy, kinematic hardening details, and Bauschinger effects are not captured.  
+4. **No creep or rate effects**: Corrections are quasi-static. High-rate or creep-dominated scenarios need specialized models.  
+5. **Temperature is instantaneous**: Each correction uses the *current* temperature; thermal history effects (microstructural changes) are ignored.  
+6. **IBG experimental status**: Incremental method requires careful benchmarking—use Neuber/Glinka for production work until IBG is validated.
+
+---
+
+### 8.9 Verification Checklist for Plasticity Corrections
+
+- [ ] Material hardening curves obtained from **cyclic tests** (not monotonic tensile data).  
+- [ ] Temperature field corresponds to the **same load case** as the modal stresses.  
+- [ ] Corrected stress **below elastic stress** (if not, check material data or convergence settings).  
+- [ ] Plastic strains **reasonable** for the material (compare to handbook values for similar alloys/loadings).  
+- [ ] Solver converged within iteration limit (watch Console messages for warnings).  
+- [ ] For fatigue: corrected stress and plastic strain used consistently in damage calculations.  
+- [ ] If using **Extrapolation Mode = Plateau**, confirm material exhibits limited hardening.  
+- [ ] Cross-validate critical nodes with **detailed nonlinear FEA** for design-critical components.
+
+---
+
+### 8.10 Further Reading on Plasticity Correction Methods
+
+- **Neuber, H.** (1961). "Theory of Stress Concentration for Shear-Strained Prismatical Bodies with Arbitrary Nonlinear Stress-Strain Law." *Journal of Applied Mechanics*.  
+  *Original derivation of the K_σ K_ε = K_t² rule.*
+
+- **Glinka, G.** (1985). "Energy Density Approach to Calculation of Inelastic Strain-Stress Near Notches and Cracks." *Engineering Fracture Mechanics*.  
+  *Foundation of the energy-density method; widely used in automotive and aerospace.*
+
+- **Buczynski, A. & Glinka, G.** (2003). "An Analysis of Elasto-Plastic Strains and Stresses in Notched Bodies Subjected to Cyclic Non-Proportional Loading Paths." *Proceedings ICF*.  
+  *Incremental formulation for tensor histories; basis for the IBG implementation in MARS.*
+
+- **Dowling, N.E.** (2013). *Mechanical Behavior of Materials*, 4th ed., Pearson.  
+  *Chapter on notch analysis and local strain approaches; practical examples.*
+
+- **SAE J1099** — Technical Report on Fatigue Under Complex Loading.  
+  *Industry-standard guidance on combining notch corrections with fatigue counting.*
+
+---
+
+## 9. Interpreting MARS Outputs
+
+### 9.1 Peak Values and Time Stamps
 
 For each node, MARS reports the **maximum** value of a metric (e.g., `σ_vm,max`) and the **time of occurrence**. Use these to:
 
@@ -277,7 +614,7 @@ For each node, MARS reports the **maximum** value of a metric (e.g., `σ_vm,max`
 - Cross-check against known loading events.  
 - Compare with instrumentation data if available.
 
-### 8.2 Time-History Plots
+### 9.2 Time-History Plots
 
 Time history mode lets you inspect nodal response vs. time:
 
@@ -285,13 +622,13 @@ Time history mode lets you inspect nodal response vs. time:
 - Evaluate damping by observing decay after excitation.  
 - Export CSV to perform Fourier analysis or combine with fatigue tools.
 
-### 8.3 Animation
+### 9.3 Animation
 
 Animations blend deformation with color-mapped stress. They help communicate mode participation and the spatial march of peak values. Keep deformation scaling reasonable (<5) to avoid misinterpretation.
 
 ---
 
-## 9. Assumptions & Limitations
+## 10. Assumptions & Limitations
 
 1. **Linearity**: Material and geometric nonlinearities are not captured.  
 2. **Small Displacements**: Modal superposition counts on small strain theory.  
@@ -301,7 +638,7 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 
 ---
 
-## 10. Verification Checklist Before Reporting
+## 11. Verification Checklist Before Reporting
 
 - [ ] Modal set covers forcing bandwidth and has sufficient mass participation.  
 - [ ] Peak displacements/stresses align with expectations from hand calculations or spot checks.  
@@ -312,7 +649,7 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 
 ---
 
-## 11. Further Study Resources
+## 12. Further Study Resources
 
 - **Textbooks**  
   - R.W. Clough & J. Penzien, *Dynamics of Structures* – foundational treatment of modal analysis.  
@@ -326,7 +663,7 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 
 ---
 
-## 12. Glossary
+## 13. Glossary
 
 | Term | Definition |
 | --- | --- |
@@ -337,7 +674,15 @@ Animations blend deformation with color-mapped stress. They help communicate mod
 | Von Mises stress `σ_vm` | Scalar measure of distortion energy; used for ductile yield checks. |
 | Principal stresses `s₁, s₂, s₃` | Eigenvalues of the stress tensor; `s₁` is maximum tension, `s₃` maximum compression. |
 | Rainflow counting | Algorithm that collapses stress-time histories into cycles. |
-| Miner’s Rule | Linear fatigue damage accumulation method. |
+| Miner's Rule | Linear fatigue damage accumulation method. |
+| Plasticity correction | Notch-root approximation methods that reduce elastic stress to account for local yielding. |
+| Neuber's Rule | Plasticity correction equating stress×strain product to elastic equivalent. |
+| Glinka's Method | Energy-density-based plasticity correction; more conservative than Neuber. |
+| IBG | Incremental Buczynski–Glinka method; tensor time-history plasticity correction (experimental). |
+| Plastic strain `εₚ` | Permanent inelastic strain accumulated after yielding. |
+| Hardening curve | Stress-strain relationship beyond yield; defines flow stress vs. plastic strain. |
+| Equivalent stress | Scalar measure combining tensor components; von Mises is standard for ductile J₂ plasticity. |
+| Temperature field | Spatial distribution of temperature used to adjust material properties node-by-node. |
 
 ---
 

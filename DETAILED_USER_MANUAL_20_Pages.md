@@ -153,7 +153,52 @@ Interpret damage maps carefully and verify material constants.
 
 ---
 
-## Page 13 – Run the Analysis
+## Page 13 – Plasticity Correction (Optional, Advanced)
+
+### When to Use Plasticity Correction
+
+If your structure has **stress concentrations** (notches, holes, fillets) where elastic stress exceeds yield, enable **Plasticity Correction** to obtain more realistic stress values and plastic strain estimates.
+
+### Steps to Enable
+
+1) Tick **Plasticity Correction** on the Main Window tab
+2) Select a method:
+   - **Neuber** — Classic notch correction (faster)
+   - **Glinka** — Energy-based correction (more conservative)
+   - ~~Incremental Buczynski-Glinka (IBG)~~ — Currently disabled (experimental)
+3) Click **Enter Material Profile** to define stress-strain curves at multiple temperatures
+4) Load a **Temperature Field File** (CSV with NodeID and Temperature columns)
+5) Ensure **Von Mises Stress** output is selected (required for plasticity correction)
+
+### Material Profile Dialog
+
+- Enter temperature values (e.g., 25, 200, 400°C)
+- For each temperature, add rows of **(True Stress, Plastic Strain)** pairs
+- First point ≈ yield stress at ~zero plastic strain
+- Subsequent points trace the hardening curve
+- Choose **Extrapolation Mode**:
+  - **Linear** (default) — for strain-hardening alloys
+  - **Plateau** — for limited-hardening materials
+
+### Output Files
+
+When plasticity is enabled, MARS produces:
+- `corrected_von_mises_stress.csv` — Reduced stress accounting for plasticity
+- `plastic_strain.csv` — Equivalent plastic strain at each node
+- `time_of_max_corrected_von_mises.csv` — Time of corrected peak
+
+### Tips
+
+- Corrected stress will be **lower** than elastic stress at notches
+- Plastic strain indicates local yielding severity
+- Use corrected results for **strain-based fatigue** (Coffin-Manson)
+- Validate critical nodes with detailed nonlinear FEA
+
+[Image Placeholder: Plasticity correction panel and material profile dialog]
+
+---
+
+## Page 14 – Run the Analysis
 
 1) Ensure both .mcf and stress .csv are loaded
 2) Select desired outputs
@@ -166,7 +211,7 @@ When finished, proceed to the Display tab to explore results.
 
 ---
 
-## Page 14 – Console & Plot Tabs (Main Window)
+## Page 15 – Console & Plot Tabs (Main Window)
 
 - Console: shows load/validation messages and processing steps
 - Plot (Time History): appears when Time History mode is active
@@ -178,7 +223,7 @@ Use these for quick validation before switching to the Display tab.
 
 ---
 
-## Page 15 – Switch to Display Tab
+## Page 16 – Switch to Display Tab
 
 Click the Display tab to see the 3D view and controls:
 - Load Visualization File (for CSV-based meshes)
@@ -190,7 +235,7 @@ Click the Display tab to see the 3D view and controls:
 
 ---
 
-## Page 16 – Hover, Colorbar, and Point Size
+## Page 17 – Hover, Colorbar, and Point Size
 
 - Hover over points to see Node ID and current scalar value
 - Adjust Node Point Size for clarity
@@ -202,7 +247,7 @@ Tip: Reset camera after large changes for a clean view.
 
 ---
 
-## Page 17 – Compute a Time Point Field
+## Page 18 – Compute a Time Point Field
 
 When initialization is complete (after SOLVE), enable time point workflows:
 1) In Initialization & Time Point Controls, set Time (seconds)
@@ -215,7 +260,7 @@ If deformations exist, you can also Export Velocity as Initial Condition in APDL
 
 ---
 
-## Page 18 – Load External CSV Results
+## Page 19 – Load External CSV Results
 
 To visualize an external CSV:
 1) Click Load Visualization File
@@ -228,7 +273,7 @@ Use this to compare alternatives or post-process snapshots.
 
 ---
 
-## Page 19 – Animate Your Results
+## Page 20 – Animate Your Results
 
 1) Choose Time Step Mode:
    - Custom Time Step (enter Step in seconds)
@@ -244,7 +289,7 @@ If deformations were provided, geometry deforms during playback.
 
 ---
 
-## Page 20 – Right-Click Context Menu (Display)
+## Page 21 – Right-Click Context Menu (Display)
 
 Right-click anywhere on the 3D view to access:
 - Selection Tools: Add/Remove Selection Box, Pick Box Center
@@ -256,7 +301,7 @@ Right-click anywhere on the 3D view to access:
 
 ---
 
-## Page 21 – Find Hotspots
+## Page 22 – Find Hotspots
 
 1) Right-click → Find Hotspots (on current view) or in Selection
 2) Enter how many top nodes to find
@@ -269,7 +314,7 @@ Use hotspots to shortlist critical regions for detailed checks.
 
 ---
 
-## Page 22 – Select an Area with a Box
+## Page 23 – Select an Area with a Box
 
 1) Right-click → Add Selection Box
 2) Right-click → Pick Box Center, then click to position
@@ -282,7 +327,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 23 – Go To Node & Track During Animation
+## Page 24 – Go To Node & Track During Animation
 
 1) Right-click → Go To Node
 2) Enter a Node ID to fly the camera there
@@ -293,7 +338,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 24 – Batch Workflow (Checklist)
+## Page 25 – Batch Workflow (Checklist)
 
 1) Load .mcf
 2) Load stress .csv
@@ -308,7 +353,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 25 – Time History Workflow (Checklist)
+## Page 26 – Time History Workflow (Checklist)
 
 1) Load .mcf and stress .csv
 2) Tick Time History Mode
@@ -321,7 +366,7 @@ Use box selection to focus on sub-assemblies.
 
 ---
 
-## Page 26 – Export Your Results
+## Page 27 – Export Your Results
 
 - Save Time Point as CSV — includes NodeID, coordinates, and active scalar
 - Export Velocity as Initial Condition in APDL — generates velocity IC commands
@@ -333,21 +378,23 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 27 – Troubleshooting (At a Glance)
+## Page 28 – Troubleshooting (At a Glance)
 
 | Symptom | Cause | What to try |
 | --- | --- | --- |
 | SOLVE disabled | Missing .mcf or stress .csv | Load both files |
 | No deformation outputs | Deformations not included/loaded | Tick Include Deformations and load .csv |
 | Empty scalar bar | CSV lacks scalar column | Use a CSV with at least one scalar field |
-| Animation won’t save | ffmpeg missing | Install ffmpeg or choose GIF |
+| Animation won't save | ffmpeg missing | Install ffmpeg or choose GIF |
 | Hotspots disabled | No active scalar | Apply a scalar via CSV or results |
+| Plasticity won't enable | Von Mises not selected or temp field missing | Select Von Mises output and load temperature file |
+| Corrected stress > elastic | Material data incorrect or solver didn't converge | Check material curves and increase max iterations |
 
 [Image Placeholder: Troubleshooting grid]
 
 ---
 
-## Page 28 – Tips for Clear Visuals
+## Page 29 – Tips for Clear Visuals
 
 - Keep deformation scale ≤ 5 for realistic visuals
 - Use consistent color ranges across comparisons
@@ -358,7 +405,7 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 29 – Keyboard & Mouse Basics
+## Page 30 – Keyboard & Mouse Basics
 
 - Left-drag: Rotate
 - Right-drag: Pan
@@ -370,7 +417,7 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 30 – Review Checklist Before Reporting
+## Page 31 – Review Checklist Before Reporting
 
 - [ ] Inputs validated; Node IDs consistent
 - [ ] Outputs selected match the report scope
@@ -382,7 +429,7 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 31 – File Format Notes (For Reference)
+## Page 32 – File Format Notes (For Reference)
 
 - .mcf: Modal coordinates with a Time column
 - Stress .csv: NodeID (+ optional X,Y,Z) and component series
@@ -393,7 +440,7 @@ Keep exports in project-specific folders for traceability.
 
 ---
 
-## Page 32 – FAQs
+## Page 33 – FAQs
 
 Q: Which outputs require deformations?
 A: Deformation, Velocity, and Acceleration.
@@ -404,11 +451,17 @@ A: Manually set Legend Range min/max to fixed values.
 Q: How do I focus on a specific node?
 A: Right-click → Go To Node; then Lock Camera for Animation if needed.
 
+Q: When should I use plasticity correction?
+A: When elastic stress exceeds yield at notches/holes and you need realistic stress and plastic strain for fatigue.
+
+Q: Which plasticity method should I choose?
+A: Start with Neuber (faster); use Glinka if you need energy-based conservatism. IBG is currently experimental.
+
 [Image Placeholder: FAQ cards]
 
 ---
 
-## Page 33 – Getting Help
+## Page 34 – Getting Help
 
 If you encounter issues:
 - Note buttons clicked and inputs used

@@ -33,10 +33,11 @@ Confirm the main window shows **Main Window** and **Display** tabs, and the Navi
 4. *(Optional)* **Load Steady-State**: Check *Include Steady-State* → pick `.txt`.
 5. *(Optional)* **Load Deformations**: Check *Include Deformations* → pick `.csv`.
 6. **Choose Outputs**: Select Von Mises / principal stress / deformation / velocity / acceleration / damage.
-7. *(Optional)* **Time History Mode**: Check box, enter `NodeID`.
-8. *(Optional)* **Set Fatigue Parameters**: Provide `A` and `m` when damage is enabled.
-9. **Run Solver**: Click **SOLVE**; monitor console/progress bar.
-10. **Inspect Results**:
+7. *(Optional)* **Enable Plasticity Correction**: Check box, select method (Neuber/Glinka), enter material profile and temperature field.
+8. *(Optional)* **Time History Mode**: Check box, enter `NodeID`.
+9. *(Optional)* **Set Fatigue Parameters**: Provide `A` and `m` when damage is enabled.
+10. **Run Solver**: Click **SOLVE**; monitor console/progress bar.
+11. **Inspect Results**:
     - Solver tab plots for time history outputs.
     - Switch to Display tab for 3D visualization, animation, and exports.
 

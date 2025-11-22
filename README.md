@@ -141,6 +141,7 @@ pytest tests/test_validators.py -v
 
 3. **Configure Analysis**
    - Select outputs: Von Mises, Principal Stresses, Deformation, etc.
+   - Optional: Enable Plasticity Correction (Neuber/Glinka methods) for notch stress reduction
    - Optional: Adjust "Skip first n modes"
    - Optional: For damage analysis, enter fatigue parameters
 
@@ -161,6 +162,12 @@ pytest tests/test_validators.py -v
    - Create animations with time-varying results
 
 ### Advanced Features
+
+#### Plasticity Correction
+- Apply Neuber or Glinka corrections to account for local yielding at notches
+- Define temperature-dependent material hardening curves
+- Load temperature field file (CSV with NodeID and Temperature)
+- Output includes corrected von Mises stress and plastic strain
 
 #### Mode Skipping
 - Exclude rigid body modes or low-frequency modes
