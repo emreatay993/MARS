@@ -314,7 +314,7 @@ All these features now properly indicate their availability through UI visibilit
 This fix resolves a minor UI inconsistency where deformation controls were visible even when no deformation data was loaded. The solution properly manages control visibility based on actual data availability, improving user experience and UI clarity.
 
 **Status:** ✅ Fixed and Tested  
-**Version:** v0.95  
+**Version:** v0.96  
 **Impact:** Low (cosmetic UI improvement)  
 **Risk:** Minimal (no functional changes)
 

@@ -1,6 +1,6 @@
 # MARS: Modal Analysis Response Solver
 
-**Version:** 0.95
+**Version:** 0.96
 
 MARS is the modern, modular evolution of the legacy MSUP Smart Solver for transient structural analysis using the Mode Superposition (MSUP) method.
 
@@ -18,7 +18,7 @@ This codebase refactors the original MSUP Smart Solver into a clean, maintainabl
 - ✅ **Documentation Refresh**: README, architecture, migration, and testing guides align with the current package layout
 - ✅ **Bug Fixes Retained**: Hover annotations, scalar bar refresh, time-history plotting, and related stability fixes remain in place
 
-### Important Notes (v0.95)
+### Important Notes (v0.96)
 
 - 🔴 **IBG Plasticity Algorithm**: The Incremental Buczynski-Glinka (IBG) plasticity correction method is currently **disabled** in this version. While the implementation exists in the codebase, it has been deactivated pending further development, verification, and validation. Users should rely on Neuber or Glinka methods for plasticity corrections. See `PLASTICITY_INTEGRATION_PLAN.md` for details.
 
@@ -378,7 +378,7 @@ TAB_STYLE = "..."          # Tab widget appearance
 - `PROGRESS_SUMMARY.md` - High-level overview
 - `STATUS_REPORT.md` - Technical status report
 - `EXECUTIVE_SUMMARY_ENGINEERING.md` - Business case for adopting MARS
-- `RELEASE_NOTES_v0.95.md` - Current release notes
+- `RELEASE_NOTES_v0.96.md` - Release notes for v0.96
 
 ### Testing Documentation
 - `tests/TESTING_GUIDE.md` - Testing procedures
@@ -455,7 +455,7 @@ For issues, questions, or contributions:
 
 ## 🔄 Version History
 
-### v0.95 (Current) - Modular Architecture
+### v0.96 (Current) - Modular Architecture
 - Complete refactoring to modular architecture
 - 36 modules (45 files) with clear separation of concerns
 - Comprehensive documentation and tests

@@ -316,7 +316,7 @@ The CSV uses specific formatting conventions:
 ### Recommended Actions:
 4. Run the new test case to verify it's executable
 5. Share updated UAT documents with test team
-6. Include new test in test plans for v0.95
+6. Include new test in test plans for v0.96
 7. Update any test tracking spreadsheets
 
 ### Optional Actions:

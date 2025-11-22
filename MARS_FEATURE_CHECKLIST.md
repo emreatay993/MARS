@@ -1,6 +1,6 @@
 # MARS Feature Checklist
 
-> **Quick reference for all available features in MARS v0.95**  
+> **Quick reference for all available features in MARS v0.96**  
 > Check off features as you explore them or use this for onboarding new users.
 
 ---

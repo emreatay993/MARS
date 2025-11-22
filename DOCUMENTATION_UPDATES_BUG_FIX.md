@@ -2,7 +2,7 @@
 
 **Date:** November 22, 2025  
 **Bug:** Deformation controls visible when deformations not loaded  
-**Fix Version:** v0.95
+**Fix Version:** v0.96
 
 ---
 
@@ -31,7 +31,7 @@ After fixing the deformation controls visibility bug, the following documentatio
 
 ---
 
-### 2. ✅ RELEASE_NOTES_v0.95.md
+### 2. ✅ RELEASE_NOTES_v0.96.md
 **Status:** Updated  
 **Section:** Changes → Bug Fixes (new subsection)  
 **Location:** After "Plasticity Correction" section, before "Dependencies"
@@ -74,7 +74,7 @@ were visible even when modal deformations were not loaded...
 
 **Content Added:**
 ```markdown
-### Deformation Controls Visibility (Bug Fix v0.95)
+### Deformation Controls Visibility (Bug Fix v0.96)
 **Test: Controls hidden when deformations NOT loaded**
 - [ ] Load ONLY coordinates and stresses (no deformations)
 - [ ] Switch to Display Tab
@@ -108,7 +108,7 @@ Bug Fix Documentation:
 │       ├── Testing checklist
 │       └── Impact assessment
 │
-├── RELEASE_NOTES_v0.95.md
+├── RELEASE_NOTES_v0.96.md
 │   └── User-facing bug fix notice
 │       ├── What was fixed
 │       ├── Why it matters
@@ -186,7 +186,7 @@ Bug Fix Documentation:
 - ✅ Terminology consistent across all docs
 - ✅ Code references accurate
 - ✅ Cross-references valid
-- ✅ Version numbers correct (v0.95)
+- ✅ Version numbers correct (v0.96)
 
 ### Completeness
 - ✅ Problem described
@@ -223,7 +223,7 @@ Bug Fix Documentation:
 ### Commits Should Include:
 1. Code fix (`src/ui/display_tab.py`)
 2. Technical documentation (`BUGFIX_DEFORMATION_CONTROLS_VISIBILITY.md`)
-3. Release notes update (`RELEASE_NOTES_v0.95.md`)
+3. Release notes update (`RELEASE_NOTES_v0.96.md`)
 4. Testing checklist update (`tests/MANUAL_TESTING_CHECKLIST.md`)
 
 ### Commit Message Suggestion:
@@ -276,7 +276,7 @@ Before considering documentation complete:
 | Document | Type | Lines Added | Status |
 |----------|------|-------------|--------|
 | BUGFIX_DEFORMATION_CONTROLS_VISIBILITY.md | Technical | ~400 | ✅ Created |
-| RELEASE_NOTES_v0.95.md | User-facing | ~25 | ✅ Updated |
+| RELEASE_NOTES_v0.96.md | User-facing | ~25 | ✅ Updated |
 | tests/MANUAL_TESTING_CHECKLIST.md | Testing | ~15 | ✅ Updated |
 
 **Total Documentation:** ~440 lines across 3 files
@@ -296,7 +296,7 @@ All necessary documentation has been updated to reflect the deformation controls
 2. **User awareness** through release notes
 3. **Testing coverage** to prevent regression
 
-The documentation is comprehensive, well-structured, and ready for release with v0.95.
+The documentation is comprehensive, well-structured, and ready for release with v0.96.
 
 **Status:** ✅ Complete and Verified
 

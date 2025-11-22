@@ -46,7 +46,7 @@ class ApplicationController(QMainWindow):
         self.plotting_handler = PlottingHandler()
 
         # Window configuration
-        self.setWindowTitle('MARS: Modal Analysis Response Solver - v0.95')
+        self.setWindowTitle('MARS: Modal Analysis Response Solver - v0.96')
         self.setGeometry(40, 40, 600, 800)
         
         # Set application icon

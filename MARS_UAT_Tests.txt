@@ -6,7 +6,7 @@ DESCRIPTION: Validates loading of all required input files and proper project di
 
 INPUTS:
 
-- Application launched with MARS v0.95
+- Application launched with MARS v0.96
 - Test files available: valid .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
 - Project directory contains mixed file types for filtering validation
 

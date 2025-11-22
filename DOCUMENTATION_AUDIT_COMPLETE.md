@@ -1,7 +1,7 @@
 # MARS Documentation Audit and Update - Complete
 
 **Date:** November 22, 2025  
-**Version:** MARS v0.95  
+**Version:** MARS v0.96  
 **Task:** Comprehensive documentation audit and correction across all project files
 
 ---
@@ -95,7 +95,7 @@ Completed comprehensive documentation audit covering:
 - Updated "Memory Errors" to reference Settings → Advanced
 
 ✅ **Corrected Version History:**
-- Changed from "v2.0.0 (Current)" to "v0.95 (Current)"
+- Changed from "v2.0.0 (Current)" to "v0.96 (Current)"
 - Added Advanced Settings and plasticity features to changelog
 - Updated module count (31 → 36 modules, 45 files)
 
@@ -139,7 +139,7 @@ Completed comprehensive documentation audit covering:
 ### Core Documentation:
 ✅ README.md - **Updated**
 ✅ START_HERE.md - **Updated**
-✅ RELEASE_NOTES_v0.95.md - **Current**
+✅ RELEASE_NOTES_v0.96.md - **Current**
 
 ### User Documentation:
 ✅ DETAILED_USER_MANUAL_20_Pages.md - **Updated (35 pages)**
@@ -238,7 +238,7 @@ These files are either developer-focused, historical, or specific to completed m
 1. ✅ No hallucinated features or filenames
 2. ✅ All UI elements match actual implementation
 3. ✅ All file formats specified correctly
-4. ✅ Version numbers consistent (v0.95)
+4. ✅ Version numbers consistent (v0.96)
 5. ✅ Cross-references between docs working
 6. ✅ Technical accuracy verified
 7. ✅ No markdown linting errors
@@ -249,7 +249,7 @@ These files are either developer-focused, historical, or specific to completed m
 
 ### Critical Corrections:
 🔴 **Filename errors** (8 instances) - Would cause user confusion when searching for files
-🔴 **Version inconsistency** (v2.0.0 vs v0.95) - Misleading version information
+🔴 **Version inconsistency** (v2.0.0 vs v0.96) - Misleading version information
 🔴 **Missing Advanced Settings** - Users unable to discover performance features
 
 ### High-Value Additions:
@@ -293,7 +293,7 @@ The following files are accurate and current:
 - All UAT test files (freshly created and verified)
 - README.md (updated)
 - START_HERE.md (updated)
-- RELEASE_NOTES_v0.95.md (current)
+- RELEASE_NOTES_v0.96.md (current)
 - PLASTICITY_DOCUMENTATION_ADDED.md (updated)
 - MARS_FEATURE_CHECKLIST.md (freshly created)
 - All DOCUMENTATION_*.md summary files
@@ -321,7 +321,7 @@ The following files are accurate and current:
 
 **Documentation Status:** ✅ **AUDIT COMPLETE - ALL VERIFIED**
 
-All MARS v0.95 documentation is:
+All MARS v0.96 documentation is:
 - ✅ Accurate (no hallucinations)
 - ✅ Complete (~100% feature coverage)
 - ✅ Consistent (versions, filenames, terminology)

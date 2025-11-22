@@ -20,7 +20,7 @@
 **Last Updated:** Today (animation checkbox feature)  
 **Coverage:**
 - ✅ Feature mentioned in "Key Improvements"
-- ✅ Listed in "Important Notes (v0.95)"
+- ✅ Listed in "Important Notes (v0.96)"
 - ✅ Links to USER_GUIDE_ANIMATION_MODES.md
 
 **No action needed.**
@@ -225,7 +225,7 @@ PASS/FAIL CRITERIA:
 ## Version Consistency Check
 
 All documents correctly reference:
-- ✅ Version: v0.95
+- ✅ Version: v0.96
 - ✅ Consistent feature descriptions
 - ✅ Accurate cross-references
 - ✅ Up-to-date file line counts
@@ -238,7 +238,7 @@ All documents correctly reference:
 
 #### Always Update:
 - **README.md** - For any major feature or change
-- **RELEASE_NOTES_v0.95.md** - For all changes in this version
+- **RELEASE_NOTES_v0.96.md** - For all changes in this version
 - **DETAILED_USER_MANUAL** - For user-facing features
 
 #### Update as Needed:
@@ -283,7 +283,7 @@ All documents correctly reference:
 - Technical accuracy verified
 - User guidance comprehensive
 
-**The documentation is release-ready for v0.95.** 
+**The documentation is release-ready for v0.96.** 
 
 The optional UAT test enhancement can be added at any time without blocking the release.
 
@@ -293,7 +293,7 @@ The optional UAT test enhancement can be added at any time without blocking the 
 
 **Documentation Review:** ✅ Complete  
 **Status:** Ready for Release  
-**Version:** v0.95  
+**Version:** v0.96  
 **Date:** November 22, 2025  
 **Reviewer:** AI Documentation Assistant
 

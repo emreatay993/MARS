@@ -5,7 +5,7 @@
 This document summarizes comprehensive updates made to MARS user documentation to address previously undocumented or under-documented features discovered through code inspection.
 
 **Date**: November 22, 2025  
-**Version**: MARS v0.95  
+**Version**: MARS v0.96  
 **Scope**: All user-facing manuals
 
 ---

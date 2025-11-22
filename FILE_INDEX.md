@@ -2,7 +2,7 @@
 
 This reference captures every Python module that ships with the refactored MARS codebase. Line counts were refreshed from the current `src/` tree to help you find the right file quickly.
 
-## Snapshot (Current - v0.95)
+## Snapshot (Current - v0.96)
 
 - 36 Python modules (45 Python files including package initialisers) live under `src/`
 - ~9,200 lines of implementation code (9,189 excluding `__init__.py` markers)

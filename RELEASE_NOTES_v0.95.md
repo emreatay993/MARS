@@ -1,4 +1,4 @@
-# MARS v0.95 Release Notes
+# MARS v0.96 Release Notes
 
 **Release Date:** November 2025  
 **Status:** Pre-Release / Active Development

@@ -959,14 +959,14 @@ config = SolverConfig(
 ---
 
 **Document Version**: 1.2  
-**Last Updated**: November 2025 (v0.95 Release)  
+**Last Updated**: November 2025 (v0.96 Release)  
 **Status**: ✅ Complete and Current
 
-**Recent Updates (v0.95)**:
+**Recent Updates (v0.96)**:
 - Added application icon system in `resources/icons/`
 - Updated application_controller.py to 217 lines (added icon loading)
 - Updated solver_ui.py to 468 lines (added IBG disable logic)
 - Documented IBG plasticity algorithm status (disabled pending validation)
-- Updated version numbering to v0.95
+- Updated version numbering to v0.96
 - Overall codebase: ~9,200 lines (was ~9,100)
 

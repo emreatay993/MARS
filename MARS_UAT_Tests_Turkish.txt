@@ -6,7 +6,7 @@ AÇIKLAMA: Tüm gerekli girdi dosyalarının yüklenmesini ve Navigator ile dosy
 
 GİRDİLER:
 
-- MARS v0.95 ile başlatılmış uygulama
+- MARS v0.96 ile başlatılmış uygulama
 - Test dosyaları mevcut: geçerli .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
 - Proje dizini filtreleme doğrulaması için karışık dosya türleri içermektedir
 

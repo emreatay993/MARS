@@ -362,5 +362,5 @@ Following the initial plasticity documentation, a comprehensive code inspection 
 
 **Documentation Status:** ✅ **COMPLETE AND VERIFIED**
 
-All active features in MARS v0.95 are now fully documented with comprehensive user guidance, troubleshooting, theoretical background, and user acceptance tests.
+All active features in MARS v0.96 are now fully documented with comprehensive user guidance, troubleshooting, theoretical background, and user acceptance tests.
 

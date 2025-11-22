@@ -7,13 +7,13 @@
 
 ## Summary
 
-All major documentation files have been updated to reflect the new animation deformation display mode checkbox feature introduced in MARS v0.95.
+All major documentation files have been updated to reflect the new animation deformation display mode checkbox feature introduced in MARS v0.96.
 
 ---
 
 ## Files Updated
 
-### 1. ✅ RELEASE_NOTES_v0.95.md
+### 1. ✅ RELEASE_NOTES_v0.96.md
 **Section:** What's New  
 **Changes:**
 - Added comprehensive "✨ Animation Deformation Display Mode" section
@@ -68,7 +68,7 @@ All major documentation files have been updated to reflect the new animation def
 ---
 
 ### 5. ✅ README.md
-**Section:** Key Improvements + Important Notes (v0.95)  
+**Section:** Key Improvements + Important Notes (v0.96)  
 **Changes:**
 
 **In Key Improvements:**
@@ -134,7 +134,7 @@ All updates follow these principles:
 The documentation creates clear cross-references:
 
 1. **README.md** → Points to `USER_GUIDE_ANIMATION_MODES.md`
-2. **RELEASE_NOTES_v0.95.md** → Lists all implementation docs
+2. **RELEASE_NOTES_v0.96.md** → Lists all implementation docs
 3. **DETAILED_USER_MANUAL_20_Pages.md** → Provides inline explanation
 4. **QUICK_USER_MANUAL.md** → Concise reference for quick lookup
 
@@ -150,7 +150,7 @@ Documentation now covers all user entry points:
 | **Quick Reference** | QUICK_USER_MANUAL.md | How to use (1 line) |
 | **Learning** | DETAILED_USER_MANUAL_20_Pages.md | Full explanation + examples |
 | **Feature Discovery** | MARS_FEATURE_CHECKLIST.md | Checkbox items to explore |
-| **Technical** | RELEASE_NOTES_v0.95.md | Complete technical details |
+| **Technical** | RELEASE_NOTES_v0.96.md | Complete technical details |
 | **In-Depth Guide** | USER_GUIDE_ANIMATION_MODES.md | Comprehensive scenarios |
 
 ---
@@ -204,7 +204,7 @@ Documentation now covers all user entry points:
 ## Next Steps (Optional)
 
 ### If Feature Evolves:
-1. Update RELEASE_NOTES_v0.95.md with changes
+1. Update RELEASE_NOTES_v0.96.md with changes
 2. Update USER_GUIDE_ANIMATION_MODES.md with new behavior
 3. Verify cross-references still valid
 4. Update tooltips in source code if needed
@@ -228,7 +228,7 @@ Before release, verify:
 - [ ] Scope limitations clearly documented
 - [ ] Examples are accurate and helpful
 - [ ] No contradictions between documents
-- [ ] Version numbers consistent (v0.95)
+- [ ] Version numbers consistent (v0.96)
 
 ---
 
@@ -236,7 +236,7 @@ Before release, verify:
 
 | Document | Priority | Lines Added | Type | Status |
 |----------|----------|-------------|------|--------|
-| RELEASE_NOTES_v0.95.md | HIGH | ~60 | Technical | ✅ Complete |
+| RELEASE_NOTES_v0.96.md | HIGH | ~60 | Technical | ✅ Complete |
 | MARS_FEATURE_CHECKLIST.md | HIGH | 3 | Reference | ✅ Complete |
 | DETAILED_USER_MANUAL_20_Pages.md | HIGH | ~25 | Tutorial | ✅ Complete |
 | QUICK_USER_MANUAL.md | MEDIUM | 1 | Reference | ✅ Complete |
@@ -251,5 +251,5 @@ Before release, verify:
 
 All necessary documentation has been updated to reflect the new animation deformation display mode checkbox feature. The updates maintain consistency, provide appropriate detail levels for different audiences, and establish clear cross-references for users seeking more information.
 
-The documentation is now ready for the v0.95 release.
+The documentation is now ready for the v0.96 release.
 

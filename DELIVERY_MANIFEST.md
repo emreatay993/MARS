@@ -1,7 +1,7 @@
 # 📦 Delivery Manifest — MARS: Modal Analysis Response Solver
 
 **Project:** MARS (Modal Analysis Response Solver)  
-**Version:** v0.95  
+**Version:** v0.96  
 **Status:** ✅ Active Development
 
 ---
@@ -50,7 +50,7 @@ pytest tests/ -v
 
 ## Verification Checklist
 
-- [x] Application launches as **MARS: Modal Analysis Response Solver - v0.95**
+- [x] Application launches as **MARS: Modal Analysis Response Solver - v0.96**
 - [x] Application displays Mars-themed icon in window title bar and taskbar
 - [x] Batch, time-history, animation, and export workflows confirmed post-refactor
 - [x] File validators and loaders tested with representative inputs
@@ -61,11 +61,11 @@ pytest tests/ -v
 
 ---
 
-## Recent Updates (v0.95)
+## Recent Updates (v0.96)
 
 - **IBG Plasticity Status**: The Incremental Buczynski-Glinka (IBG) plasticity correction method is disabled in this version pending further development and validation. Users should use Neuber or Glinka methods.
 - **Application Icon**: Added custom Mars-themed icon system with SVG source and multiple PNG/ICO outputs in `resources/icons/`.
-- **Version Numbering**: Changed to v0.95 to reflect pre-release status with IBG disabled.
+- **Version Numbering**: Changed to v0.96 to reflect pre-release status with IBG disabled.
 
 ---
 

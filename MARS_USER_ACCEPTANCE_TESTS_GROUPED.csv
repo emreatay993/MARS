@@ -120,7 +120,7 @@ TEST CASE 12: DATA EXPORT FUNCTIONALITY,,,,
 ,UAT-EXP-004,Export animation to GIF,Animation frames precomputed,Click Save as Video/GIF > Select GIF format > Choose location > Save,GIF animation file created
 
 TEST CASE 13: UI BEHAVIOR AND VALIDATION,,,,
-,UAT-UI-001,Main window title displays,Application launched,Observe window title bar,Title shows MARS: Modal Analysis Response Solver - v0.95
+,UAT-UI-001,Main window title displays,Application launched,Observe window title bar,Title shows MARS: Modal Analysis Response Solver - v0.96
 ,UAT-UI-002,Navigator dock movable,Application launched,Drag Navigator title bar to right side,Navigator docks to right side of window
 ,UAT-UI-004,Tabs switch properly,Application launched,Click Display tab > Click Main Window tab,Tabs switch and show correct content
 ,UAT-UI-006,Checkboxes disabled initially,Application launched before file loading,Observe output checkboxes,All output checkboxes are disabled

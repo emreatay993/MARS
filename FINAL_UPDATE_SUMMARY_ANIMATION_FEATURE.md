@@ -1,7 +1,7 @@
 # Final Update Summary - Animation Checkbox Feature & Bug Fixes
 
 **Date:** November 22, 2025  
-**Version:** MARS v0.95  
+**Version:** MARS v0.96  
 **Status:** ✅ COMPLETE
 
 ---
@@ -67,7 +67,7 @@ This document summarizes all code changes, documentation updates, and bug fixes 
 3. ✅ DETAILED_USER_MANUAL_20_Pages.md
 4. ✅ QUICK_USER_MANUAL.md
 5. ✅ MARS_FEATURE_CHECKLIST.md
-6. ✅ RELEASE_NOTES_v0.95.md
+6. ✅ RELEASE_NOTES_v0.96.md
 
 #### Technical Documentation (3 files):
 7. ✅ ARCHITECTURE.md
@@ -355,7 +355,7 @@ This document summarizes all code changes, documentation updates, and bug fixes 
 - Backward compatible
 
 **Status:**
-✅ **Ready for v0.95 Release**
+✅ **Ready for v0.96 Release**
 
 ---
 
