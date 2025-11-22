@@ -6,7 +6,7 @@ DESCRIPTION: Validates loading of all required input files and proper project di
 
 INPUTS:
 
-- Application launched with MARS v0.96
+- Application launched with MARS v0.97
 - Test files available: valid .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
 - Project directory contains mixed file types for filtering validation
 
@@ -733,4 +733,158 @@ Both Modes (Critical Verification):
 - Exported animations preserve the selected mode
 
 REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 21
+
+TITLE: Large File Loading with Progress Indicators (v0.97)
+
+DESCRIPTION: Validates progress indicator system for large modal files (>100 MB) with real-time feedback, adaptive ETA, and performance tracking
+
+INPUTS:
+
+- Large modal stress file (>100 MB, e.g., 1.8 GB with 50,000+ nodes and 200+ modes)
+- Large modal deformation file (>100 MB)
+- Large modal coordinate file (>100 MB)
+- Application at v0.97 with tqdm installed
+
+TEST STEPS:
+
+1. Launch MARS application and navigate to Main Window tab
+2. Click Read Modal Coordinate File and select large .mcf file (>100 MB)
+3. Observe console output for progress indicators including:
+   - File size display
+   - "Large file detected" message
+   - Validation status
+   - Reading progress with elapsed time updates (every 5 seconds)
+   - Completion message with total time and metrics
+4. Click Read Modal Stress File and select large .csv file (>100 MB)
+5. Verify progress indicators appear with estimated time
+6. Observe periodic progress updates during CSV reading
+7. Note the actual load time and throughput (MB/s) displayed
+8. Load another large stress file and verify ETA becomes more accurate (adaptive learning)
+9. Restart application and load same file - verify ETA is accurate immediately (persistent cache)
+10. Load small file (< 100 MB) and verify no progress indicators appear (silent loading)
+
+EXPECTED RESULTS:
+
+- Large files (>100 MB) show detailed progress indicators in console
+- Progress includes: file size, validation status, estimated time, periodic updates, completion metrics
+- Estimated time becomes more accurate with each load (adaptive learning)
+- Performance cache persists across application restarts (~/.mars_loader_performance.json)
+- Small files (< 100 MB) load silently without progress spam
+- Console shows clean formatting: "Modes: X, Time Points: Y" or "Nodes: X, Modes: Y"
+- Throughput metrics (MB/s) displayed for large files
+- GUI remains responsive during file loading (can see console updates in real-time)
+
+REQUIREMENT NO: Performance Enhancement
+
+================================================================================
+
+TEST NO: 22
+
+TITLE: Background Threading and GUI Responsiveness (v0.97)
+
+DESCRIPTION: Validates that file loading and solver execution run in background threads without freezing the GUI
+
+INPUTS:
+
+- Large modal stress file (1+ GB)
+- Large modal coordinate file
+- Valid analysis configuration (outputs selected)
+- Application at v0.97
+
+TEST STEPS:
+
+1. Click Read Modal Stress File and select large file (1+ GB)
+2. During file loading, verify:
+   - Console shows "⏳ Loading stress file in background..." message
+   - GUI remains responsive (window can be moved, tabs can be switched)
+   - Console updates appear in real-time during loading
+   - Progress messages appear as file loads (not all at once after)
+3. After file loads successfully, verify UI is re-enabled automatically
+4. Load modal coordinate file and repeat responsiveness checks
+5. Configure solver outputs (select Von Mises, Max Principal)
+6. Click SOLVE button
+7. During solver execution, verify:
+   - Console shows "⏳ Running analysis in background..." message
+   - GUI remains responsive but solver tab is disabled
+   - Progress bar updates smoothly during execution
+   - Console shows solver progress messages in real-time
+8. After solve completes, verify:
+   - UI is re-enabled automatically
+   - Results appear correctly
+   - Plots are created/updated
+   - No errors in console
+
+EXPECTED RESULTS:
+
+- File loading never freezes GUI (background thread)
+- Solver execution never freezes GUI (background thread)
+- Console updates appear in real-time, not all at once after completion
+- Progress bar updates smoothly during operations
+- Solver tab is disabled during solve (prevents conflicts)
+- UI automatically re-enables after operations complete
+- No Qt threading errors (AttributeError, etc.)
+- Window remains movable and responsive during operations
+- Can switch to other tabs during file loading (but not during solve)
+
+REQUIREMENT NO: UX Enhancement
+
+================================================================================
+
+TEST NO: 23
+
+TITLE: Orientation Widget Display Consistency (v0.97)
+
+DESCRIPTION: Validates that the camera orientation widget (XYZ axes) appears correctly sized regardless of workflow order
+
+INPUTS:
+
+- Valid modal coordinate and stress files loaded
+- Solver executed successfully
+- Application at v0.97
+
+TEST STEPS:
+
+Scenario A - Visit Display Tab First:
+1. Load modal coordinate and stress files
+2. Switch to Display tab before running solve
+3. Verify orientation widget appears small in top-right corner
+4. Note widget size and position
+5. Switch back to Main Window tab
+6. Run solver
+7. Switch to Display tab again
+8. Verify orientation widget remains same size and position
+
+Scenario B - Visit Display Tab After Solve:
+1. Restart application
+2. Load modal coordinate and stress files
+3. Run solver (do NOT visit Display tab yet)
+4. After solve completes, switch to Display tab
+5. Wait ~200ms for widget to appear
+6. Verify orientation widget appears small in top-right corner
+7. Compare with Scenario A - should be identical size
+
+Scenario C - Multiple Solves:
+1. Load files and visit Display tab (widget appears correctly)
+2. Switch to Main Window, run solve
+3. Switch to Display tab - verify widget still correct size
+4. Repeat solve 2-3 more times
+5. Verify widget never becomes huge
+
+EXPECTED RESULTS:
+
+- Orientation widget always appears in top-right corner
+- Widget size is consistent (~15% of viewport) regardless of workflow order
+- Widget appears within ~200ms when Display tab is shown
+- Widget does not become huge after solver execution
+- Widget position and size identical whether Display tab visited before or after solve
+- No console warnings about widget creation
+- Widget remains interactive (can rotate view by clicking axes)
+
+REQUIREMENT NO: Bug Fix Validation
+
+================================================================================
 

@@ -6,7 +6,7 @@ DESCRIPTION: Validates loading of all required input files and proper project di
 
 INPUTS:
 
-- Application launched with MARS v0.96
+- Application launched with MARS v0.97
 - Test files available: valid .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
 - Project directory contains mixed file types for filtering validation
 
@@ -568,4 +568,86 @@ Both Modes:
 - Tooltip on checkbox explains both modes clearly
 
 REQUIREMENT NO: N/A
+
+================================================================================
+
+TEST NO: 21
+
+TITLE: Large File Loading Performance (v0.97)
+
+DESCRIPTION: Verify that loading large modal files is fast and provides clear progress feedback
+
+INPUTS:
+- Large modal stress file (over 1 GB)
+- MARS v0.97 application
+
+TEST STEPS:
+1. Click "Read Modal Stress File" button
+2. Select a large stress file (over 1 GB)
+3. Watch the console output
+
+EXPECTED RESULTS:
+- Console shows file size and estimated loading time
+- Progress updates appear every few seconds showing elapsed time
+- Loading completes faster than previous versions
+- Console shows final load time and speed (MB/s)
+- Application never freezes - you can still move the window
+
+REQUIREMENT NO: Performance
+
+================================================================================
+
+TEST NO: 22
+
+TITLE: Application Stays Responsive During Operations (v0.97)
+
+DESCRIPTION: Verify that the application never freezes during file loading or calculations
+
+INPUTS:
+- Any large files (coordinate, stress, deformation)
+- Valid analysis configuration
+
+TEST STEPS:
+1. Load a large file and try to move the application window during loading
+2. Try switching between tabs during file loading
+3. After files load, click SOLVE button
+4. Try to move the window during calculation
+5. Watch the progress bar and console during calculation
+
+EXPECTED RESULTS:
+- Window can always be moved, even during loading or solving
+- Console updates appear gradually as work progresses
+- Progress bar moves smoothly
+- Application never appears frozen or unresponsive
+- After operations complete, all results appear correctly
+
+REQUIREMENT NO: User Experience
+
+================================================================================
+
+TEST NO: 23
+
+TITLE: Display Tab Orientation Widget (v0.97)
+
+DESCRIPTION: Verify that the XYZ orientation widget appears correctly sized in the Display tab
+
+INPUTS:
+- Files loaded and solver executed
+- MARS v0.97 application
+
+TEST STEPS:
+1. Load files and run solver WITHOUT visiting Display tab
+2. After solver completes, click on Display tab
+3. Look at the top-right corner of the 3D view
+4. Check the size of the XYZ orientation widget (colored spheres)
+
+EXPECTED RESULTS:
+- Small XYZ widget appears in top-right corner
+- Widget is about the size of your thumb on screen
+- Widget does NOT cover a large portion of the screen
+- Widget appears within 1 second of switching to Display tab
+
+REQUIREMENT NO: Bug Fix
+
+================================================================================
 

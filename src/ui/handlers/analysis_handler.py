@@ -14,7 +14,7 @@ import  gc
 import psutil
 from datetime import datetime
 from typing import Optional
-from PyQt5.QtCore import pyqtSlot
+from PyQt5.QtCore import pyqtSlot, QThread, pyqtSignal
 import numpy as np
 from PyQt5.QtWidgets import QMessageBox, QApplication
 import pyvista as pv
@@ -22,6 +22,43 @@ import pyvista as pv
 from solver import engine as solver_engine
 from core.data_models import PlasticityConfig, SolverConfig
 from ui.widgets.plotting import PlotlyMaxWidget
+
+
+class SolverThread(QThread):
+    """Background thread for running solver without freezing the GUI."""
+    
+    # Signals
+    finished = pyqtSignal(object, object)  # Emits (result, config)
+    error = pyqtSignal(str)  # Emits error message
+    
+    def __init__(self, analysis_handler, config):
+        """
+        Initialize the solver thread.
+        
+        Args:
+            analysis_handler: SolverAnalysisHandler instance
+            config: SolverConfig with analysis settings
+        """
+        super().__init__()
+        self.analysis_handler = analysis_handler
+        self.config = config
+    
+    def run(self):
+        """Run the solver in background thread (computation only)."""
+        try:
+            # Configure analysis engine
+            self.analysis_handler._configure_analysis_engine()
+            
+            # Execute analysis (computation only - no Qt widget operations)
+            result = self.analysis_handler._execute_analysis(self.config)
+            
+            # Emit success signal with result and config
+            self.finished.emit(result, self.config)
+            
+        except Exception as e:
+            # Emit error signal
+            error_msg = f"{str(e)}\n\n{traceback.format_exc()}"
+            self.error.emit(error_msg)
 
 
 class SolverAnalysisHandler:
@@ -35,31 +72,84 @@ class SolverAnalysisHandler:
             tab (SolverTab): The parent SolverTab instance.
         """
         self.tab = tab
+        self._solve_start_time: Optional[datetime] = None
 
     @pyqtSlot()
     def solve(self, force_time_history_for_node_id=None):
-        """Run analysis and optionally return time history result."""
-        result = None
-        try:
-            current_tab_index = self.tab.show_output_tab_widget.currentIndex()
-
-            config = self._validate_and_build_config(force_time_history_for_node_id)
-            if config is None:
-                return None
-
-            self._log_solve_start(config)
-            self._configure_analysis_engine()
-
-            result = self._execute_analysis(config)
-
-            self._log_solve_complete()
-            self.tab.show_output_tab_widget.setCurrentIndex(current_tab_index)
-
-        except Exception as e:
-            self._handle_solve_error(e)
-            result = None
-
-        return result
+        """Run analysis in background thread."""
+        # Validate and build config
+        config = self._validate_and_build_config(force_time_history_for_node_id)
+        if config is None:
+            return None
+        
+        # Get current tab index to restore later
+        current_tab_index = self.tab.show_output_tab_widget.currentIndex()
+        
+        # Log solve start
+        self._log_solve_start(config)
+        
+        # Disable UI during solve
+        self.tab.setEnabled(False)
+        self.tab.console_textbox.append("⏳ Running analysis in background...\n")
+        
+        # Store tab index for completion handler
+        self._current_tab_index = current_tab_index
+        
+        # Show progress bar
+        self.tab.progress_bar.setVisible(True)
+        self.tab.progress_bar.setValue(0)
+        
+        # Create and start solver thread
+        self.solver_thread = SolverThread(self, config)
+        self.solver_thread.finished.connect(self._on_solve_complete)
+        self.solver_thread.error.connect(self._on_solve_error)
+        self.solver_thread.start()
+        
+        return None  # Result will be handled in completion callback
+    
+    def _on_solve_complete(self, result, config):
+        """
+        Handle successful solve completion (runs on main thread).
+        This is where all Qt widget operations happen safely.
+        
+        Args:
+            result: Analysis result (for time history mode)
+            config: SolverConfig used for the analysis
+        """
+        # Re-enable UI
+        self.tab.setEnabled(True)
+        
+        # Hide progress bar
+        self.tab.progress_bar.setVisible(False)
+        
+        # Handle results based on mode (NOW on main thread - safe for Qt widgets!)
+        if config.time_history_mode:
+            self._handle_time_history_result(result, config)
+        else:
+            self._handle_batch_results(config)
+        
+        # Log completion
+        self._log_solve_complete()
+        
+        # Restore tab index
+        self.tab.show_output_tab_widget.setCurrentIndex(self._current_tab_index)
+    
+    def _on_solve_error(self, error_msg):
+        """Handle solve error."""
+        # Re-enable UI
+        self.tab.setEnabled(True)
+        
+        # Log error
+        self.tab.console_textbox.append(f"\n❌ Solver Error:\n{error_msg}\n")
+        
+        # Show error dialog
+        QMessageBox.critical(
+            self.tab, "Solver Error",
+            f"An error occurred during analysis:\n\n{error_msg}"
+        )
+        
+        # Hide progress bar
+        self.tab.progress_bar.setVisible(False)
 
     def _validate_and_build_config(self, force_node_id):
         """
@@ -309,35 +399,33 @@ class SolverAnalysisHandler:
 
     def _execute_analysis(self, config):
         """
-        Execute the analysis based on configuration.
+        Execute ONLY the computation (no UI updates).
+        Safe to call from background thread.
 
         Args:
             config: SolverConfig with analysis settings.
+            
+        Returns:
+            Result object for time history mode, None for batch mode.
         """
         # Create solver
         self.tab.analysis_engine.create_solver(config)
 
-        # Connect progress signal
+        # Connect progress signal (Qt signals are thread-safe)
         if self.tab.analysis_engine.solver:
             self.tab.analysis_engine.solver.progress_signal.connect(
-                self.tab.update_progress_bar  # Connects to the method on SolverTab
+                self.tab.update_progress_bar
             )
 
-        # Show progress bar
-        self.tab.progress_bar.setVisible(True)
-        self.tab.progress_bar.setValue(0)
-
+        # Run analysis (computation only - no Qt widget operations)
         if config.time_history_mode:
             result = self.tab.analysis_engine.run_single_node_analysis(
                 config.selected_node_id, config
             )
-            self._handle_time_history_result(result, config)
         else:
             self.tab.analysis_engine.run_batch_analysis(config)
-            self._handle_batch_results(config)
             result = None
 
-        self.tab.progress_bar.setVisible(False)
         return result
 
     def _handle_time_history_result(self, result, config):
@@ -527,6 +615,7 @@ class SolverAnalysisHandler:
     def _log_solve_start(self, config):
         """Log solve start information."""
         current_time = datetime.now()
+        self._solve_start_time = current_time
         self.tab.console_textbox.append(
             f"\n******************* BEGIN SOLVE ********************\n"
             f"Datetime: {current_time}\n\n"
@@ -534,9 +623,17 @@ class SolverAnalysisHandler:
 
     def _log_solve_complete(self):
         """Log solve completion."""
-        self.tab.console_textbox.append(
-            "\n******************* SOLVE COMPLETE ********************\n\n"
-        )
+        end_time = datetime.now()
+        elapsed_seconds = None
+        if self._solve_start_time is not None:
+            elapsed_seconds = (end_time - self._solve_start_time).total_seconds()
+
+        complete_message = "\n******************* SOLVE COMPLETE ********************\n\n"
+        if elapsed_seconds is not None:
+            complete_message += f"Elapsed time: {elapsed_seconds:.3f} seconds\n\n"
+
+        self.tab.console_textbox.append(complete_message)
+        self._solve_start_time = None
 
     def _handle_solve_error(self, error):
         """Handle errors during solve."""

@@ -84,7 +84,8 @@ def validate_modal_stress_file(filename: str) -> Tuple[bool, Optional[str]]:
         if not os.path.exists(filename):
             return False, "File does not exist."
         
-        df_val = pd.read_csv(filename)
+        # Only read first 10 rows for validation - we only need to check headers
+        df_val = pd.read_csv(filename, nrows=10)
         
         # Check for required NodeID column
         if 'NodeID' not in df_val.columns:
@@ -116,7 +117,8 @@ def validate_deformation_file(filename: str) -> Tuple[bool, Optional[str]]:
         if not os.path.exists(filename):
             return False, "File does not exist."
         
-        df_val = pd.read_csv(filename)
+        # Only read first 10 rows for validation - we only need to check headers
+        df_val = pd.read_csv(filename, nrows=10)
         
         # Check for required NodeID column
         if 'NodeID' not in df_val.columns:

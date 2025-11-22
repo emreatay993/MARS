@@ -37,7 +37,7 @@ class SolverLogHandler:
             f"{os.path.basename(filename)}\n"
         )
         self.tab.console_textbox.append(
-            f"Modal coordinates tensor shape (m x n): {modal_data.modal_coord.shape}\n"
+            f"Modes: {modal_data.num_modes}, Time Points: {modal_data.num_time_points:,}\n"
         )
 
     def _log_stress_load(self, filename, stress_data):
@@ -46,17 +46,10 @@ class SolverLogHandler:
             f"Successfully validated and loaded modal stress file: "
             f"{os.path.basename(filename)}\n"
         )
-        self.tab.console_textbox.append(f"Node IDs tensor shape: {stress_data.node_ids.shape}\n")
-        self.tab.console_textbox.append("Normal stress components extracted: SX, SY, SZ, SXY, SYZ, SXZ")
         self.tab.console_textbox.append(
-            f"SX shape: {stress_data.modal_sx.shape}, "
-            f"SY shape: {stress_data.modal_sy.shape}, "
-            f"SZ shape: {stress_data.modal_sz.shape}"
-        )
-        self.tab.console_textbox.append(
-            f"SXY shape: {stress_data.modal_sxy.shape}, "
-            f"SYZ shape: {stress_data.modal_syz.shape}, "
-            f"SXZ shape: {stress_data.modal_sxz.shape}\n"
+            f"📊 Stress Components: 6 components (SX, SY, SZ, SXY, SYZ, SXZ)\n"
+            f"   Nodes: {stress_data.num_nodes:,}\n"
+            f"   Modes: {stress_data.num_modes}\n"
         )
         self.tab.console_textbox.verticalScrollBar().setValue(
             self.tab.console_textbox.verticalScrollBar().maximum()
@@ -69,10 +62,9 @@ class SolverLogHandler:
             f"{os.path.basename(filename)}\n"
         )
         self.tab.console_textbox.append(
-            f"Deformations array shapes: "
-            f"UX {deform_data.modal_ux.shape}, "
-            f"UY {deform_data.modal_uy.shape}, "
-            f"UZ {deform_data.modal_uz.shape}"
+            f"📐 Deformation Components: 3 components (UX, UY, UZ)\n"
+            f"   Nodes: {deform_data.num_nodes:,}\n"
+            f"   Modes: {deform_data.num_modes}\n"
         )
 
     def _log_steady_state_load(self, filename, steady_data):

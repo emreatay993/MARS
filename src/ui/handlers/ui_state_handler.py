@@ -366,9 +366,24 @@ class SolverUIHandler:
             )
 
     def _update_solve_button_state(self):
-        """Enable/disable solve button based on loaded files."""
-        can_solve = self.tab.coord_loaded and self.tab.stress_loaded
-        self.tab.solve_button.setEnabled(can_solve)
+        """Enable/disable solve button based on loaded files and selected outputs."""
+        files_loaded = self.tab.coord_loaded and self.tab.stress_loaded
+        
+        # Check if at least one result output is selected
+        result_outputs = [
+            self.tab.max_principal_stress_checkbox,
+            self.tab.min_principal_stress_checkbox,
+            self.tab.von_mises_checkbox,
+            self.tab.deformation_checkbox,
+            self.tab.velocity_checkbox,
+            self.tab.acceleration_checkbox,
+            self.tab.damage_index_checkbox,
+            self.tab.plasticity_correction_checkbox
+        ]
+        
+        output_selected = any(cb.isChecked() for cb in result_outputs)
+        
+        self.tab.solve_button.setEnabled(files_loaded and output_selected)
 
     def _hide_plot_tabs(self):
         """Hide all plot tabs."""

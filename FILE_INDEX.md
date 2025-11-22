@@ -2,13 +2,20 @@
 
 This reference captures every Python module that ships with the refactored MARS codebase. Line counts were refreshed from the current `src/` tree to help you find the right file quickly.
 
-## Snapshot (Current - v0.96)
+## Snapshot (Current - v0.97)
 
 - 36 Python modules (45 Python files including package initialisers) live under `src/`
-- ~9,200 lines of implementation code (9,189 excluding `__init__.py` markers)
-- UI layer spans 24 Python files (~6,642 lines) split across controller/tab views, builders, 15 handler modules, widgets, and centralised style constants
+- ~9,600 lines of implementation code (~9,500 excluding `__init__.py` markers)
+- UI layer spans 24 Python files (~6,800 lines) split across controller/tab views, builders, 15 handler modules, widgets, and centralised style constants
 - Automated tests: 4 unit-test modules plus 3 living guides in `tests/`
 - Application resources: Icon system in `resources/icons/` with SVG source, PNG/ICO outputs, and generation script
+
+### Recent Enhancements (November 2025)
+- **File Loading Performance**: 2-3x faster with PyArrow engine and optimized validation
+- **Progress Indicators**: Real-time feedback for large files (>100 MB) with adaptive ETA
+- **Background Threading**: Non-blocking file loading and solver execution
+- **Improved Console Output**: Clean, professional formatting with metrics
+- **Bug Fixes**: Qt threading issues and orientation widget sizing resolved
 
 ---
 
@@ -32,25 +39,25 @@ This reference captures every Python module that ships with the refactored MARS 
 
 ---
 
-## File I/O Package (5 files – 568 lines)
+## File I/O Package (5 files – ~700 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
 | `src/file_io/exporters.py` | 157 | CSV exports, APDL initial-condition writer, and mesh/point-data exporters |
 | `src/file_io/fea_utilities.py` | 41 | Legacy finite-element helper preserved for compatibility |
-| `src/file_io/loaders.py` | 197 | Loaders that return typed data models after validation |
-| `src/file_io/validators.py` | 166 | Validators for modal coordinate, stress, deformation, and steady-state inputs |
+| `src/file_io/loaders.py` | ~380 | **Optimized loaders** with PyArrow engine, progress indicators, adaptive ETA, and persistent performance cache |
+| `src/file_io/validators.py` | 166 | **Fast validators** using nrows=10 optimization for instant header validation |
 | `src/file_io/__init__.py` | 7 | Package initialiser |
 
 ---
 
-## UI Shell (4 files – 1,332 lines)
+## UI Shell (4 files – ~1,400 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
 | `src/ui/application_controller.py` | 217 | Main window controller managing menus, navigator dock, cross-tab signal wiring, and application icon loading |
-| `src/ui/display_tab.py` | 599 | Display tab view constructing widgets and delegating to specialised handlers |
-| `src/ui/solver_tab.py` | 517 | Solver tab view handling UI wiring, signal emission, and console integration |
+| `src/ui/display_tab.py` | ~630 | Display tab view with **orientation widget fix**, constructing widgets and delegating to specialised handlers |
+| `src/ui/solver_tab.py` | 507 | Solver tab view handling UI wiring, signal emission, and console integration |
 | `src/ui/__init__.py` | 2 | Package docstring / marker |
 
 ---
@@ -65,11 +72,11 @@ This reference captures every Python module that ships with the refactored MARS 
 
 ---
 
-## UI Handlers (15 files – 3,293 lines)
+## UI Handlers (15 files – ~3,400 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/handlers/analysis_handler.py` | 871 | Validates inputs, builds `SolverConfig`, orchestrates solves, logging, progress, and plotting |
+| `src/ui/handlers/analysis_handler.py` | ~920 | **Background-threaded solver** execution, validates inputs, builds `SolverConfig`, orchestrates solves, logging, progress, and plotting |
 | `src/ui/handlers/display_animation_handler.py` | 554 | Precomputes animation frames, manages timers, playback, and export hooks |
 | `src/ui/handlers/display_base_handler.py` | 26 | Shared base utilities for display handlers (state sync helpers) |
 | `src/ui/handlers/display_export_handler.py` | 103 | Save-as flows for CSV snapshots, APDL exports, and animation writers |
@@ -77,13 +84,13 @@ This reference captures every Python module that ships with the refactored MARS 
 | `src/ui/handlers/display_interaction_handler.py` | 558 | Hover annotations, hotspot detection, node picking, tracking, and camera controls |
 | `src/ui/handlers/display_results_handler.py` | 107 | Loads solver-generated arrays (memmap) and applies them to the active mesh |
 | `src/ui/handlers/display_state.py` | 50 | Dataclass capturing shared display state (mesh, camera, animation, selection) |
-| `src/ui/handlers/display_visualization_handler.py` | 218 | PyVista rendering pipeline, scalar updates, deformation scaling, hover observers |
-| `src/ui/handlers/file_handler.py` | 155 | Solver tab file dialogs, validation hand-off, and modal data lifecycle management |
-| `src/ui/handlers/log_handler.py` | 76 | Routes solver text output to the embedded console widget |
+| `src/ui/handlers/display_visualization_handler.py` | ~220 | PyVista rendering pipeline, scalar updates, deformation scaling, hover observers, orientation widget fix |
+| `src/ui/handlers/file_handler.py` | ~220 | **Background-threaded file loading** for solver tab with progress feedback |
+| `src/ui/handlers/log_handler.py` | ~80 | Routes solver text output to console widget with **improved formatting** |
 | `src/ui/handlers/navigator_handler.py` | 55 | Project tree double-click handling and drag-and-drop integration |
 | `src/ui/handlers/plotting_handler.py` | 64 | Shares matplotlib/plotly widgets across tabs and cleans up temp files |
 | `src/ui/handlers/settings_handler.py` | 39 | Applies advanced solver settings (RAM usage, precision, GPU toggle) |
-| `src/ui/handlers/ui_state_handler.py` | 315 | Manages solver tab checkbox logic, fatigue controls, and plot updates |
+| `src/ui/handlers/ui_state_handler.py` | 354 | Manages solver tab checkbox logic, fatigue controls, and plot updates |
 
 ---
 

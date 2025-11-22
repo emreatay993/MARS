@@ -66,13 +66,10 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
 
         self.setup_hover_annotation()
 
-        if not self.state.camera_widget:
-            camera_widget = plotter.add_camera_orientation_widget()
-            camera_widget.EnabledOn()
-            self.state.camera_widget = camera_widget
-            self.tab.camera_widget = camera_widget
-
         plotter.reset_camera()
+        
+        # Camera orientation widget is added only during initial setup
+        # Don't add it here to avoid sizing issues
 
     def setup_hover_annotation(self) -> None:
         """Set up hover callbacks to display node information."""

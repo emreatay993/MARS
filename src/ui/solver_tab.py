@@ -221,6 +221,10 @@ class SolverTab(QWidget):
         self.plasticity_max_iter_input.textChanged.connect(self.ui_handler.on_plasticity_iteration_inputs_changed)
         self.plasticity_tolerance_input.textChanged.connect(self.ui_handler.on_plasticity_iteration_inputs_changed)
         
+        # Update solve button state when any output is toggled
+        for cb in self._coord_stress_outputs + self._deformation_outputs:
+            cb.toggled.connect(lambda: self.ui_handler._update_solve_button_state())
+        
         # Plot updates
         self.max_principal_stress_checkbox.toggled.connect(
             self.ui_handler.update_single_node_plot_based_on_checkboxes

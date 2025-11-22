@@ -1,8 +1,24 @@
 # MARS: Modal Analysis Response Solver - Architecture Documentation
 
+**Version:** 0.97 (November 2025)
+
 ## Overview
 
 This document provides a comprehensive guide to the MARS application's modular architecture, design decisions, and implementation details.
+
+### Recent Architectural Enhancements (v0.97)
+
+**Performance & Threading Layer:**
+- Background threading for file loading and solver execution (QThread-based)
+- Adaptive performance tracking with persistent cache
+- Progress indicators with real-time feedback for large datasets
+- Thread-safe signal/slot communication between computation and UI layers
+
+**Key Improvements:**
+- 2-3x faster file loading with PyArrow engine
+- Non-blocking GUI during heavy operations
+- Real-time progress updates in console
+- Professional user feedback system
 
 ---
 
@@ -61,12 +77,14 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Result visualization
 
 **Key Components**:
-- `SolverTab` class (~520 lines) focused on UI wiring, signal emission, and console surfaces
-- `SolverAnalysisHandler` (871 lines) executes solves, builds configurations, monitors resources, and coordinates plotting
-- `SolverFileHandler` (file dialogs and modal data life cycle)
+- `SolverTab` class (~510 lines) focused on UI wiring, signal emission, and console surfaces
+- `SolverAnalysisHandler` (~920 lines) **background-threaded solver execution**, builds configurations, monitors resources, and coordinates plotting
+- `SolverFileHandler` (~220 lines) **background-threaded file loading** with progress feedback
 - `SolverUIHandler` (checkbox state, visibility, and plot refresh)
-- `SolverLogHandler` (routes stdout to the embedded console widget)
-- Integration with `file_io` loaders and `core` managers
+- `SolverLogHandler` (routes stdout to console with improved formatting)
+- `SolverThread` class for non-blocking analysis execution
+- `FileLoaderThread` class for non-blocking file loading
+- Integration with optimized `file_io` loaders and `core` managers
 
 **Refactoring Impact**: 
 - Original: Monolithic 1,700+ line widget with deeply nested handler logic

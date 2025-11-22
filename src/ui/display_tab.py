@@ -280,6 +280,41 @@ class DisplayTab(QWidget):
         """Open file dialog and load visualization file."""
         self.file_handler.open_file_dialog()
     
+    def showEvent(self, event):
+        """Called when the Display tab becomes visible."""
+        super().showEvent(event)
+        # Ensure plotter is properly sized when tab is shown
+        if hasattr(self, 'plotter'):
+            self.plotter.update()
+            
+            # Add camera orientation widget only if tab is visible AND plotter is rendered
+            # This prevents the huge widget bug
+            if not self.camera_widget and self.current_mesh and self.isVisible():
+                from PyQt5.QtCore import QTimer
+                # Delay to ensure window is fully rendered
+                QTimer.singleShot(200, self._add_camera_widget_if_ready)
+    
+    def _add_camera_widget_if_ready(self):
+        """Add camera orientation widget only if plotter is properly initialized."""
+        if self.camera_widget or not hasattr(self, 'plotter'):
+            return
+        
+        try:
+            # Check if render window is properly sized
+            if self.plotter.ren_win:
+                size = self.plotter.ren_win.GetSize()
+                # Only add if window is reasonably sized (not tiny default)
+                if size[0] >= 800 and size[1] >= 600:
+                    camera_widget = self.plotter.add_camera_orientation_widget()
+                    camera_widget.EnabledOn()
+                    self.camera_widget = camera_widget
+                    self.state.camera_widget = camera_widget
+                else:
+                    # Window too small, widget would be huge - skip it
+                    print(f"Skipping camera widget - window size {size} too small")
+        except Exception as e:
+            print(f"Warning: Could not add camera orientation widget: {e}")
+    
     def update_visualization(self):
         """Update the 3D visualization with current mesh."""
         self.visual_handler.update_visualization()

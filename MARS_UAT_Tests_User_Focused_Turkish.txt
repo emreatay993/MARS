@@ -1,0 +1,163 @@
+TEST NO: 1
+
+BAŞLIK: Dosya Yükleme ve Proje Kurulumu
+
+AÇIKLAMA: Tüm gerekli girdi dosyalarının yüklenmesini ve Navigator ile dosya diyalogları üzerinden uygun proje dizini kurulumunu doğrular
+
+GİRDİLER:
+
+- MARS v0.97 ile başlatılmış uygulama
+- Test dosyaları mevcut: geçerli .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
+- Proje dizini filtreleme doğrulaması için karışık dosya türleri içermektedir
+
+TEST ADIMLARI:
+
+1. File > Select Project Directory üzerinden proje dizinini ayarlayın ve Navigator'ın klasör içeriğiyle güncellendiğini doğrulayın
+2. Navigator'ın yalnızca .mcf, .csv ve .txt dosyalarını gösterdiğini doğrulayın (otomatik filtreleme davranışı)
+3. Read Modal Coordinate File düğmesine tıklayarak ve geçerli bir .mcf dosyası seçerek modal koordinat dosyasını yükleyin
+4. Read Modal Stress File düğmesine tıklayarak ve geçerli bir .csv dosyası seçerek modal stress dosyasını yükleyin
+5. Include Deformations checkbox'ını etkinleştirin ve deformations dosya kontrollerinin görünür hale geldiğini doğrulayın
+6. Artık görünür olan düğmeyi kullanarak deformations .csv dosyasını yükleyin
+7. Include Steady-State Stress Field checkbox'ını etkinleştirin ve steady-state dosya kontrollerinin göründüğünü doğrulayın
+8. Artık görünür olan düğmeyi kullanarak steady-state .txt dosyasını yükleyin
+9. Tüm dosya yollarının salt okunur metin alanlarında doğru şekilde görüntülendiğini doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Navigator, proje diziniyle eşleşen yalnızca filtrelenmiş dosyaları (.mcf, .csv, .txt) gösterir
+- Console, yüklenen her dosya için başarı mesajları görüntüler
+- Dosya yolu alanları doğru mutlak yollarla doldurulur
+- Stress çıktı checkbox'ları (Von-Mises, Max Principal, Min Principal), stress dosyası yüklendikten sonra etkinleşir
+- Deformation çıktı checkbox'ları (Deformation, Velocity, Acceleration), deformations dosyası yüklendikten sonra etkinleşir
+- Opsiyonel dosya kontrolleri (steady-state, deformations), checkbox'lar etkinleştirilene kadar gizlidir
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 2
+
+BAŞLIK: Çıktı Seçimi ve Solver Çalıştırma
+
+AÇIKLAMA: Çıktı seçimini, skip modes dahil solver konfigürasyon parametrelerini ve ilerleme izleme ile analizin başarılı şekilde yürütülmesini doğrular
+
+GİRDİLER:
+
+- Modal coordinate ve stress dosyaları başarıyla yüklenmiştir
+- Skip modes: 6 (6 rijit-cisim modu olan free-free yapı için)
+- Fatigue parametreleri: σ'f = 1000 MPa, b = -0.12
+- Time history için Node ID: 1001
+- Tam çıktı testi için deformations dosyası yüklenmiştir
+
+TEST ADIMLARI:
+
+1. Birden fazla çıktı seçeneği seçin: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
+2. Damage Index checkbox'ını etkinleştirin ve fatigue parametre alanlarının göründüğünü doğrulayın
+3. Fatigue parametrelerini girin: σ'f = 1000 MPa ve b = -0.12
+4. Skip first n modes dropdown'ını açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
+5. Time History Mode checkbox'ını etkinleştirin ve Scoping bölümünün Node ID alanıyla göründüğünü doğrulayın
+6. Scoping alanına Node ID 1001'i girin
+7. SOLVE düğmesinin etkin olduğunu doğrulayın
+8. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
+9. İşleme mesajları ve validation adımları için Console sekmesini izleyin
+10. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
+11. Solver tamamlanmasını bekleyin ve Console'da başarı mesajının göründüğünü doğrulayın
+
+BEKLENEN SONUÇLAR:
+
+- Tüm seçili çıktı checkbox'ları işaretlidir ve etkin kalır
+- Damage Index seçildiğinde fatigue parametreleri bölümü görünür
+- Skip modes dropdown, .mcf dosyasından maksimum mod sayısına kadar değerleri gösterir
+- Time History Mode checkbox etkinleştirildiğinde scoping kontrolleri görünür
+- Minimum gereksinimler karşılandığında SOLVE düğmesi etkinleşir
+- Progress bar çalıştırma sırasında %0'dan %100'e düzgün şekilde ilerler
+- Console, validation mesajlarını, işleme adımlarını, algoritma detaylarını ve tamamlanma durumunu görüntüler
+- Time History plot sekmesi Main Window tab widget'ında node 1001 geçmişini göstererek görünür
+- Çıktı CSV dosyaları solver çıktı dizininde oluşturulur
+- Console, tamamlandığında toplam çalıştırma süresini gösterir
+
+GEREKSINIM NO: N/A
+
+================================================================================
+
+TEST NO: 21
+
+BAŞLIK: Büyük Dosya Yükleme Performansı (v0.97)
+
+AÇIKLAMA: Büyük modal dosyaların hızlı yüklendiğini ve net ilerleme geri bildirimi sağladığını doğrulayın
+
+GİRDİLER:
+- Büyük modal stress dosyası (1 GB'dan fazla)
+- MARS v0.97 uygulaması
+
+TEST ADIMLARI:
+1. "Read Modal Stress File" düğmesine tıklayın
+2. Büyük bir stress dosyası seçin (1 GB'dan fazla)
+3. Console çıktısını izleyin
+
+BEKLENEN SONUÇLAR:
+- Console dosya boyutunu ve tahmini yükleme süresini gösterir
+- Her birkaç saniyede geçen süreyi gösteren ilerleme güncellemeleri görünür
+- Yükleme önceki versiyonlardan daha hızlı tamamlanır
+- Console son yükleme süresini ve hızı (MB/s) gösterir
+- Uygulama asla donmaz - pencereyi hala taşıyabilirsiniz
+
+GEREKSINIM NO: Performans
+
+================================================================================
+
+TEST NO: 22
+
+BAŞLIK: Uygulama İşlemler Sırasında Responsive Kalır (v0.97)
+
+AÇIKLAMA: Uygulamanın dosya yükleme veya hesaplamalar sırasında asla donmadığını doğrulayın
+
+GİRDİLER:
+- Herhangi bir büyük dosya (coordinate, stress, deformation)
+- Geçerli analiz konfigürasyonu
+
+TEST ADIMLARI:
+1. Büyük bir dosya yükleyin ve yükleme sırasında uygulama penceresini taşımayı deneyin
+2. Dosya yükleme sırasında sekmeler arasında geçiş yapmayı deneyin
+3. Dosyalar yüklendikten sonra, SOLVE düğmesine tıklayın
+4. Hesaplama sırasında pencereyi taşımayı deneyin
+5. Hesaplama sırasında progress bar ve console'u izleyin
+
+BEKLENEN SONUÇLAR:
+- Pencere, yükleme veya solve sırasında bile her zaman taşınabilir
+- Console güncellemeleri iş ilerledikçe kademeli olarak görünür
+- Progress bar düzgün şekilde hareket eder
+- Uygulama asla donmuş veya yanıt vermiyor görünmez
+- İşlemler tamamlandıktan sonra, tüm sonuçlar doğru şekilde görünür
+
+GEREKSINIM NO: Kullanıcı Deneyimi
+
+================================================================================
+
+TEST NO: 23
+
+BAŞLIK: Display Tab Orientation Widget (v0.97)
+
+AÇIKLAMA: XYZ orientation widget'ının Display sekmesinde doğru boyutta göründüğünü doğrulayın
+
+GİRDİLER:
+- Dosyalar yüklenmiş ve solver çalıştırılmış
+- MARS v0.97 uygulaması
+
+TEST ADIMLARI:
+1. Dosyaları yükleyin ve Display sekmesini ziyaret ETMEDENsolver'ı çalıştırın
+2. Solver tamamlandıktan sonra, Display sekmesine tıklayın
+3. 3D görünümün sağ üst köşesine bakın
+4. XYZ orientation widget'ının (renkli küreler) boyutunu kontrol edin
+
+BEKLENEN SONUÇLAR:
+- Küçük XYZ widget sağ üst köşede görünür
+- Widget ekranda yaklaşık başparmak büyüklüğündedir
+- Widget ekranın büyük bir bölümünü kaplamaz
+- Widget Display sekmesine geçtikten sonra 1 saniye içinde görünür
+
+GEREKSINIM NO: Bug Fix
+
+================================================================================
+
+
