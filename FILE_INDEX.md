@@ -5,8 +5,8 @@ This reference captures every Python module that ships with the refactored MARS 
 ## Snapshot (Current - v0.97)
 
 - 36 Python modules (45 Python files including package initialisers) live under `src/`
-- ~9,600 lines of implementation code (~9,500 excluding `__init__.py` markers)
-- UI layer spans 24 Python files (~6,800 lines) split across controller/tab views, builders, 15 handler modules, widgets, and centralised style constants
+- ~12,607 lines of implementation code (~12,567 excluding `__init__.py` markers)
+- UI layer spans 31 Python files (~8,086 lines) split across controller/tab views, builders, 15 handler modules, widgets, and centralised style constants
 - Automated tests: 4 unit-test modules plus 3 living guides in `tests/`
 - Application resources: Icon system in `resources/icons/` with SVG source, PNG/ICO outputs, and generation script
 
@@ -23,7 +23,7 @@ This reference captures every Python module that ships with the refactored MARS 
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/main.py` | 35 | Application entry point bootstrapping Qt, DPI tweaks, and the `ApplicationController` |
+| `src/main.py` | 32 | Application entry point bootstrapping Qt, DPI tweaks, and the `ApplicationController` |
 | `src/__init__.py` | 7 | Package marker |
 
 ---
@@ -151,8 +151,8 @@ This reference captures every Python module that ships with the refactored MARS 
 
 ## Totals
 
-- **Source totals**: 45 Python files (36 modules + 9 package markers), 9,125 lines overall (9,093 excluding `__init__.py`)
-- **UI footprint**: 24 files, ~6,546 lines (controllers/tabs, builders, 15 handlers, widgets, styles)
+- **Source totals**: 50 Python files (40 modules + 10 package markers), 12,607 lines overall (12,567 excluding `__init__.py`)
+- **UI footprint**: 31 files, ~8,086 lines (controllers/tabs, builders, 15 handlers, widgets, styles)
 - **Testing footprint**: 4 automated test modules plus 3 living guides/checklists
 
 Keep this index handy whenever new files are added—updating the counts here keeps the documentation trustworthy.
