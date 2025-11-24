@@ -45,28 +45,24 @@ INPUTS:
 
 - Modal coordinate and stress files loaded successfully
 - Skip modes: 6 (for free-free structure with 6 rigid-body modes)
-- Fatigue parameters: σ'f = 1000 MPa, b = -0.12
 - Node ID for time history: 1001
 - Deformations file loaded for full output testing
 
 TEST STEPS:
 
 1. Select multiple output options: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
-2. Enable Damage Index checkbox and verify fatigue parameters fields appear
-3. Enter fatigue parameters: σ'f = 1000 MPa and b = -0.12
-4. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
-5. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
-6. Enter Node ID 1001 in Scoping field
-7. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
-8. Click SOLVE button to execute solver
-9. Monitor Console tab for processing messages and validation steps
-10. Observe progress bar advancement from 0% to 100%
-11. Wait for solver completion and verify success message appears in Console
+2. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
+3. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
+4. Enter Node ID 1001 in Scoping field
+5. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
+6. Click SOLVE button to execute solver
+7. Monitor Console tab for processing messages and validation steps
+8. Observe progress bar advancement from 0% to 100%
+9. Wait for solver completion and verify success message appears in Console
 
 EXPECTED RESULTS:
 
 - All selected output checkboxes are checked and remain enabled
-- Fatigue parameters section appears when Damage Index selected
 - Skip modes dropdown shows values from 0 to maximum mode count from .mcf file
 - Time History Mode scoping controls appear when checkbox enabled
 - SOLVE button becomes enabled when minimum requirements met

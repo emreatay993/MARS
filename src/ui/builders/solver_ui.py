@@ -154,6 +154,7 @@ class SolverTabUIBuilder:
         acceleration_checkbox.setStyleSheet(CHECKBOX_STYLE)
         damage_index_checkbox = QCheckBox('Damage Index / Potential Damage')
         damage_index_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        damage_index_checkbox.setVisible(False)  # TODO: Show once damage index workflow is benchmarked
         # Layout
         output_layout = QVBoxLayout()
         output_layout.addWidget(max_principal_stress_checkbox)

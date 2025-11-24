@@ -45,28 +45,24 @@ GİRDİLER:
 
 - Modal coordinate ve stress dosyaları başarıyla yüklenmiştir
 - Skip modes: 6 (6 rijit-cisim modu olan free-free yapı için)
-- Fatigue parametreleri: σ'f = 1000 MPa, b = -0.12
 - Time history için Node ID: 1001
 - Tam çıktı testi için deformations dosyası yüklenmiştir
 
 TEST ADIMLARI:
 
 1. Birden fazla çıktı seçeneği seçin: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
-2. Damage Index checkbox'ını etkinleştirin ve fatigue parametreleri alanlarının göründüğünü doğrulayın
-3. Fatigue parametrelerini girin: σ'f = 1000 MPa ve b = -0.12
-4. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
-5. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
-6. Scoping alanına Node ID 1001'i girin
-7. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
-8. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
-9. İşleme mesajları ve doğrulama adımları için Console sekmesini izleyin
-10. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
-11. Solver'ın tamamlanmasını bekleyin ve Console'da başarı mesajının göründüğünü doğrulayın
+2. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
+3. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
+4. Scoping alanına Node ID 1001'i girin
+5. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
+6. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
+7. İşleme mesajları ve doğrulama adımları için Console sekmesini izleyin
+8. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
+9. Solver'ın tamamlanmasını bekleyin ve Console'da başarı mesajının göründüğünü doğrulayın
 
 BEKLENEN SONUÇLAR:
 
 - Seçilen tüm çıktı checkbox'ları işaretlidir ve etkin kalır
-- Damage Index seçildiğinde fatigue parametreleri bölümü görünür
 - Skip modes dropdown, .mcf dosyasından gelen maksimum mod sayısına kadar 0'dan başlayan değerleri gösterir
 - Time History Mode scoping kontrolleri, checkbox etkinleştirildiğinde görünür
 - Minimum gereksinimler karşılandığında SOLVE düğmesi etkinleşir

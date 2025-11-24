@@ -41,8 +41,9 @@ class SolverUIHandler:
             if not deformations_enabled:
                 cb.setChecked(False)
 
-        # Ensure plasticity follows Von Mises selection (always visible)
+        # Ensure dependent controls track Von Mises selection state
         self._update_plasticity_state()
+        self._update_damage_index_state()
 
     def toggle_steady_state_stress_inputs(self, is_checked):
         """Show/hide steady-state stress file controls."""
@@ -61,13 +62,10 @@ class SolverUIHandler:
             self.tab.deformation_loaded = False
 
     def toggle_damage_index_checkbox_visibility(self, is_checked=None):
-        """Show/hide damage index checkbox based on von Mises selection."""
-        if is_checked is None:
-            is_checked = self.tab.von_mises_checkbox.isChecked()
-        if is_checked:
-            self.tab.damage_index_checkbox.setVisible(True)
-        else:
-            self.tab.damage_index_checkbox.setVisible(False)
+        """Keep damage index checkbox hidden until benchmarking completes."""
+        _ = is_checked  # Maintains signal compatibility while checkbox stays hidden
+        self.tab.damage_index_checkbox.setChecked(False)
+        self.tab.damage_index_checkbox.setVisible(False)  # TODO: Re-enable visibility once damage index is verified
 
     def toggle_fatigue_params_visibility(self, checked):
         """Show/hide fatigue parameters group."""
@@ -131,13 +129,9 @@ class SolverUIHandler:
 
     def _update_damage_index_state(self, checked=False):
         """Update damage index checkbox state."""
-        is_time_history_checked = self.tab.time_history_checkbox.isChecked()
-        is_von_mises_checked = self.tab.von_mises_checkbox.isChecked()
-        is_enabled = is_von_mises_checked and not is_time_history_checked
-        self.tab.damage_index_checkbox.setEnabled(False)  # TODO: Enable after benchmarks
-        if not is_enabled:
-            self.tab.damage_index_checkbox.setChecked(False)
-            self.tab.damage_index_checkbox.setVisible(False)
+        self.tab.damage_index_checkbox.setEnabled(False)  # TODO: Enable after damage index benchmarks
+        self.tab.damage_index_checkbox.setChecked(False)
+        self.tab.damage_index_checkbox.setVisible(False)
 
     def _update_plasticity_state(self, checked=False):
         """Enable Plasticity Correction only when Von Mises is selected.
