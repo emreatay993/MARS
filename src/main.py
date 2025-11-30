@@ -5,6 +5,10 @@ Initialises the Qt application and launches the main window.
 """
 
 import sys
+
+# Initialize PyTorch with CUDA DLL fix (must be first import)
+import utils.torch_setup  # noqa: F401
+
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 

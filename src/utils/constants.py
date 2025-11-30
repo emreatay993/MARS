@@ -6,13 +6,18 @@ Centralises configuration values and Qt styles used across the application.
 
 import os
 import numpy as np
-import torch
+
+# Import torch via setup module (handles Windows CUDA DLL compatibility)
+from utils.torch_setup import torch
 
 # ===== Solver Configuration =====
 # These constants control the core behavior and precision of the solver.
 
 RAM_PERCENT = 0.9
 """Default RAM allocation percentage based on available memory."""
+
+GPU_MEMORY_PERCENT = 0.92
+"""GPU VRAM allocation percentage. Reserves ~8% for CUDA context and fragmentation."""
 
 DEFAULT_PRECISION = 'Double'
 """Precision for numerical computations: 'Single' or 'Double'."""

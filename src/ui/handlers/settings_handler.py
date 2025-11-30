@@ -3,7 +3,9 @@ Handles the application and management of advanced settings.
 """
 
 import numpy as np
-import torch
+
+# Import torch via setup module (handles Windows CUDA DLL compatibility)
+from utils.torch_setup import torch
 import utils.constants as constants
 
 

@@ -11,11 +11,12 @@ import psutil
 from numba import njit, prange
 import numpy as np
 import pandas as pd
-import torch
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication
 
-# ---- Local Imports ----
+# Import torch via setup module (handles Windows CUDA DLL compatibility)
+from utils.torch_setup import torch
+
 # ---- Local Imports ----
 import utils.constants as constants
 from solver.plasticity_engine import (
@@ -121,29 +122,141 @@ class MSUPSmartSolverTransient(QObject):
         self.time_values = time_values.astype(constants.NP_DTYPE)
 
     # region Memory Management
+    def _is_gpu_mode(self) -> bool:
+        """Check if solver is running in GPU mode."""
+        return self.device.type == 'cuda'
+
+    def _get_gpu_memory_info(self) -> dict:
+        """
+        Get GPU memory information from both driver and PyTorch levels.
+        
+        Returns:
+            dict with keys:
+                - total: Total VRAM on device
+                - used: Actual VRAM used (driver-level, matches Task Manager)
+                - free: Actual VRAM free (driver-level)
+                - pytorch_allocated: Memory used by PyTorch tensors
+                - pytorch_reserved: Memory reserved by PyTorch's caching allocator
+                - available_for_chunks: Memory available for new chunk allocations
+        """
+        if not self._is_gpu_mode():
+            return {
+                'total': 0, 'used': 0, 'free': 0,
+                'pytorch_allocated': 0, 'pytorch_reserved': 0,
+                'available_for_chunks': 0
+            }
+        
+        # Driver-level memory info (matches Task Manager)
+        free_driver, total_driver = torch.cuda.mem_get_info(self.device)
+        used_driver = total_driver - free_driver
+        
+        # PyTorch allocator-level info (for debugging)
+        pytorch_allocated = torch.cuda.memory_allocated(self.device)
+        pytorch_reserved = torch.cuda.memory_reserved(self.device)
+        
+        # Available for new chunks = driver-level free memory with safety margin
+        available_for_chunks = int(free_driver * constants.GPU_MEMORY_PERCENT)
+        
+        return {
+            'total': total_driver,
+            'used': used_driver,
+            'free': free_driver,
+            'pytorch_allocated': pytorch_allocated,
+            'pytorch_reserved': pytorch_reserved,
+            'available_for_chunks': max(0, available_for_chunks)
+        }
+
+    def _get_available_memory(self) -> int:
+        """
+        Get available memory for computation based on device type.
+        
+        Returns:
+            Available memory in bytes.
+        """
+        if self._is_gpu_mode():
+            return self._get_gpu_memory_info()['available_for_chunks']
+        else:
+            return int(psutil.virtual_memory().available * constants.RAM_PERCENT)
+
+    def _get_current_memory_usage_str(self) -> str:
+        """Get a formatted string of current memory usage for logging."""
+        if self._is_gpu_mode():
+            info = self._get_gpu_memory_info()
+            used_pct = (info['used'] / info['total']) * 100 if info['total'] > 0 else 0
+            return (f"GPU VRAM - Used: {info['used'] / (1024**3):.2f} GB / "
+                    f"{info['total'] / (1024**3):.2f} GB ({used_pct:.1f}%)")
+        else:
+            mem = psutil.virtual_memory()
+            return f"RAM Available: {mem.available / (1024**3):.2f} GB"
+
     def _estimate_chunk_size(self, num_time_points, calculate_von_mises, calculate_max_principal_stress,
                              calculate_damage, calculate_deformation=False,
                              calculate_velocity=False, calculate_acceleration=False):
-        """Calculate the optimal chunk size for processing based on available memory."""
-        available_memory = psutil.virtual_memory().available * constants.RAM_PERCENT
-        memory_per_node = self._get_memory_per_node(num_time_points,
-                                                    calculate_von_mises,
-                                                    calculate_max_principal_stress,
-                                                    calculate_damage,
-                                                    calculate_deformation,
-                                                    calculate_velocity,
-                                                    calculate_acceleration)
+        """
+        Calculate the optimal chunk size for processing based on available memory.
+        
+        For GPU mode: Uses GPU VRAM, only counting tensors that actually reside on GPU.
+        For CPU mode: Uses system RAM for all arrays.
+        """
+        available_memory = self._get_available_memory()
+        
+        if self._is_gpu_mode():
+            # GPU mode: Only the 6 stress matmul outputs + 3 deformation outputs are on GPU
+            # Von Mises, principal stresses, etc. are computed on CPU with Numba
+            memory_per_node = self._get_gpu_memory_per_node(
+                num_time_points,
+                calculate_deformation or calculate_velocity or calculate_acceleration
+            )
+        else:
+            # CPU mode: All arrays are in RAM
+            memory_per_node = self._get_memory_per_node(
+                num_time_points,
+                calculate_von_mises,
+                calculate_max_principal_stress,
+                calculate_damage,
+                calculate_deformation,
+                calculate_velocity,
+                calculate_acceleration
+            )
+        
         max_nodes_per_iteration = available_memory // memory_per_node
-        return max(1, int(max_nodes_per_iteration))  # Ensure at least one node per chunk
+        return max(1, int(max_nodes_per_iteration))
+    
+    def _get_gpu_memory_per_node(self, num_time_points, calculate_kinematics=False):
+        """
+        Calculate GPU VRAM required per node for GPU-resident tensors only.
+        
+        Only counts tensors that actually live on GPU during computation:
+        - 6 stress component outputs from torch.matmul
+        - 3 deformation outputs from torch.matmul (if kinematics enabled)
+        
+        Note: Von Mises, principal stresses, etc. are computed on CPU with Numba,
+        so they don't consume GPU memory.
+        """
+        # Base: 6 stress component tensors from matmul (sx, sy, sz, sxy, syz, sxz)
+        num_gpu_arrays = 6
+        
+        # Deformation tensors if kinematics are computed (ux, uy, uz)
+        if calculate_kinematics:
+            num_gpu_arrays += 3
+        
+        dtype_size = np.dtype(constants.NP_DTYPE).itemsize
+        memory_per_node = num_gpu_arrays * num_time_points * dtype_size
+        return memory_per_node
 
-    def _estimate_ram_required_per_iteration(self, chunk_size, memory_per_node):
-        """Estimate the total RAM required per iteration to compute stresses."""
+    def _estimate_memory_required_per_iteration(self, chunk_size, memory_per_node):
+        """Estimate the total memory required per iteration to compute stresses."""
         total_memory = chunk_size * memory_per_node
         return total_memory / (1024 ** 3)  # Convert bytes to GB
 
     def _get_memory_per_node(self, num_time_points, calculate_von_mises, calculate_max_principal_stress,
                              calculate_damage, calculate_deformation=False,
                              calculate_velocity=False, calculate_acceleration=False):
+        """
+        Calculate memory required per node for the requested calculations.
+        
+        Uses the appropriate dtype size based on precision settings.
+        """
         num_arrays = 6  # For actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz
 
         if calculate_von_mises:
@@ -153,20 +266,21 @@ class MSUPSmartSolverTransient(QObject):
         if calculate_damage:
             num_arrays += 1  # For signed_von_mises
 
-        # First, check if the base displacement components (ux, uy, uz) need to be computed at all.
+        # Base displacement components (ux, uy, uz) if any kinematics are needed
         if calculate_deformation or calculate_velocity or calculate_acceleration:
-            num_arrays += 3  # For the initial ux, uy, uz arrays
+            num_arrays += 3
 
-        # Now, add memory for the final deformation magnitude array ONLY if requested.
+        # Deformation magnitude array
         if calculate_deformation:
-            num_arrays += 1  # For def_mag
+            num_arrays += 1
 
-        # Finally, add memory for ALL velocity/acceleration arrays ONLY if one of them is requested.
+        # Velocity and acceleration arrays (vel_x/y/z, acc_x/y/z, vel_mag, acc_mag)
         if calculate_velocity or calculate_acceleration:
-            # This accounts for vel_x/y/z, acc_x/y/z, vel_mag, and acc_mag.
             num_arrays += 8
 
-        memory_per_node = num_arrays * num_time_points * np.dtype(constants.NP_DTYPE).itemsize
+        # Use appropriate dtype size
+        dtype_size = np.dtype(constants.NP_DTYPE).itemsize
+        memory_per_node = num_arrays * num_time_points * dtype_size
         return memory_per_node
     # endregion
 
@@ -976,26 +1090,48 @@ class MSUPSmartSolverTransient(QObject):
         num_nodes, _ = self.modal_sx.shape
         num_time_points = self.modal_coord.shape[1]
 
-        my_virtual_memory = psutil.virtual_memory()
-        self.total_memory = my_virtual_memory.total / (1024 ** 3)
-        self.available_memory = my_virtual_memory.available / (1024 ** 3)
-        self.allocated_memory = my_virtual_memory.available * constants.RAM_PERCENT / (1024 ** 3)
-        print(f"Total system RAM: {self.total_memory:.2f} GB")
-        print(f"Available system RAM: {self.available_memory:.2f} GB")
-        print(f"Allocated system RAM: {self.allocated_memory:.2f} GB")
+        # Display memory information based on compute device
+        if self._is_gpu_mode():
+            gpu_info = self._get_gpu_memory_info()
+            gpu_name = torch.cuda.get_device_name(self.device)
+            self.total_memory = gpu_info['total'] / (1024 ** 3)
+            self.available_memory = gpu_info['available_for_chunks'] / (1024 ** 3)
+            self.allocated_memory = self.available_memory
+            used_pct = (gpu_info['used'] / gpu_info['total']) * 100 if gpu_info['total'] > 0 else 0
+            print(f"Compute Device: GPU ({gpu_name})")
+            print(f"Total GPU VRAM: {self.total_memory:.2f} GB")
+            print(f"Currently Used: {gpu_info['used'] / (1024 ** 3):.2f} GB ({used_pct:.1f}%)")
+            print(f"Available for Processing: {self.available_memory:.2f} GB")
+        else:
+            my_virtual_memory = psutil.virtual_memory()
+            self.total_memory = my_virtual_memory.total / (1024 ** 3)
+            self.available_memory = my_virtual_memory.available / (1024 ** 3)
+            self.allocated_memory = my_virtual_memory.available * constants.RAM_PERCENT / (1024 ** 3)
+            print(f"Compute Device: CPU")
+            print(f"Total system RAM: {self.total_memory:.2f} GB")
+            print(f"Available system RAM: {self.available_memory:.2f} GB")
+            print(f"Allocated for Processing: {self.allocated_memory:.2f} GB")
 
         chunk_size = self._estimate_chunk_size(
             num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
             calculate_deformation, calculate_velocity, calculate_acceleration)
         num_iterations = (num_nodes + chunk_size - 1) // chunk_size
 
-        memory_per_node = self._get_memory_per_node(
-            num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-            calculate_deformation, calculate_velocity, calculate_acceleration)
-        memory_required_per_iteration = self._estimate_ram_required_per_iteration(chunk_size, memory_per_node)
-
-        print(f"Processing {num_nodes} nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
-        print(f"Estimated RAM required per iteration: {memory_required_per_iteration:.2f} GB\n")
+        # Calculate memory per node based on device type
+        is_kinematics = calculate_deformation or calculate_velocity or calculate_acceleration
+        if self._is_gpu_mode():
+            gpu_mem_per_node = self._get_gpu_memory_per_node(num_time_points, is_kinematics)
+            gpu_mem_per_iter = self._estimate_memory_required_per_iteration(chunk_size, gpu_mem_per_node)
+            print(f"Processing {num_nodes} nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
+            print(f"Estimated GPU VRAM per iteration: {gpu_mem_per_iter:.2f} GB")
+        else:
+            ram_per_node = self._get_memory_per_node(
+                num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
+                calculate_deformation, calculate_velocity, calculate_acceleration)
+            ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
+            print(f"Processing {num_nodes} nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
+            print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
+        print()  # Blank line for readability
 
         # --- 2. Setup Calculation Jobs and Memmap Files ---
         calculation_jobs = self._setup_calculation_jobs(
@@ -1027,15 +1163,17 @@ class MSUPSmartSolverTransient(QObject):
             start_time = time.time()
             del actual_stresses
             gc.collect()
+            if self._is_gpu_mode():
+                torch.cuda.empty_cache()
             print(f"Elapsed time for garbage collection: {(time.time() - start_time):.3f} seconds")
 
             progress_percentage = ((i + 1) / num_iterations) * 100
             self.progress_signal.emit(int(progress_percentage))
             QApplication.processEvents()
 
-            current_available_memory = psutil.virtual_memory().available
-            print(
-                f"Iteration {i + 1} complete. Available RAM: {current_available_memory / (1024 ** 3):.2f} GB. Progress: {progress_percentage:.1f}%")
+            # Log memory status based on compute device
+            memory_status = self._get_current_memory_usage_str()
+            print(f"Iteration {i + 1} complete. {memory_status}. Progress: {progress_percentage:.1f}%")
 
         # --- 4. Finalization ---
         print("\n--- Finalizing Results ---")

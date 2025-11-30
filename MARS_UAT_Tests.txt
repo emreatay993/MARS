@@ -140,28 +140,28 @@ DESCRIPTION: Validates performance tuning controls including RAM allocation, sol
 INPUTS:
 
 - Application launched with default settings
-- Target RAM Allocation: 85% (increased from default 70%)
+- Target RAM Allocation: 95% (increased from default 90%)
 - Target Solver Precision: Single (changed from default Double)
 - GPU Acceleration: Enabled (if NVIDIA CUDA available, otherwise test toggle behavior)
 
 TEST STEPS:
 
 1. Navigate to Settings menu and click Advanced to open Advanced Settings dialog
-2. Observe and verify current settings display shows default values (RAM: 70%, Precision: Double, GPU: Disabled)
-3. Change RAM Allocation spinbox from 70 to 85
+2. Observe and verify current settings display shows default values (RAM: 90%, Precision: Double, GPU: Disabled)
+3. Change RAM Allocation spinbox from 90 to 95
 4. Open Solver Precision dropdown and select Single from available options
 5. Enable GPU Acceleration checkbox
 6. Click OK button to apply settings
 7. Verify confirmation dialog appears with message about settings being applied
 8. Re-open Advanced Settings dialog via Settings > Advanced
-9. Confirm all changes persisted (RAM: 85%, Precision: Single, GPU: Enabled)
+9. Confirm all changes persisted (RAM: 95%, Precision: Single, GPU: Enabled)
 10. Modify settings again and click Cancel to test discard behavior
 11. Re-open dialog and verify changes were NOT saved when Cancel was used
 
 EXPECTED RESULTS:
 
 - Advanced Settings dialog opens showing current settings label at top
-- Current settings display reads: "Current settings: Precision: Double, RAM Limit: 70%, GPU Acceleration: Disabled"
+- Current settings display reads: "Current settings: Precision: Double, RAM Limit: 90%, GPU Acceleration: Disabled"
 - RAM spinbox accepts values from 10 to 95 (validated at boundaries)
 - Solver Precision dropdown offers exactly two options: Single and Double
 - GPU Acceleration checkbox can be toggled on/off
@@ -170,7 +170,7 @@ EXPECTED RESULTS:
 - Cancel button closes dialog without applying changes
 - Settings persist across dialog re-opening when OK is used
 - Settings do NOT persist when Cancel is used
-- Console shows applied settings when next SOLVE is executed with lines like "Solver Precision: Single" and "RAM Allocation: 85%"
+- Console shows applied settings when next SOLVE is executed with lines like "Solver Precision: Single" and "RAM Allocation: 95%"
 - If GPU not available, solver falls back to CPU with console message
 
 REQUIREMENT NO: N/A

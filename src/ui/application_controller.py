@@ -47,7 +47,7 @@ class ApplicationController(QMainWindow):
         self.settings_handler = SettingsHandler()
 
         # Window configuration
-        self.setWindowTitle('MARS: Modal Analysis Response Solver - v0.97')
+        self.setWindowTitle('MARS: Modal Analysis Response Solver - v0.98')
         self.setGeometry(40, 40, 600, 800)
         
         # Set application icon

@@ -135,21 +135,21 @@ DESCRIPTION: Validates performance tuning controls including RAM allocation, sol
 INPUTS:
 
 - Application launched with default settings
-- Target RAM Allocation: 85% (increased from default 70%)
+- Target RAM Allocation: 95% (increased from default 90%)
 - Target Solver Precision: Single (changed from default Double)
 - GPU Acceleration: Enabled (if NVIDIA CUDA available)
 
 TEST STEPS:
 
 1. Navigate to Settings menu and click Advanced to open Advanced Settings dialog
-2. Observe current settings display shows default values (RAM: 70%, Precision: Double, GPU: Disabled)
-3. Change RAM Allocation spinbox from 70 to 85
+2. Observe current settings display shows default values (RAM: 90%, Precision: Double, GPU: Disabled)
+3. Change RAM Allocation spinbox from 90 to 95
 4. Open Solver Precision dropdown and select Single from available options
 5. Enable GPU Acceleration checkbox
 6. Click OK button to apply settings
 7. Verify confirmation dialog appears with message about settings being applied
 8. Re-open Advanced Settings dialog via Settings > Advanced
-9. Confirm all changes persisted (RAM: 85%, Precision: Single, GPU: Enabled)
+9. Confirm all changes persisted (RAM: 95%, Precision: Single, GPU: Enabled)
 
 EXPECTED RESULTS:
 

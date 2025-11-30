@@ -136,21 +136,21 @@ AÇIKLAMA: RAM tahsisi, solver hassasiyet seçimi ve GPU hızlandırma konfigür
 GİRDİLER:
 
 - Varsayılan ayarlarla başlatılmış uygulama
-- Hedef RAM Allocation: %85 (varsayılan %70'ten artırılmıştır)
+- Hedef RAM Allocation: %95 (varsayılan %90'dan artırılmıştır)
 - Hedef Solver Precision: Single (varsayılan Double'dan değiştirilmiştir)
 - GPU Acceleration: Enabled (NVIDIA CUDA mevcutsa)
 
 TEST ADIMLARI:
 
 1. Settings menüsüne gidin ve Advanced Settings diyaloğunu açmak için Advanced'e tıklayın
-2. Mevcut ayarlar görüntüsünün varsayılan değerleri gösterdiğini gözlemleyin (RAM: %70, Precision: Double, GPU: Disabled)
-3. RAM Allocation spinbox'ını 70'ten 85'e değiştirin
+2. Mevcut ayarlar görüntüsünün varsayılan değerleri gösterdiğini gözlemleyin (RAM: %90, Precision: Double, GPU: Disabled)
+3. RAM Allocation spinbox'ını 90'dan 95'e değiştirin
 4. Solver Precision dropdown'unu açın ve mevcut seçeneklerden Single'ı seçin
 5. GPU Acceleration checkbox'ını etkinleştirin
 6. Ayarları uygulamak için OK düğmesine tıklayın
 7. Ayarların uygulandığına dair mesaj içeren onay diyalogunun göründüğünü doğrulayın
 8. Settings > Advanced üzerinden Advanced Settings diyalogunu yeniden açın
-9. Tüm değişikliklerin kalıcı olduğunu onaylayın (RAM: %85, Precision: Single, GPU: Enabled)
+9. Tüm değişikliklerin kalıcı olduğunu onaylayın (RAM: %95, Precision: Single, GPU: Enabled)
 
 BEKLENEN SONUÇLAR:
 
