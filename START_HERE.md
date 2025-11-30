@@ -1,6 +1,6 @@
 # 🚀 START HERE - MARS: Modal Analysis Response Solver
 
-**Version:** 0.96
+**Version:** 0.97
 
 **Welcome to MARS, the modular successor to the legacy MSUP Smart Solver.**
 

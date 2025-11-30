@@ -48,3 +48,4 @@ class DisplayState:
     last_goto_node_id: Optional[int] = None
     freeze_tracked_node: bool = False
     freeze_baseline: Optional[Any] = None
+    pick_indicator_actor: Optional[Any] = None

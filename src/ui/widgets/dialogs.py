@@ -11,12 +11,9 @@ from PyQt5.QtWidgets import (
     QGridLayout, QGroupBox, QLabel, QSpinBox, QTableView, QVBoxLayout
 )
 
-# Import constants from our new structure
-from utils.constants import (
-    RAM_PERCENT, DEFAULT_PRECISION, IS_GPU_ACCELERATION_ENABLED
-)
+# Import constants module for dynamic access to runtime values
+from utils import constants
 from ui.styles.style_constants import DIALOG_STYLE, DIALOG_GROUP_BOX_STYLE
-import solver.engine as solver_engine
 
 
 class AdvancedSettingsDialog(QDialog):
@@ -43,9 +40,9 @@ class AdvancedSettingsDialog(QDialog):
         # Current values for reference
         global_settings_text = (
             f"Current settings:\n"
-            f"- Precision: {DEFAULT_PRECISION}\n"
-            f"- RAM Limit: {RAM_PERCENT * 100:.0f}%\n"
-            f"- GPU Acceleration: {'Enabled' if IS_GPU_ACCELERATION_ENABLED else 'Disabled'}"
+            f"- Precision: {constants.DEFAULT_PRECISION}\n"
+            f"- RAM Limit: {constants.RAM_PERCENT * 100:.0f}%\n"
+            f"- GPU Acceleration: {'Enabled' if constants.IS_GPU_ACCELERATION_ENABLED else 'Disabled'}"
         )
         self.current_settings_label = QLabel(global_settings_text)
         self.current_settings_label.setProperty("class", "currentSettingsLabel")
@@ -54,7 +51,7 @@ class AdvancedSettingsDialog(QDialog):
         self.ram_label = QLabel("Set RAM Allocation (%):")
         self.ram_spinbox = QSpinBox()
         self.ram_spinbox.setRange(10, 95)
-        self.ram_spinbox.setValue(int(RAM_PERCENT * 100))
+        self.ram_spinbox.setValue(int(constants.RAM_PERCENT * 100))
         self.ram_spinbox.setToolTip(
             "Set the maximum percentage of available RAM the solver can use. "
             "It will based on allowable free memory."
@@ -63,7 +60,7 @@ class AdvancedSettingsDialog(QDialog):
         self.precision_label = QLabel("Set Solver Precision:")
         self.precision_combobox = QComboBox()
         self.precision_combobox.addItems(["Single", "Double"])
-        self.precision_combobox.setCurrentText(DEFAULT_PRECISION)
+        self.precision_combobox.setCurrentText(constants.DEFAULT_PRECISION)
         self.precision_combobox.setToolTip(
             "Single precision is faster and uses less memory.\n"
             "Double precision is more accurate but slower."
@@ -72,7 +69,7 @@ class AdvancedSettingsDialog(QDialog):
         self.gpu_checkbox = QCheckBox(
             "Enable GPU Acceleration (Only works if NVIDIA CUDA is installed in PC)"
         )
-        self.gpu_checkbox.setChecked(IS_GPU_ACCELERATION_ENABLED)
+        self.gpu_checkbox.setChecked(constants.IS_GPU_ACCELERATION_ENABLED)
         self.gpu_checkbox.setToolTip(
             "Uses the GPU for matrix multiplication if a compatible NVIDIA GPU "
             "is found and CUDA is installed in the system."

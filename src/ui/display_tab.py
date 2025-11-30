@@ -108,6 +108,10 @@ class DisplayTab(QWidget):
         self.freeze_tracked_node = False
         self.freeze_baseline = None
         
+        # Track if camera widget needs to be re-initialized on show
+        self._camera_widget_pending = False
+        self._first_show = True
+        
         # Connect signals
         self._connect_signals()
     
@@ -279,41 +283,6 @@ class DisplayTab(QWidget):
     def load_file(self, checked=False):
         """Open file dialog and load visualization file."""
         self.file_handler.open_file_dialog()
-    
-    def showEvent(self, event):
-        """Called when the Display tab becomes visible."""
-        super().showEvent(event)
-        # Ensure plotter is properly sized when tab is shown
-        if hasattr(self, 'plotter'):
-            self.plotter.update()
-            
-            # Add camera orientation widget only if tab is visible AND plotter is rendered
-            # This prevents the huge widget bug
-            if not self.camera_widget and self.current_mesh and self.isVisible():
-                from PyQt5.QtCore import QTimer
-                # Delay to ensure window is fully rendered
-                QTimer.singleShot(200, self._add_camera_widget_if_ready)
-    
-    def _add_camera_widget_if_ready(self):
-        """Add camera orientation widget only if plotter is properly initialized."""
-        if self.camera_widget or not hasattr(self, 'plotter'):
-            return
-        
-        try:
-            # Check if render window is properly sized
-            if self.plotter.ren_win:
-                size = self.plotter.ren_win.GetSize()
-                # Only add if window is reasonably sized (not tiny default)
-                if size[0] >= 800 and size[1] >= 600:
-                    camera_widget = self.plotter.add_camera_orientation_widget()
-                    camera_widget.EnabledOn()
-                    self.camera_widget = camera_widget
-                    self.state.camera_widget = camera_widget
-                else:
-                    # Window too small, widget would be huge - skip it
-                    print(f"Skipping camera widget - window size {size} too small")
-        except Exception as e:
-            print(f"Warning: Could not add camera orientation widget: {e}")
     
     def update_visualization(self):
         """Update the 3D visualization with current mesh."""
@@ -636,6 +605,23 @@ class DisplayTab(QWidget):
         self.scalar_min_spin.clear()
         self.scalar_max_spin.clear()
         self.file_path.clear()
+    
+    def showEvent(self, event):
+        """Handle tab becoming visible - fix camera widget sizing."""
+        super().showEvent(event)
+        
+        # On first show or when camera widget is pending, initialize it properly
+        if self._first_show or self._camera_widget_pending:
+            self._first_show = False
+            self._camera_widget_pending = False
+            # Short delay to allow Qt layout to settle
+            QTimer.singleShot(30, self._reinitialize_camera_widget)
+    
+    def _reinitialize_camera_widget(self):
+        """Reinitialize camera widget with proper sizing after tab is visible."""
+        if hasattr(self, 'visual_handler') and self.visual_handler:
+            self.visual_handler._clear_camera_widget()
+            self.visual_handler._add_camera_widget()
     
     def __del__(self):
         """Cleanup when widget is destroyed."""

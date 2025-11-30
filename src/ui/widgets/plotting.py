@@ -239,7 +239,7 @@ class MatplotlibWidget(QWidget):
         # Handle array data (single component)
         else:
             if is_min_principal_stress:
-                self.model.setHorizontalHeaderLabels(["Time [s]", r'$\sigma_3$ [MPa]'])
+                self.model.setHorizontalHeaderLabels(["Time [s]", "σ3 [MPa]"])
                 for xi, yi in zip(x, y):
                     self.model.appendRow([QStandardItem(f"{xi:.5f}"), QStandardItem(f"{yi:.5f}")])
 
@@ -251,19 +251,25 @@ class MatplotlibWidget(QWidget):
                 time_of_min = x[np.argmin(y)]
                 textstr = f'Min Magnitude: {min_y_value:.4f}\nTime of Min: {time_of_min:.5f} s'
             else:
-                title, label, color = "Stress", "Value", 'blue'
-                if is_max_principal_stress:
-                    title, label, color = "Max Principal Stress", r'$\sigma_1$', 'red'
-                elif is_von_mises:
-                    title, label, color = "Von Mises Stress", r'$\sigma_{VM}$', 'blue'
+                # For plot labels (LaTeX renders)
+                title, plot_label, color = "Stress", "Value", 'blue'
+                # For table headers (plain text)
+                table_label = "Value"
                 
-                headers = ["Time [s]", f"{label} [MPa]"]
+                if is_max_principal_stress:
+                    title, plot_label, color = "Max Principal Stress", r'$\sigma_1$', 'red'
+                    table_label = "σ1"
+                elif is_von_mises:
+                    title, plot_label, color = "Von Mises Stress", r'$\sigma_{VM}$', 'blue'
+                    table_label = "σ_VM"
+                
+                headers = ["Time [s]", f"{table_label} [MPa]"]
                 if plasticity_overlay and 'corrected_vm' in plasticity_overlay:
                     corrected = np.asarray(plasticity_overlay['corrected_vm'], dtype=float)
                     strain = np.asarray(plasticity_overlay.get('plastic_strain', []), dtype=float)
 
-                    elastic_line, = self.ax.plot(x, y, label=f"{label} (Elastic)", color=color)
-                    corrected_line, = self.ax.plot(x, corrected, label=f"{label} (Corrected)", color='orange')
+                    elastic_line, = self.ax.plot(x, y, label=f"{plot_label} (Elastic)", color=color)
+                    corrected_line, = self.ax.plot(x, corrected, label=f"{plot_label} (Corrected)", color='orange')
                     self.plotted_lines.extend([elastic_line, corrected_line])
 
                     headers.append("Corrected [MPa]")
@@ -286,7 +292,7 @@ class MatplotlibWidget(QWidget):
                         time_of_max = x[np.nanargmax(corrected)]
                         textstr = f'Max Corrected: {max_corr:.4f}\nTime of Max: {time_of_max:.5f} s'
                 else:
-                    line, = self.ax.plot(x, y, label=label, color=color)
+                    line, = self.ax.plot(x, y, label=plot_label, color=color)
                     self.plotted_lines.append(line)
                     self.model.setHorizontalHeaderLabels(headers)
                     for xi, yi in zip(x, y):
@@ -298,7 +304,7 @@ class MatplotlibWidget(QWidget):
                         textstr = f'Max Magnitude: {max_y_value:.4f}\nTime of Max: {time_of_max:.5f} s'
 
                 self.ax.set_title(f"{title} (Node ID: {node_id})" if node_id else title, fontsize=8)
-                self.ax.set_ylabel(f'{label} [MPa]', fontsize=8)
+                self.ax.set_ylabel(f'{plot_label} [MPa]', fontsize=8)
 
                 # Optional diagnostics overlay (Δεp, εp) on secondary axis
                 if plasticity_overlay and plasticity_overlay.get('show_diagnostics'):

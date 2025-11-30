@@ -4,14 +4,32 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Updated docs">
+    <list default="true" id="6c7c652f-7eb6-4448-bb11-586514ad0db2" name="Changes" comment="- Created requirements.txt file.">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MARS_UAT_Consolidated_Tests.csv" beforeDir="false" afterPath="$PROJECT_DIR$/MARS_UAT_Consolidated_Tests.csv" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/ARCHITECTURE.md" beforeDir="false" afterPath="$PROJECT_DIR$/ARCHITECTURE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FILE_INDEX.md" beforeDir="false" afterPath="$PROJECT_DIR$/FILE_INDEX.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/FINAL_SUMMARY_v0.97_COMPLETE.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/MARS_UAT_Tests.txt" beforeDir="false" afterPath="$PROJECT_DIR$/MARS_UAT_Tests.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MARS_UAT_Tests_Turkish.txt" beforeDir="false" afterPath="$PROJECT_DIR$/MARS_UAT_Tests_Turkish.txt" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/MARS_UAT_Tests_User_Focused.txt" beforeDir="false" afterPath="$PROJECT_DIR$/MARS_UAT_Tests_User_Focused.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/MARS_UAT_Tests_User_Focused_Turkish.txt" beforeDir="false" afterPath="$PROJECT_DIR$/MARS_UAT_Tests_User_Focused_Turkish.txt" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/builders/solver_ui.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/ui_state_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/MARS_UAT_Tests_User_Focused_Turkish.txt" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/RELEASE_NOTES_v0.97.md" beforeDir="false" afterPath="$PROJECT_DIR$/RELEASE_NOTES_v0.97.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/START_HERE.md" beforeDir="false" afterPath="$PROJECT_DIR$/START_HERE.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/UAT_UPDATES_v0.97.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/UAT_UPDATES_v0.97_Turkish.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/VERSION_UPDATE_v0.97.md" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/solver/engine.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/solver/engine.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/application_controller.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/application_controller.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/display_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/display_tab.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/analysis_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/display_interaction_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/display_interaction_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/display_state.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/display_state.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/display_visualization_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/display_visualization_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/handlers/settings_handler.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/handlers/settings_handler.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/solver_tab.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/solver_tab.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/dialogs.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ui/widgets/plotting.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ui/widgets/plotting.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -48,26 +66,26 @@
     <option name="hideEmptyMiddlePackages" value="true" />
     <option name="showLibraryContents" value="true" />
   </component>
-  <component name="PropertiesComponent">{
-  &quot;keyToString&quot;: {
-    &quot;ModuleVcsDetector.initialDetectionPerformed&quot;: &quot;true&quot;,
-    &quot;Python.display_tab.executor&quot;: &quot;Run&quot;,
-    &quot;Python.display_ui.executor&quot;: &quot;Run&quot;,
-    &quot;Python.display_visualization_handler.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.engine.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main.executor&quot;: &quot;Run&quot;,
-    &quot;Python.main_app.executor&quot;: &quot;Run&quot;,
-    &quot;Python.solver_tab.executor&quot;: &quot;Run&quot;,
-    &quot;Python.ui_state_handler.executor&quot;: &quot;Debug&quot;,
-    &quot;Python.view_stats_detailed.executor&quot;: &quot;Run&quot;,
-    &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252&quot;: &quot;true&quot;,
-    &quot;RunOnceActivity.git.unshallow&quot;: &quot;true&quot;,
-    &quot;git-widget-placeholder&quot;: &quot;master&quot;,
-    &quot;ignore.virus.scanning.warn.message&quot;: &quot;true&quot;,
-    &quot;settings.editor.selected.configurable&quot;: &quot;com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable&quot;
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "Python.display_tab.executor": "Run",
+    "Python.display_ui.executor": "Run",
+    "Python.display_visualization_handler.executor": "Debug",
+    "Python.engine.executor": "Run",
+    "Python.main.executor": "Run",
+    "Python.main_app.executor": "Run",
+    "Python.solver_tab.executor": "Run",
+    "Python.ui_state_handler.executor": "Debug",
+    "Python.view_stats_detailed.executor": "Run",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "git-widget-placeholder": "master",
+    "ignore.virus.scanning.warn.message": "true",
+    "settings.editor.selected.configurable": "com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable"
   }
-}</component>
+}]]></component>
   <component name="RunManager">
     <configuration name="solver_tab" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="MARS_" />
@@ -384,12 +402,34 @@
       <option name="project" value="LOCAL" />
       <updated>1763854247024</updated>
     </task>
-    <option name="localTasksCounter" value="35" />
+    <task id="LOCAL-00035" summary="- Hidden fatigue UI, updated tests accordingly.&#10;- Updated/Added docs.">
+      <option name="closed" value="true" />
+      <created>1764006689837</created>
+      <option name="number" value="00035" />
+      <option name="presentableId" value="LOCAL-00035" />
+      <option name="project" value="LOCAL" />
+      <updated>1764006689837</updated>
+    </task>
+    <task id="LOCAL-00036" summary="- Updated docs.">
+      <option name="closed" value="true" />
+      <created>1764011305072</created>
+      <option name="number" value="00036" />
+      <option name="presentableId" value="LOCAL-00036" />
+      <option name="project" value="LOCAL" />
+      <updated>1764011305072</updated>
+    </task>
+    <task id="LOCAL-00037" summary="- Created requirements.txt file.">
+      <option name="closed" value="true" />
+      <created>1764428116364</created>
+      <option name="number" value="00037" />
+      <option name="presentableId" value="LOCAL-00037" />
+      <option name="project" value="LOCAL" />
+      <updated>1764428116364</updated>
+    </task>
+    <option name="localTasksCounter" value="38" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">
-    <MESSAGE value="Changed the name of the main_window.py into application_controller.py" />
-    <MESSAGE value="Refactoring general" />
     <MESSAGE value="Multiple output check for play button." />
     <MESSAGE value="Centralized styling." />
     <MESSAGE value="-Improved Error handling for Play button.&#10;&#10;-Improved the clarity of signal-slot relationships with decorators." />
@@ -409,11 +449,13 @@
     <MESSAGE value="- Advanced Settings Dialog&#10;- Disable IBG correction algorithm for the current version of the code.&#10;- Updated docs accordingly." />
     <MESSAGE value="- Added the main application icon.&#10;- Updated docs accordingly." />
     <MESSAGE value="- Updated docs for plasticity correction." />
-    <MESSAGE value="- Updated docs." />
     <MESSAGE value="- Updated docs.&#10;- Added a checkbox for visualizing either relative or absolute deformations starting from a time point different from t=0.&#10;- Fixed a bug which caused deformation scale factor and the new checkbox for absolute deformation to still appear on the Display tab." />
     <MESSAGE value="v0.97: Performance optimization &amp; threading enhancements&#10;&#10;Major improvements:&#10;- File loading 2-3x faster with PyArrow engine &amp; optimized validation&#10;- Progress indicators for large files (&gt;100MB) with adaptive ETA&#10;- Background threading for file loading and solver execution&#10;- GUI remains responsive during all operations&#10;- Improved console output formatting&#10;&#10;Technical changes:&#10;- Added FileLoaderThread and SolverThread for non-blocking operations&#10;- Implemented adaptive performance tracking with persistent cache&#10;- Fast validation using nrows=10 (99% faster header checks)&#10;- Real-time progress updates with throughput metrics&#10;&#10;Bug fixes:&#10;- Fixed Qt threading AttributeError in PlotlyMaxWidget&#10;- Fixed orientation widget sizing issue in Display tab&#10;- Improved console update timing for real-time feedback&#10;&#10;Files modified:&#10;- src/file_io/loaders.py - Progress indicators, adaptive ETA&#10;- src/file_io/validators.py - Fast validation&#10;- src/ui/handlers/file_handler.py - Background file loading&#10;- src/ui/handlers/analysis_handler.py - Background solver execution&#10;- src/ui/handlers/log_handler.py - Clean output formatting&#10;- src/ui/handlers/display_visualization_handler.py - Widget fix&#10;- src/ui/display_tab.py - Delayed widget initialization&#10;- requirements.txt - Added tqdm==4.67.1&#10;&#10;Performance: 6.5GB files load in 45s (was 70s), validation &lt;20ms (was 1-5s)&#10;&#10;- Updated all the relevant docs" />
     <MESSAGE value="- Updated docs" />
-    <option name="LAST_COMMIT_MESSAGE" value="- Updated docs" />
+    <MESSAGE value="- Hidden fatigue UI, updated tests accordingly.&#10;- Updated/Added docs." />
+    <MESSAGE value="- Updated docs." />
+    <MESSAGE value="- Created requirements.txt file." />
+    <option name="LAST_COMMIT_MESSAGE" value="- Created requirements.txt file." />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager>
@@ -455,7 +497,7 @@
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/src/ui/widgets/plotting.py</url>
-          <line>316</line>
+          <line>322</line>
           <option name="timeStamp" value="16" />
         </line-breakpoint>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">

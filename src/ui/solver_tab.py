@@ -79,6 +79,7 @@ class SolverTab(QWidget):
         self.modal_plot_window = None
         self.plot_min_over_time_tab = None
         self.plot_max_over_time_tab = None
+        self._show_popup_after_solve = False  # Flag to show popup dialog after async solve
         
         # Build UI
         self._build_ui()
@@ -406,11 +407,13 @@ class SolverTab(QWidget):
 
     @pyqtSlot(int)
     def plot_history_for_node(self, node_id):
-        """Trigger time history calculation and show results in a dialog."""
+        """Trigger time history calculation and show results in a popup dialog."""
         try:
-            result = self._compute_time_history_for_node(node_id, require_single_output=True)
-            if result is not None:
-                self._show_plot_in_new_dialog(result)
+            # Set flag so the async completion callback knows to show popup
+            self._show_popup_after_solve = True
+            
+            # Trigger the async solve (result will be handled in callback)
+            self._compute_time_history_for_node(node_id, require_single_output=True)
         except Exception as e:
             QMessageBox.critical(
                 self, "Plot Error",
@@ -421,7 +424,7 @@ class SolverTab(QWidget):
         """Validate selection and run time-history analysis."""
         if not self.stress_data or node_id not in self.stress_data.node_ids:
             QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in loaded data.")
-            return None
+            return
 
         outputs = {
             'Von-Mises Stress': self.von_mises_checkbox.isChecked(),
@@ -437,7 +440,7 @@ class SolverTab(QWidget):
         if not selected:
             QMessageBox.warning(self, "No Output Selected",
                                 "Select an output (Von Mises, Principal Stress, Deformation, Velocity, or Acceleration) before plotting time history.")
-            return None
+            return
 
         if require_single_output and len(selected) > 1:
             QMessageBox.warning(
@@ -445,7 +448,7 @@ class SolverTab(QWidget):
                 "Multiple Outputs Selected",
                 "Select only one output before plotting time history."
             )
-            return None
+            return
 
         needs_deformation = any(outputs[name] for name in ['Deformation', 'Velocity', 'Acceleration'])
         if needs_deformation and not self.deformation_loaded:
@@ -454,7 +457,7 @@ class SolverTab(QWidget):
                 "Missing Deformation Data",
                 "Plotting deformation, velocity, or acceleration requires the modal deformations file."
             )
-            return None
+            return
 
         self.console_textbox.append(
             f"\n{'=' * 60}\nComputing time history for Node ID: {node_id}\nSelected Output: {selected[0]}\n{'=' * 60}"
@@ -463,8 +466,8 @@ class SolverTab(QWidget):
             self.console_textbox.verticalScrollBar().maximum()
         )
 
-        result = self.analysis_handler.solve(force_time_history_for_node_id=node_id)
-        return result
+        # Trigger async solve (result will be handled in completion callback)
+        self.analysis_handler.solve(force_time_history_for_node_id=node_id)
 
     def _show_plot_in_new_dialog(self, result):
         """Display the time-history result in a Matplotlib dialog."""

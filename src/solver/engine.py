@@ -16,13 +16,8 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication
 
 # ---- Local Imports ----
-from utils.constants import (
-    RAM_PERCENT,
-    IS_GPU_ACCELERATION_ENABLED,
-    NP_DTYPE,
-    TORCH_DTYPE,
-    RESULT_DTYPE
-)
+# ---- Local Imports ----
+import utils.constants as constants
 from solver.plasticity_engine import (
     MaterialDB,
     apply_glinka_correction,
@@ -75,33 +70,28 @@ class MSUPSmartSolverTransient(QObject):
         # Use selected output directory or fallback to script location
         self.output_directory = output_directory if output_directory else os.path.dirname(os.path.abspath(__file__))
 
-        # Global settings
-        self.NP_DTYPE = NP_DTYPE
-        self.TORCH_DTYPE = TORCH_DTYPE
-        self.RESULT_DTYPE = RESULT_DTYPE
-        self.ELEMENT_SIZE = np.dtype(self.NP_DTYPE).itemsize
-        self.RAM_PERCENT = RAM_PERCENT
-        self.device = torch.device("cuda" if IS_GPU_ACCELERATION_ENABLED and torch.cuda.is_available() else "cpu")
+        # Global settings (accessed directly from constants module)
+        self.device = torch.device("cuda" if constants.IS_GPU_ACCELERATION_ENABLED and torch.cuda.is_available() else "cpu")
 
-        self.modal_coord = torch.tensor(modal_coord, dtype=self.TORCH_DTYPE).to(self.device)
+        self.modal_coord = torch.tensor(modal_coord, dtype=constants.TORCH_DTYPE).to(self.device)
 
         if modal_deformations is not None:
-            self.modal_deformations_ux = torch.tensor(modal_deformations[0], dtype=self.TORCH_DTYPE).to(self.device)
-            self.modal_deformations_uy = torch.tensor(modal_deformations[1], dtype=self.TORCH_DTYPE).to(self.device)
-            self.modal_deformations_uz = torch.tensor(modal_deformations[2], dtype=self.TORCH_DTYPE).to(self.device)
+            self.modal_deformations_ux = torch.tensor(modal_deformations[0], dtype=constants.TORCH_DTYPE).to(self.device)
+            self.modal_deformations_uy = torch.tensor(modal_deformations[1], dtype=constants.TORCH_DTYPE).to(self.device)
+            self.modal_deformations_uz = torch.tensor(modal_deformations[2], dtype=constants.TORCH_DTYPE).to(self.device)
         else:
             self.modal_deformations_ux = None
             self.modal_deformations_uy = None
             self.modal_deformations_uz = None
 
         # Initialize modal inputs
-        self.modal_sx = torch.tensor(modal_sx, dtype=TORCH_DTYPE).to(self.device)
-        self.modal_sy = torch.tensor(modal_sy, dtype=TORCH_DTYPE).to(self.device)
-        self.modal_sz = torch.tensor(modal_sz, dtype=TORCH_DTYPE).to(self.device)
-        self.modal_sxy = torch.tensor(modal_sxy, dtype=TORCH_DTYPE).to(self.device)
-        self.modal_syz = torch.tensor(modal_syz, dtype=TORCH_DTYPE).to(self.device)
-        self.modal_sxz = torch.tensor(modal_sxz, dtype=TORCH_DTYPE).to(self.device)
-        self.modal_coord = torch.tensor(modal_coord, dtype=TORCH_DTYPE).to(self.device)
+        self.modal_sx = torch.tensor(modal_sx, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_sy = torch.tensor(modal_sy, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_sz = torch.tensor(modal_sz, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_sxy = torch.tensor(modal_sxy, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_syz = torch.tensor(modal_syz, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_sxz = torch.tensor(modal_sxz, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_coord = torch.tensor(modal_coord, dtype=constants.TORCH_DTYPE).to(self.device)
 
         # Store modal node IDs
         self.modal_node_ids = modal_node_ids
@@ -118,24 +108,24 @@ class MSUPSmartSolverTransient(QObject):
             self.steady_sxz = self.map_steady_state_stresses(steady_sxz, steady_node_ids, modal_node_ids)
 
             # Convert to torch tensors and move to device
-            self.steady_sx = torch.tensor(self.steady_sx, dtype=TORCH_DTYPE).to(self.device)
-            self.steady_sy = torch.tensor(self.steady_sy, dtype=TORCH_DTYPE).to(self.device)
-            self.steady_sz = torch.tensor(self.steady_sz, dtype=TORCH_DTYPE).to(self.device)
-            self.steady_sxy = torch.tensor(self.steady_sxy, dtype=TORCH_DTYPE).to(self.device)
-            self.steady_syz = torch.tensor(self.steady_syz, dtype=TORCH_DTYPE).to(self.device)
-            self.steady_sxz = torch.tensor(self.steady_sxz, dtype=TORCH_DTYPE).to(self.device)
+            self.steady_sx = torch.tensor(self.steady_sx, dtype=constants.TORCH_DTYPE).to(self.device)
+            self.steady_sy = torch.tensor(self.steady_sy, dtype=constants.TORCH_DTYPE).to(self.device)
+            self.steady_sz = torch.tensor(self.steady_sz, dtype=constants.TORCH_DTYPE).to(self.device)
+            self.steady_sxy = torch.tensor(self.steady_sxy, dtype=constants.TORCH_DTYPE).to(self.device)
+            self.steady_syz = torch.tensor(self.steady_syz, dtype=constants.TORCH_DTYPE).to(self.device)
+            self.steady_sxz = torch.tensor(self.steady_sxz, dtype=constants.TORCH_DTYPE).to(self.device)
         else:
             self.is_steady_state_included = False
 
         # Store time axis once for gradient calcs
-        self.time_values = time_values.astype(self.NP_DTYPE)
+        self.time_values = time_values.astype(constants.NP_DTYPE)
 
     # region Memory Management
     def _estimate_chunk_size(self, num_time_points, calculate_von_mises, calculate_max_principal_stress,
                              calculate_damage, calculate_deformation=False,
                              calculate_velocity=False, calculate_acceleration=False):
         """Calculate the optimal chunk size for processing based on available memory."""
-        available_memory = psutil.virtual_memory().available * self.RAM_PERCENT
+        available_memory = psutil.virtual_memory().available * constants.RAM_PERCENT
         memory_per_node = self._get_memory_per_node(num_time_points,
                                                     calculate_von_mises,
                                                     calculate_max_principal_stress,
@@ -176,7 +166,7 @@ class MSUPSmartSolverTransient(QObject):
             # This accounts for vel_x/y/z, acc_x/y/z, vel_mag, and acc_mag.
             num_arrays += 8
 
-        memory_per_node = num_arrays * num_time_points * self.ELEMENT_SIZE
+        memory_per_node = num_arrays * num_time_points * np.dtype(constants.NP_DTYPE).itemsize
         return memory_per_node
     # endregion
 
@@ -413,7 +403,7 @@ class MSUPSmartSolverTransient(QObject):
 
         # Create empty 2D arrays filled with zeros to hold our final results.
         # Pre-allocating memory like this is more efficient than building the arrays on the fly.
-        s1_out = np.zeros((num_nodes, num_time_points), dtype=NP_DTYPE)
+        s1_out = np.zeros((num_nodes, num_time_points), dtype=constants.NP_DTYPE)
         s2_out = np.zeros_like(s1_out)
         s3_out = np.zeros_like(s1_out)
 
@@ -545,7 +535,7 @@ class MSUPSmartSolverTransient(QObject):
     @njit(parallel=True)
     def compute_potential_damage_for_all_nodes(sigma_vm, coeff_A, coeff_m):
         num_nodes = sigma_vm.shape[0]
-        damages = np.zeros(num_nodes, dtype=NP_DTYPE)
+        damages = np.zeros(num_nodes, dtype=constants.NP_DTYPE)
         for i in prange(num_nodes):
             series = sigma_vm[i, :]
             ranges, counts = rainflow_counter(series)
@@ -563,7 +553,7 @@ class MSUPSmartSolverTransient(QObject):
         steady_node_dict = dict(zip(steady_node_ids.flatten(), steady_stress.flatten()))
         # Create an array for mapped steady stress
         mapped_steady_stress = np.array([steady_node_dict.get(node_id, 0.0) for node_id in modal_node_ids],
-                                        dtype=NP_DTYPE)
+                                        dtype=constants.NP_DTYPE)
         return mapped_steady_stress
 
     def compute_normal_stresses(self, start_idx, end_idx):
@@ -625,7 +615,7 @@ class MSUPSmartSolverTransient(QObject):
         """Assign the runtime plasticity context (``None`` disables plasticity)."""
         self.plasticity_context = context
         if context and context.method in {"neuber", "glinka"}:
-            self.max_over_time_svm_corrected = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+            self.max_over_time_svm_corrected = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
         else:
             self.max_over_time_svm_corrected = None
     # endregion
@@ -649,12 +639,12 @@ class MSUPSmartSolverTransient(QObject):
             except OSError:
                 # If removal fails we'll still try to overwrite in memmap
                 pass
-            return np.memmap(path, dtype=self.RESULT_DTYPE, mode='w+', shape=shape)
+            return np.memmap(path, dtype=constants.RESULT_DTYPE, mode='w+', shape=shape)
 
         jobs = {}
 
         if calculate_von_mises:
-            self.max_over_time_svm = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+            self.max_over_time_svm = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             jobs['von_mises'] = {
                 'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_von_mises_stress.dat'),
                                               (self.modal_sx.shape[0],)),
@@ -667,7 +657,7 @@ class MSUPSmartSolverTransient(QObject):
             }
 
         if calculate_max_principal_stress:
-            self.max_over_time_s1 = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+            self.max_over_time_s1 = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             jobs['s1_max'] = {
                 'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_s1_stress.dat'),
                                               (self.modal_sx.shape[0],)),
@@ -680,7 +670,7 @@ class MSUPSmartSolverTransient(QObject):
             }
 
         if calculate_min_principal_stress:
-            self.min_over_time_s3 = np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+            self.min_over_time_s3 = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             jobs['s3_min'] = {
                 'min_memmap': _prepare_memmap(os.path.join(self.output_directory, 'min_s3_stress.dat'),
                                               (self.modal_sx.shape[0],)),
@@ -693,7 +683,7 @@ class MSUPSmartSolverTransient(QObject):
             }
 
         if calculate_deformation:
-            self.max_over_time_def = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+            self.max_over_time_def = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             jobs['deformation'] = {
                 'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_deformation.dat'),
                                               (self.modal_sx.shape[0],)),
@@ -706,7 +696,7 @@ class MSUPSmartSolverTransient(QObject):
             }
 
         if calculate_velocity:
-            self.max_over_time_vel = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+            self.max_over_time_vel = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             jobs['velocity'] = {
                 'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_velocity.dat'),
                                               (self.modal_sx.shape[0],)),
@@ -719,7 +709,7 @@ class MSUPSmartSolverTransient(QObject):
             }
 
         if calculate_acceleration:
-            self.max_over_time_acc = -np.inf * np.ones(self.modal_coord.shape[1], dtype=self.NP_DTYPE)
+            self.max_over_time_acc = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             jobs['acceleration'] = {
                 'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_acceleration.dat'),
                                               (self.modal_sx.shape[0],)),
@@ -989,7 +979,7 @@ class MSUPSmartSolverTransient(QObject):
         my_virtual_memory = psutil.virtual_memory()
         self.total_memory = my_virtual_memory.total / (1024 ** 3)
         self.available_memory = my_virtual_memory.available / (1024 ** 3)
-        self.allocated_memory = my_virtual_memory.available * self.RAM_PERCENT / (1024 ** 3)
+        self.allocated_memory = my_virtual_memory.available * constants.RAM_PERCENT / (1024 ** 3)
         print(f"Total system RAM: {self.total_memory:.2f} GB")
         print(f"Available system RAM: {self.available_memory:.2f} GB")
         print(f"Allocated system RAM: {self.allocated_memory:.2f} GB")

@@ -342,7 +342,8 @@ class DisplayInteractionHandler(DisplayBaseHandler):
                 shape_opacity=0.5,
                 point_size=self.tab.point_size.value() * 2,
                 text_color='purple',
-                always_visible=True
+                always_visible=True,
+                reset_camera=False  # Preserve current camera view before fly_to
             )
 
             self.set_state_attr("highlight_actor", highlight_actor)
@@ -426,12 +427,47 @@ class DisplayInteractionHandler(DisplayBaseHandler):
         if picked_point_index != -1 and picked_point_index < self.tab.current_mesh.n_points:
             try:
                 node_id = self.tab.current_mesh['NodeID'][picked_point_index]
+                point_coords = self.tab.current_mesh.points[picked_point_index]
+                
+                # Add visual indicator for picked node
+                self._show_pick_indicator(point_coords, node_id)
+                
                 print(f"Node {node_id} picked. Emitting signal...")
                 self.tab.node_picked_signal.emit(node_id)
             except (KeyError, IndexError) as exc:
                 print(f"Could not retrieve NodeID: {exc}")
         else:
             print("No valid point selected.")
+
+    def _show_pick_indicator(self, point_coords: np.ndarray, node_id: int) -> None:
+        """Display a visual indicator (labeled point) at the picked node."""
+        # Remove previous pick indicator if it exists
+        if hasattr(self.state, 'pick_indicator_actor') and self.state.pick_indicator_actor:
+            try:
+                self.tab.plotter.remove_actor(self.state.pick_indicator_actor)
+            except Exception:
+                pass
+            self.state.pick_indicator_actor = None
+
+        try:
+            # Create a labeled point indicator matching legacy style
+            label_text = f"Node {node_id}"
+            pick_actor = self.tab.plotter.add_point_labels(
+                point_coords,
+                [label_text],
+                name='pick_indicator',
+                font_size=16,
+                point_color='black',
+                shape_opacity=0.5,
+                point_size=self.tab.point_size.value() * 2,
+                text_color='red',
+                always_visible=True,
+                reset_camera=False  # Preserve current camera view
+            )
+            self.state.pick_indicator_actor = pick_actor
+            self.tab.plotter.render()
+        except Exception as exc:
+            print(f"Could not show pick indicator: {exc}")
 
     # ------------------------------------------------------------------
     # Node navigation & tracking

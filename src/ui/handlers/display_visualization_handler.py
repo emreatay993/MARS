@@ -5,6 +5,7 @@ Visualization updates and rendering helpers for the Display tab.
 import time
 import numpy as np
 import vtk
+from PyQt5.QtCore import QTimer
 
 from ui.handlers.display_base_handler import DisplayBaseHandler
 from core.visualization import VisualizationManager
@@ -68,8 +69,51 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
 
         plotter.reset_camera()
         
-        # Camera orientation widget is added only during initial setup
-        # Don't add it here to avoid sizing issues
+        # Clear old camera widget if it exists
+        self._clear_camera_widget()
+        
+        # Force render to establish window size
+        plotter.render()
+        
+        # Check if tab is visible - if so, add widget immediately
+        # If not visible, set flag for showEvent to handle it
+        if self.tab.isVisible():
+            # Tab is visible, add widget with minimal delay
+            QTimer.singleShot(10, self._add_camera_widget)
+        else:
+            # Tab not visible yet, mark as pending for showEvent
+            self.tab._camera_widget_pending = True
+
+    def _clear_camera_widget(self) -> None:
+        """Remove existing camera orientation widget."""
+        if self.state.camera_widget:
+            try:
+                self.state.camera_widget.EnabledOff()
+                if hasattr(self.tab.plotter, 'remove_actor'):
+                    try:
+                        self.tab.plotter.remove_actor(self.state.camera_widget)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+            self.state.camera_widget = None
+            self.tab.camera_widget = None
+
+    def _add_camera_widget(self) -> None:
+        """Add camera orientation widget after Qt layout has settled."""
+        try:
+            # Render again to ensure proper sizing
+            self.tab.plotter.render()
+            
+            # Add camera widget with correct size
+            camera_widget = self.tab.plotter.add_camera_orientation_widget()
+            camera_widget.EnabledOn()
+            
+            # Store reference
+            self.state.camera_widget = camera_widget
+            self.tab.camera_widget = camera_widget
+        except Exception:
+            pass  # Plotter may have been closed
 
     def setup_hover_annotation(self) -> None:
         """Set up hover callbacks to display node information."""
@@ -90,11 +134,11 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         self.tab.hover_annotation = annotation
 
         picker = vtk.vtkPointPicker()
-        picker.SetTolerance(0.01)
+        picker.SetTolerance(0.025)  # 2.5% of window diagonal for better zoom-in tolerance
 
         def hover_callback(obj, _event):
             now = time.time()
-            if (now - self.state.last_hover_time) < 0.033:
+            if (now - self.state.last_hover_time) < 0.033:  # 30 FPS throttle
                 return
 
             current_mesh = self.state.current_mesh or self.tab.current_mesh

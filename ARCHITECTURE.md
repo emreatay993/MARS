@@ -1,24 +1,8 @@
 # MARS: Modal Analysis Response Solver - Architecture Documentation
 
-**Version:** 0.97 (November 2025)
-
 ## Overview
 
 This document provides a comprehensive guide to the MARS application's modular architecture, design decisions, and implementation details.
-
-### Recent Architectural Enhancements (v0.97)
-
-**Performance & Threading Layer:**
-- Background threading for file loading and solver execution (QThread-based)
-- Adaptive performance tracking with persistent cache
-- Progress indicators with real-time feedback for large datasets
-- Thread-safe signal/slot communication between computation and UI layers
-
-**Key Improvements:**
-- 2-3x faster file loading with PyArrow engine
-- Non-blocking GUI during heavy operations
-- Real-time progress updates in console
-- Professional user feedback system
 
 ---
 
@@ -78,13 +62,11 @@ This document provides a comprehensive guide to the MARS application's modular a
 
 **Key Components**:
 - `SolverTab` class (~510 lines) focused on UI wiring, signal emission, and console surfaces
-- `SolverAnalysisHandler` (~920 lines) **background-threaded solver execution**, builds configurations, monitors resources, and coordinates plotting
-- `SolverFileHandler` (~220 lines) **background-threaded file loading** with progress feedback
+- `SolverAnalysisHandler` (871 lines) executes solves, builds configurations, monitors resources, and coordinates plotting
+- `SolverFileHandler` (file dialogs and modal data life cycle)
 - `SolverUIHandler` (checkbox state, visibility, and plot refresh)
-- `SolverLogHandler` (routes stdout to console with improved formatting)
-- `SolverThread` class for non-blocking analysis execution
-- `FileLoaderThread` class for non-blocking file loading
-- Integration with optimized `file_io` loaders and `core` managers
+- `SolverLogHandler` (routes stdout to the embedded console widget)
+- Integration with `file_io` loaders and `core` managers
 
 **Refactoring Impact**: 
 - Original: Monolithic 1,700+ line widget with deeply nested handler logic
@@ -976,15 +958,22 @@ config = SolverConfig(
 
 ---
 
-**Document Version**: 1.2  
-**Last Updated**: November 2025 (v0.96 Release)  
+**Document Version**: 1.3  
+**Last Updated**: November 2025 (v0.97 Release)  
 **Status**: ✅ Complete and Current
 
-**Recent Updates (v0.96)**:
+**Recent Updates (v0.97)**:
+- Fixed node hover detection to accurately identify nodes under cursor
+- Added visual pick indicator (black marker with red label) for time history node selection
+- Fixed camera reset issues during node picking and hotspot navigation
+- Fixed camera orientation widget sizing on first Display tab load
+- Updated FILE_INDEX with accurate line counts and new modules
+
+**Previous Updates (v0.96)**:
 - Added application icon system in `resources/icons/`
 - Updated application_controller.py to 217 lines (added icon loading)
 - Updated solver_ui.py to 468 lines (added IBG disable logic)
 - Documented IBG plasticity algorithm status (disabled pending validation)
 - Updated version numbering to v0.96
-- Overall codebase: ~9,200 lines (was ~9,100)
+- Overall codebase: ~9,200 lines
 

@@ -45,24 +45,28 @@ GİRDİLER:
 
 - Modal coordinate ve stress dosyaları başarıyla yüklenmiştir
 - Skip modes: 6 (6 rijit-cisim modu olan free-free yapı için)
+- Fatigue parametreleri: σ'f = 1000 MPa, b = -0.12
 - Time history için Node ID: 1001
 - Tam çıktı testi için deformations dosyası yüklenmiştir
 
 TEST ADIMLARI:
 
 1. Birden fazla çıktı seçeneği seçin: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
-2. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
-3. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
-4. Scoping alanına Node ID 1001'i girin
-5. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
-6. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
-7. İşleme mesajları ve doğrulama adımları için Console sekmesini izleyin
-8. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
-9. Solver'ın tamamlanmasını bekleyin ve Console'da başarı mesajının göründüğünü doğrulayın
+2. Damage Index checkbox'ını etkinleştirin ve fatigue parametreleri alanlarının göründüğünü doğrulayın
+3. Fatigue parametrelerini girin: σ'f = 1000 MPa ve b = -0.12
+4. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
+5. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
+6. Scoping alanına Node ID 1001'i girin
+7. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
+8. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
+9. İşleme mesajları ve doğrulama adımları için Console sekmesini izleyin
+10. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
+11. Solver'ın tamamlanmasını bekleyin ve Console'da başarı mesajının göründüğünü doğrulayın
 
 BEKLENEN SONUÇLAR:
 
 - Seçilen tüm çıktı checkbox'ları işaretlidir ve etkin kalır
+- Damage Index seçildiğinde fatigue parametreleri bölümü görünür
 - Skip modes dropdown, .mcf dosyasından gelen maksimum mod sayısına kadar 0'dan başlayan değerleri gösterir
 - Time History Mode scoping kontrolleri, checkbox etkinleştirildiğinde görünür
 - Minimum gereksinimler karşılandığında SOLVE düğmesi etkinleşir
@@ -374,7 +378,8 @@ BEKLENEN SONUÇLAR:
 - Hotspot diyalogu NodeID ve scalar değer sütunlarıyla tablo gösterir
 - Find Hotspots mevcut kamera görünümündeki tüm görünür noktaları analiz eder
 - En yüksek 10 node azalan değere göre sıralanır (en yüksek stress ilk sırada)
-- Tablodaki bir satıra tıklamak kameranın o node'a etiketle birlikte uçmasına neden olur
+- Tablodaki bir satıra tıklamak kameranın mevcut konumdan o node'a düzgün bir şekilde uçmasına neden olur (sıfırlama olmaz)
+- Node konumunda yarı saydam arka planlı etiket görünür
 - Find Hotspots in Selection yalnızca selection box içindeki noktaları analiz eder
 - Selection tabanlı hotspot'lar tam görünüm hotspot'larından farklı olabilir
 - Diyalog, kritik bölgelerin kolay tanımlanmasını ve navigasyonunu sağlar
@@ -420,8 +425,10 @@ BEKLENEN SONUÇLAR:
 - Kilitli kamera, animasyon boyunca node'u merkezde tutar
 - Kamera, üç boyutta (X, Y, Z) node hareketini takip eder
 - Kameranın kilidini açmak normal sabit görünümü geri yükler
-- Plot Time History seçim modu node seçimini etkinleştirir
-- Node'a tıklamak Main Window sekmesinde time history plot'unu görüntüler
+- Plot Time History seçim modu, artı işareti imleci ile node seçimini etkinleştirir
+- Node'a tıklamak görsel onay gösterir (kırmızı "Node XXXXX" etiketi ile siyah marker)
+- Seçim sırasında kamera pozisyonu korunur (sıfırlama olmaz)
+- Main Window sekmesinde seçilen node'un geçmişini gösteren Time History plot'u görüntülenir
 - Plot, x ekseninde time ve y ekseninde metric değerini gösterir
 
 GEREKSINIM NO: N/A
@@ -565,158 +572,4 @@ Her İki Mod:
 - Checkbox üzerindeki tooltip her iki modu da açıkça açıklar
 
 GEREKSINIM NO: N/A
-
-================================================================================
-
-TEST NO: 21
-
-BAŞLIK: Büyük Dosya Yükleme ve İlerleme Göstergeleri (v0.97)
-
-AÇIKLAMA: Büyük modal dosyalar (>100 MB) için gerçek zamanlı geri bildirim, adaptif ETA ve performans takibi ile ilerleme gösterge sistemini doğrular
-
-GİRDİLER:
-
-- Büyük modal stress dosyası (>100 MB, örn. 50,000+ düğüm ve 200+ mod içeren 1.8 GB)
-- Büyük modal deformation dosyası (>100 MB)
-- Büyük modal coordinate dosyası (>100 MB)
-- tqdm yüklü v0.97 uygulaması
-
-TEST ADIMLARI:
-
-1. MARS uygulamasını başlatın ve Main Window sekmesine gidin
-2. Read Modal Coordinate File'a tıklayın ve büyük .mcf dosyası seçin (>100 MB)
-3. Console çıktısında ilerleme göstergelerini gözlemleyin:
-   - Dosya boyutu gösterimi
-   - "Large file detected" mesajı
-   - Validation durumu
-   - Okuma ilerlemesi ile geçen süre güncellemeleri (her 5 saniyede)
-   - Toplam süre ve metriklerle tamamlanma mesajı
-4. Read Modal Stress File'a tıklayın ve büyük .csv dosyası seçin (>100 MB)
-5. Tahmini süre ile ilerleme göstergelerinin göründüğünü doğrulayın
-6. CSV okuma sırasında periyodik ilerleme güncellemelerini gözlemleyin
-7. Gösterilen gerçek yükleme süresini ve throughput'u (MB/s) not edin
-8. Başka bir büyük stress dosyası yükleyin ve ETA'nın daha doğru hale geldiğini doğrulayın (adaptif öğrenme)
-9. Uygulamayı yeniden başlatın ve aynı dosyayı yükleyin - ETA'nın hemen doğru olduğunu doğrulayın (kalıcı önbellek)
-10. Küçük dosya yükleyin (< 100 MB) ve ilerleme göstergelerinin görünmediğini doğrulayın (sessiz yükleme)
-
-BEKLENEN SONUÇLAR:
-
-- Büyük dosyalar (>100 MB) console'da detaylı ilerleme göstergeleri gösterir
-- İlerleme şunları içerir: dosya boyutu, validation durumu, tahmini süre, periyodik güncellemeler, tamamlanma metrikleri
-- Tahmini süre her yükleme ile daha doğru hale gelir (adaptif öğrenme)
-- Performans önbelleği uygulama yeniden başlatmalarında kalıcıdır (~/.mars_loader_performance.json)
-- Küçük dosyalar (< 100 MB) ilerleme spam'i olmadan sessizce yüklenir
-- Console temiz formatlama gösterir: "Modes: X, Time Points: Y" veya "Nodes: X, Modes: Y"
-- Büyük dosyalar için throughput metrikleri (MB/s) gösterilir
-- Dosya yükleme sırasında GUI responsive kalır (console güncellemelerini gerçek zamanlı görebilirsiniz)
-
-GEREKSINIM NO: Performans İyileştirmesi
-
-================================================================================
-
-TEST NO: 22
-
-BAŞLIK: Arka Plan Thread'leri ve GUI Duyarlılığı (v0.97)
-
-AÇIKLAMA: Dosya yükleme ve solver çalıştırmanın arka plan thread'lerinde çalıştığını ve GUI'yi dondurmadığını doğrular
-
-GİRDİLER:
-
-- Büyük modal stress dosyası (1+ GB)
-- Büyük modal coordinate dosyası
-- Geçerli analiz konfigürasyonu (çıktılar seçili)
-- v0.97 uygulaması
-
-TEST ADIMLARI:
-
-1. Read Modal Stress File'a tıklayın ve büyük dosya seçin (1+ GB)
-2. Dosya yükleme sırasında doğrulayın:
-   - Console "⏳ Loading stress file in background..." mesajını gösterir
-   - GUI responsive kalır (pencere taşınabilir, sekmeler değiştirilebilir)
-   - Console güncellemeleri yükleme sırasında gerçek zamanlı görünür
-   - İlerleme mesajları dosya yüklenirken görünür (tamamlandıktan sonra hepsi birden değil)
-3. Dosya başarıyla yüklendikten sonra, UI'nin otomatik olarak yeniden etkinleştirildiğini doğrulayın
-4. Modal coordinate dosyasını yükleyin ve duyarlılık kontrollerini tekrarlayın
-5. Solver çıktılarını yapılandırın (Von Mises, Max Principal seçin)
-6. SOLVE düğmesine tıklayın
-7. Solver çalıştırması sırasında doğrulayın:
-   - Console "⏳ Running analysis in background..." mesajını gösterir
-   - GUI responsive kalır ancak solver sekmesi devre dışıdır
-   - Progress bar çalıştırma sırasında düzgün şekilde güncellenir
-   - Console, solver ilerleme mesajlarını gerçek zamanlı gösterir
-8. Solve tamamlandıktan sonra doğrulayın:
-   - UI otomatik olarak yeniden etkinleştirilir
-   - Sonuçlar doğru şekilde görünür
-   - Plotlar oluşturulur/güncellenir
-   - Console'da hata yoktur
-
-BEKLENEN SONUÇLAR:
-
-- Dosya yükleme asla GUI'yi dondurmaz (arka plan thread'i)
-- Solver çalıştırması asla GUI'yi dondurmaz (arka plan thread'i)
-- Console güncellemeleri gerçek zamanlı görünür, tamamlandıktan sonra hepsi birden değil
-- Progress bar işlemler sırasında düzgün şekilde güncellenir
-- Solver sekmesi solve sırasında devre dışıdır (çakışmaları önler)
-- İşlemler tamamlandıktan sonra UI otomatik olarak yeniden etkinleşir
-- Qt threading hataları yoktur (AttributeError, vb.)
-- Pencere işlemler sırasında taşınabilir ve responsive kalır
-- Dosya yükleme sırasında diğer sekmelere geçilebilir (ancak solve sırasında değil)
-
-GEREKSINIM NO: UX İyileştirmesi
-
-================================================================================
-
-TEST NO: 23
-
-BAŞLIK: Orientation Widget Görüntüleme Tutarlılığı (v0.97)
-
-AÇIKLAMA: Kamera orientation widget'ının (XYZ eksenleri) iş akışı sırasından bağımsız olarak doğru boyutta göründüğünü doğrular
-
-GİRDİLER:
-
-- Geçerli modal coordinate ve stress dosyaları yüklenmiş
-- Solver başarıyla çalıştırılmış
-- v0.97 uygulaması
-
-TEST ADIMLARI:
-
-Senaryo A - Önce Display Sekmesini Ziyaret Et:
-1. Modal coordinate ve stress dosyalarını yükleyin
-2. Solve çalıştırmadan önce Display sekmesine geçin
-3. Orientation widget'ının sağ üst köşede küçük göründüğünü doğrulayın
-4. Widget boyutunu ve konumunu not edin
-5. Main Window sekmesine geri dönün
-6. Solver'ı çalıştırın
-7. Display sekmesine tekrar geçin
-8. Orientation widget'ının aynı boyut ve konumda kaldığını doğrulayın
-
-Senaryo B - Solve'dan Sonra Display Sekmesini Ziyaret Et:
-1. Uygulamayı yeniden başlatın
-2. Modal coordinate ve stress dosyalarını yükleyin
-3. Solver'ı çalıştırın (henüz Display sekmesini ziyaret ETMEYİN)
-4. Solve tamamlandıktan sonra, Display sekmesine geçin
-5. Widget'ın görünmesi için ~200ms bekleyin
-6. Orientation widget'ının sağ üst köşede küçük göründüğünü doğrulayın
-7. Senaryo A ile karşılaştırın - boyut özdeş olmalıdır
-
-Senaryo C - Çoklu Solve'lar:
-1. Dosyaları yükleyin ve Display sekmesini ziyaret edin (widget doğru görünür)
-2. Main Window'a geçin, solve çalıştırın
-3. Display sekmesine geçin - widget'ın hala doğru boyutta olduğunu doğrulayın
-4. Solve'u 2-3 kez daha tekrarlayın
-5. Widget'ın asla büyümediğini doğrulayın
-
-BEKLENEN SONUÇLAR:
-
-- Orientation widget her zaman sağ üst köşede görünür
-- Widget boyutu iş akışı sırasından bağımsız olarak tutarlıdır (~viewport'un %15'i)
-- Display sekmesi gösterildiğinde widget ~200ms içinde görünür
-- Widget, solver çalıştırmasından sonra büyümez
-- Display sekmesi solve'dan önce veya sonra ziyaret edilse de widget konumu ve boyutu özdeştir
-- Widget oluşturma hakkında console uyarıları yoktur
-- Widget interaktif kalır (eksenlere tıklayarak görünüm döndürülebilir)
-
-GEREKSINIM NO: Bug Fix Doğrulaması
-
-================================================================================
 

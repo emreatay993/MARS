@@ -45,24 +45,28 @@ INPUTS:
 
 - Modal coordinate and stress files loaded successfully
 - Skip modes: 6 (for free-free structure with 6 rigid-body modes)
+- Fatigue parameters: σ'f = 1000 MPa, b = -0.12
 - Node ID for time history: 1001
 - Deformations file loaded for full output testing
 
 TEST STEPS:
 
 1. Select multiple output options: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
-2. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
-3. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
-4. Enter Node ID 1001 in Scoping field
-5. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
-6. Click SOLVE button to execute solver
-7. Monitor Console tab for processing messages and validation steps
-8. Observe progress bar advancement from 0% to 100%
-9. Wait for solver completion and verify success message appears in Console
+2. Enable Damage Index checkbox and verify fatigue parameters fields appear
+3. Enter fatigue parameters: σ'f = 1000 MPa and b = -0.12
+4. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
+5. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
+6. Enter Node ID 1001 in Scoping field
+7. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
+8. Click SOLVE button to execute solver
+9. Monitor Console tab for processing messages and validation steps
+10. Observe progress bar advancement from 0% to 100%
+11. Wait for solver completion and verify success message appears in Console
 
 EXPECTED RESULTS:
 
 - All selected output checkboxes are checked and remain enabled
+- Fatigue parameters section appears when Damage Index selected
 - Skip modes dropdown shows values from 0 to maximum mode count from .mcf file
 - Time History Mode scoping controls appear when checkbox enabled
 - SOLVE button becomes enabled when minimum requirements met
@@ -373,7 +377,8 @@ EXPECTED RESULTS:
 - Hotspot dialog opens showing table with NodeID and scalar value columns
 - Find Hotspots analyzes all visible points in current camera view
 - Top 10 nodes are sorted by descending value (highest stress first)
-- Clicking a row causes camera to fly to that node with label
+- Clicking a row causes camera to fly smoothly to that node from current position (no reset)
+- Label appears at node with semi-transparent background
 - Find Hotspots in Selection analyzes only points within selection box
 - Selection-based hotspots may differ from full-view hotspots
 - Dialog allows easy identification and navigation to critical regions
@@ -419,8 +424,10 @@ EXPECTED RESULTS:
 - Locked camera maintains node at center throughout animation
 - Camera follows node motion in all three dimensions
 - Unlocking camera restores normal stationary view
-- Plot Time History picking mode enables node selection
-- Clicking node displays its time history plot in Main Window tab
+- Plot Time History picking mode enables node selection with crosshair cursor
+- Clicking node shows visual confirmation (black marker with red "Node XXXXX" label)
+- Camera position is preserved when picking (no reset)
+- Time History plot appears in Main Window tab showing selected node's history
 - Plot shows time on x-axis and metric value on y-axis
 
 REQUIREMENT NO: N/A
@@ -564,86 +571,4 @@ Both Modes:
 - Tooltip on checkbox explains both modes clearly
 
 REQUIREMENT NO: N/A
-
-================================================================================
-
-TEST NO: 21
-
-TITLE: Large File Loading Performance (v0.97)
-
-DESCRIPTION: Verify that loading large modal files is fast and provides clear progress feedback
-
-INPUTS:
-- Large modal stress file (over 1 GB)
-- MARS v0.97 application
-
-TEST STEPS:
-1. Click "Read Modal Stress File" button
-2. Select a large stress file (over 1 GB)
-3. Watch the console output
-
-EXPECTED RESULTS:
-- Console shows file size and estimated loading time
-- Progress updates appear every few seconds showing elapsed time
-- Loading completes faster than previous versions
-- Console shows final load time and speed (MB/s)
-- Application never freezes - you can still move the window
-
-REQUIREMENT NO: Performance
-
-================================================================================
-
-TEST NO: 22
-
-TITLE: Application Stays Responsive During Operations (v0.97)
-
-DESCRIPTION: Verify that the application never freezes during file loading or calculations
-
-INPUTS:
-- Any large files (coordinate, stress, deformation)
-- Valid analysis configuration
-
-TEST STEPS:
-1. Load a large file and try to move the application window during loading
-2. Try switching between tabs during file loading
-3. After files load, click SOLVE button
-4. Try to move the window during calculation
-5. Watch the progress bar and console during calculation
-
-EXPECTED RESULTS:
-- Window can always be moved, even during loading or solving
-- Console updates appear gradually as work progresses
-- Progress bar moves smoothly
-- Application never appears frozen or unresponsive
-- After operations complete, all results appear correctly
-
-REQUIREMENT NO: User Experience
-
-================================================================================
-
-TEST NO: 23
-
-TITLE: Display Tab Orientation Widget (v0.97)
-
-DESCRIPTION: Verify that the XYZ orientation widget appears correctly sized in the Display tab
-
-INPUTS:
-- Files loaded and solver executed
-- MARS v0.97 application
-
-TEST STEPS:
-1. Load files and run solver WITHOUT visiting Display tab
-2. After solver completes, click on Display tab
-3. Look at the top-right corner of the 3D view
-4. Check the size of the XYZ orientation widget (colored spheres)
-
-EXPECTED RESULTS:
-- Small XYZ widget appears in top-right corner
-- Widget is about the size of your thumb on screen
-- Widget does NOT cover a large portion of the screen
-- Widget appears within 1 second of switching to Display tab
-
-REQUIREMENT NO: Bug Fix
-
-================================================================================
 

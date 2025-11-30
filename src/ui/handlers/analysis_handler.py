@@ -20,6 +20,7 @@ from PyQt5.QtWidgets import QMessageBox, QApplication
 import pyvista as pv
 
 from solver import engine as solver_engine
+from utils import constants
 from core.data_models import PlasticityConfig, SolverConfig
 from ui.widgets.plotting import PlotlyMaxWidget
 
@@ -125,6 +126,11 @@ class SolverAnalysisHandler:
         # Handle results based on mode (NOW on main thread - safe for Qt widgets!)
         if config.time_history_mode:
             self._handle_time_history_result(result, config)
+            
+            # Check if we should also show a popup dialog (when triggered from Display tab)
+            if getattr(self.tab, '_show_popup_after_solve', False):
+                self.tab._show_plot_in_new_dialog(result)
+                self.tab._show_popup_after_solve = False  # Reset flag
         else:
             self._handle_batch_results(config)
         
@@ -946,7 +952,7 @@ class SolverAnalysisHandler:
             )
 
             available_gb = psutil.virtual_memory().available / (1024 ** 3)
-            safe_available_gb = available_gb * solver_engine.RAM_PERCENT
+            safe_available_gb = available_gb * constants.RAM_PERCENT
 
             print(f"Estimated RAM: {estimated_gb:.3f} GB")
             print(f"Available RAM: {available_gb:.3f} GB (Safe: {safe_available_gb:.3f} GB)")
