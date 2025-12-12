@@ -114,6 +114,25 @@ class DisplayTab(QWidget):
         
         # Connect signals
         self._connect_signals()
+        
+        # Show initial welcome message on plotter
+        self._show_welcome_message()
+    
+    def _show_welcome_message(self):
+        """Display welcome message on empty plotter."""
+        self.plotter.add_text(
+            "No data loaded.\n\n"
+            "To visualize mesh points:\n"
+            "  1. Load Modal Coordinates and Modal Stress files\n"
+            "     in the Main Window tab, OR\n"
+            "  2. Use 'Load Visualization File' above to load\n"
+            "     a CSV file with node coordinates and scalar data.",
+            position=(0.22, 0.5),
+            viewport=True,
+            font_size=12,
+            color="gray",
+            name="welcome_message"
+        )
     
     def _setup_component_references(self):
         """Create direct references to frequently used components."""

@@ -27,7 +27,10 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         plotter = self.tab.plotter
         plotter.clear()
 
+        # Use active scalars if set, otherwise fall back to first array (e.g., NodeID)
         active_scalars = mesh.active_scalars_name
+        if not active_scalars and mesh.array_names:
+            active_scalars = mesh.array_names[0]
         if active_scalars:
             self.state.data_column = active_scalars
             self.tab.data_column = active_scalars
