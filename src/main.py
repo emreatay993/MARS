@@ -3,8 +3,12 @@ Entry point for the MARS: Modal Analysis Response Solver application.
 
 Tested with Python 3.11 + torch==2.8.0
 
-You can build a frozen application by using the following command in the project terminal in PyCharm:
+--- You can build a frozen application by using the following command in the project terminal in PyCharm:
 .\venv\Scripts\python.exe -m PyInstaller MARS.spec --clean --noconfirm
+
+--- Run in Pycharm via the command:
+...PycharmProjects\MARS_> .\venv\Scripts\Activate.ps1
+...PycharmProjects\MARS_\src> python -m main
 
 Initialises the Qt application and launches the main window.
 """
