@@ -399,6 +399,34 @@ python main.py
 python -m src.main
 ```
 
+### PyTorch DLL load failure on Windows (WinError 126 / 127)
+
+If the application fails immediately on startup while importing PyTorch and you see an error like:
+
+- `OSError: [WinError 126] The specified module could not be found`
+- `OSError: [WinError 127] The specified procedure could not be found`
+- Errors mentioning torch internal binaries such as `c10.dll`, `fbgemm.dll`, `torch_cpu.dll`, or `torch_python.dll`
+
+This usually means **a dependency DLL is missing or incompatible** on that computer (most commonly the
+**Microsoft Visual C++ 2015–2022 Redistributable (x64)**), or antivirus/EDR has quarantined a torch DLL.
+
+MARS includes a built-in diagnostic that reports the *exact missing DLL name(s)* and suggested fixes.
+If the UI cannot open, run the diagnostics directly:
+
+```bash
+# From project root
+python -m src.utils.torch_dll_diagnostics
+
+# Or from inside src/
+cd src
+python -m utils.torch_dll_diagnostics
+```
+
+**Fix order (recommended)**:
+- Install/repair **Microsoft Visual C++ Redistributable 2015–2022 (x64)**, then retry.
+- Reinstall torch/torchaudio/torchvision (corrupted or incomplete wheel installs can miss DLLs).
+- Check antivirus/EDR quarantine logs for torch DLLs and add an allowlist if needed.
+
 **Missing Dependencies**:
 ```bash
 pip install -r requirements.txt

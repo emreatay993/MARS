@@ -348,7 +348,23 @@ class MatplotlibWidget(QWidget):
         
         # Finalize
         self.table.resizeColumnsToContents()
+        QTimer.singleShot(0, self.adjust_splitter_size)
+
+    def clear_plot(self):
+        """Clear the plot and table."""
+        self.figure.clear()
+        ax = self.figure.add_subplot(1, 1, 1)
+        ax.set_title("Time History (No Data)", fontsize=8)
+        ax.set_xlabel('Time [seconds]', fontsize=8)
+        ax.set_ylabel('Value', fontsize=8)
+        ax.grid(True, which='both', linestyle='-', linewidth=0.5)
+        ax.minorticks_on()
+        ax.tick_params(axis='both', which='major', labelsize=8)
         self.canvas.draw()
+        
+        self.model.removeRows(0, self.model.rowCount())
+        self.model.setHorizontalHeaderLabels(["Time [s]", "Value"])
+        self.table.resizeColumnsToContents()
         QTimer.singleShot(0, self.adjust_splitter_size)
     
     @pyqtSlot()
@@ -374,23 +390,6 @@ class MatplotlibWidget(QWidget):
             lines.append('\\t'.join(row_data))
         
         QApplication.clipboard().setText('\\n'.join(lines))
-    
-    def clear_plot(self):
-        """Clear the plot and table."""
-        self.figure.clear()
-        ax = self.figure.add_subplot(1, 1, 1)
-        ax.set_title("Time History (No Data)", fontsize=8)
-        ax.set_xlabel('Time [seconds]', fontsize=8)
-        ax.set_ylabel('Value', fontsize=8)
-        ax.grid(True, which='both', linestyle='-', linewidth=0.5)
-        ax.minorticks_on()
-        ax.tick_params(axis='both', which='major', labelsize=8)
-        self.canvas.draw()
-        
-        self.model.removeRows(0, self.model.rowCount())
-        self.model.setHorizontalHeaderLabels(["Time [s]", "Value"])
-        self.table.resizeColumnsToContents()
-        QTimer.singleShot(0, self.adjust_splitter_size)
 
 
 class PlotlyWidget(QWidget):

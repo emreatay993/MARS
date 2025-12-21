@@ -24,12 +24,13 @@ from core.data_models import (
 )
 from file_io.validators import (
     validate_mcf_file,
+    validate_pch_file,
     validate_modal_stress_file,
     validate_deformation_file,
     validate_steady_state_file,
     validate_material_profile_payload,
 )
-from utils.file_utils import unwrap_mcf_file
+from utils.file_utils import unwrap_mcf_file, parse_nastran_pch_modal_coordinates
 from utils.constants import NP_DTYPE
 
 # Try to import tqdm for progress bars
@@ -400,6 +401,85 @@ def load_modal_coordinates(filename: str) -> ModalData:
         # Clean up temporary file
         if os.path.exists(unwrapped_filename):
             os.remove(unwrapped_filename)
+
+
+def load_modal_coordinates_pch(filename: str) -> ModalData:
+    """
+    Load modal coordinate data from a NASTRAN punch file (.pch).
+    
+    Parses SDISPLACEMENT output from SOL 112 (Modal Transient) analysis.
+    The punch file must contain '(SOLUTION SET)' sections which indicate
+    modal/generalized displacements.
+    
+    Shows progress indicator for large files (>100 MB).
+    
+    Args:
+        filename: Path to the NASTRAN punch file.
+    
+    Returns:
+        ModalData object containing modal coordinates and time values.
+        The modal_coord array has shape (num_modes, num_time_points).
+    
+    Raises:
+        ValueError: If the file is invalid or cannot be loaded.
+    
+    Example:
+        >>> modal_data = load_modal_coordinates_pch("analysis.pch")
+        >>> print(f"Loaded {modal_data.num_modes} modes, {modal_data.num_time_points} time points")
+    """
+    # Check file size for progress indication
+    show_progress, file_size_mb = _should_show_progress(filename)
+    
+    # Start timing
+    start_time = time.time()
+    
+    # Log start for large files
+    if show_progress:
+        _log_loading_start(filename, "NASTRAN Punch File (Modal Coordinates)", file_size_mb)
+    
+    # Validate first
+    if show_progress:
+        print("🔍 Validating NASTRAN punch file structure...")
+        sys.stdout.flush()
+    
+    is_valid, error_msg = validate_pch_file(filename)
+    if not is_valid:
+        raise ValueError(f"Invalid NASTRAN punch file: {error_msg}")
+    
+    if show_progress:
+        print("✓ Validation passed")
+        sys.stdout.flush()
+    
+    # Parse the punch file
+    if show_progress:
+        print("⚙️  Parsing modal coordinate data...")
+        sys.stdout.flush()
+    
+    try:
+        modal_coord, time_values, metadata = parse_nastran_pch_modal_coordinates(filename)
+        
+        # Convert to appropriate dtype
+        modal_coord = modal_coord.astype(NP_DTYPE)
+        time_values = time_values.astype(NP_DTYPE)
+        
+        # Create result
+        result = ModalData(modal_coord=modal_coord, time_values=time_values)
+        
+        # Log completion for large files
+        if show_progress:
+            elapsed = time.time() - start_time
+            print(f"\n✅ NASTRAN Punch file loaded successfully!")
+            print(f"   Time: {elapsed:.2f}s")
+            print(f"   Modes: {result.num_modes} (IDs: {metadata['mode_ids'][:5]}{'...' if len(metadata['mode_ids']) > 5 else ''})")
+            print(f"   Time Points: {result.num_time_points:,}")
+            print(f"   Time Range: {time_values[0]:.6f}s to {time_values[-1]:.6f}s")
+            print(f"{'='*70}\n")
+            sys.stdout.flush()
+        
+        return result
+        
+    except Exception as e:
+        raise ValueError(f"Failed to parse NASTRAN punch file: {str(e)}") from e
 
 
 def load_modal_stress(filename: str) -> ModalStressData:

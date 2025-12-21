@@ -7,7 +7,7 @@ Validators check input file format and content before loading.
 import os
 import pandas as pd
 from typing import Tuple, Optional
-from utils.file_utils import unwrap_mcf_file
+from utils.file_utils import unwrap_mcf_file, parse_nastran_pch_modal_coordinates
 
 
 class ValidationResult:
@@ -19,6 +19,84 @@ class ValidationResult:
     
     def __bool__(self):
         return self.is_valid
+
+
+def validate_pch_file(filename: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate a NASTRAN Punch File (.pch) containing modal coordinates.
+    
+    Checks for SDISPLACEMENT output sections with '(SOLUTION SET)' marker
+    that indicate modal/generalized displacements from SOL 112 transient analysis.
+    
+    Args:
+        filename: Path to the NASTRAN punch file.
+    
+    Returns:
+        Tuple of (is_valid, error_message). error_message is None if valid.
+    """
+    try:
+        if not os.path.exists(filename):
+            return False, "File does not exist."
+        
+        # Quick scan of first portion of file to check for expected markers
+        with open(filename, 'r') as f:
+            # Read first 500 lines to check structure
+            header_lines = []
+            for i, line in enumerate(f):
+                header_lines.append(line)
+                if i >= 500:
+                    break
+        
+        header_text = ''.join(header_lines)
+        
+        # Check for SOLUTION SET marker (indicates modal coordinates)
+        if '(SOLUTION SET)' not in header_text:
+            return False, (
+                "No '(SOLUTION SET)' marker found. This punch file may not contain "
+                "modal coordinates (SDISPLACEMENT output). Ensure your NASTRAN deck "
+                "includes 'SDISPLACEMENT(PRINT,PUNCH) = ALL' in the case control."
+            )
+        
+        # Check for POINT ID markers (mode identifiers)
+        if '$POINT ID' not in header_text:
+            return False, "No '$POINT ID' markers found. Invalid punch file structure."
+        
+        # Check for data lines with 'M' marker (modal point data)
+        has_modal_data = False
+        for line in header_lines:
+            parts = line.split()
+            if len(parts) >= 3 and parts[1] == 'M':
+                try:
+                    float(parts[0])  # Time value
+                    float(parts[2])  # Modal coordinate
+                    has_modal_data = True
+                    break
+                except ValueError:
+                    continue
+        
+        if not has_modal_data:
+            return False, (
+                "No modal data lines found (lines with 'M' marker). "
+                "The file may be empty or have an unexpected format."
+            )
+        
+        # Try full parse to validate data integrity
+        try:
+            modal_coord, time_values, metadata = parse_nastran_pch_modal_coordinates(filename)
+            
+            if modal_coord.size == 0:
+                return False, "Parsed modal coordinate array is empty."
+            
+            if len(time_values) < 2:
+                return False, "Insufficient time points found (need at least 2)."
+                
+        except ValueError as e:
+            return False, f"Parse error: {str(e)}"
+        
+        return True, None
+        
+    except Exception as e:
+        return False, f"Validation error: {str(e)}"
 
 
 def validate_mcf_file(filename: str) -> Tuple[bool, Optional[str]]:
