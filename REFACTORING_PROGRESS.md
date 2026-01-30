@@ -66,9 +66,6 @@ This document tracks the progress of modularizing the legacy MSUP Smart Solver c
 - `export_mesh_to_csv()` - Export PyVista mesh data
 - `export_results_with_headers()` - Generic results export
 
-**Copied Legacy File**:
-- `src/file_io/fea_utilities.py`: Original FEA utility functions (kept intact)
-
 ### ✅ Phase 3: Widget Extraction (COMPLETE)
 **Status**: 100% complete, 0 linting errors
 
@@ -188,7 +185,6 @@ legacy/original_baseline_20251012/
 │   ├── DisplayTab (2065 lines) → Phase 5
 │   └── HotspotDialog (268 lines) → Phase 3
 ├── solver_engine.py (1024 lines) → COPIED
-└── fea_utilities.py (41 lines) → COPIED
 ```
 
 ## New Modular Structure
@@ -200,12 +196,11 @@ src/
 │   ├── data_models.py ✅          (172 lines, 7 classes)
 │   ├── visualization.py ✅        (345 lines, 3 manager classes)
 │   └── computation.py            (Phase 6 - TODO)
-├── file_io/                       # File I/O (5 files) ✅
+├── file_io/                       # File I/O (4 files) ✅
 │   ├── __init__.py ✅
 │   ├── validators.py ✅           (165 lines, 4 validators)
 │   ├── loaders.py ✅              (186 lines, 4 loaders)
-│   ├── exporters.py ✅            (143 lines, 7 exporters)
-│   └── fea_utilities.py ✅        (41 lines, legacy copy)
+│   └── exporters.py ✅            (143 lines, 7 exporters)
 ├── ui/                            # GUI components
 │   ├── __init__.py ✅
 │   ├── main_window.py            (Phase 7 - TODO)

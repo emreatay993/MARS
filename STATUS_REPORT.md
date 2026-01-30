@@ -37,11 +37,10 @@ Successfully completed **Phases 1-4** of the modularization plan, establishing a
 ### Phase 2: I/O Layer ✅ (100%)
 **Achievement**: Complete separation of file I/O from business logic
 
-**Files Created** (5 files):
+**Files Created** (4 files):
 - `src/file_io/validators.py` - 4 validators, all <30 lines (165 lines total)
 - `src/file_io/loaders.py` - 4 loaders returning data models (186 lines)
 - `src/file_io/exporters.py` - 7 export functions (143 lines)
-- `src/file_io/fea_utilities.py` - Legacy utilities (41 lines, preserved)
 - `src/file_io/__init__.py` - Package initialization
 
 **Impact**: Reusable, testable I/O operations; eliminated duplication
@@ -136,8 +135,7 @@ src/
 ├── io/                # File I/O layer (COMPLETE ✅)
 │   ├── validators.py     ✅ Input validation
 │   ├── loaders.py        ✅ File loading
-│   ├── exporters.py      ✅ Result export
-│   └── fea_utilities.py  ✅ Legacy utilities
+│   └── exporters.py      ✅ Result export
 │
 ├── ui/                # User interface layer
 │   ├── widgets/          # Reusable components (COMPLETE ✅)

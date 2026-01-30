@@ -28,8 +28,8 @@ def generate_apdl_ic(node_ids: np.ndarray, vel_x: np.ndarray,
     """
     Generate APDL initial condition commands from velocity data.
     
-    This function wraps the legacy fea_utilities function but can be extended
-    with additional functionality.
+    This function generates APDL IC commands and can be extended with
+    additional functionality.
     
     Args:
         node_ids: Array of node numbers.

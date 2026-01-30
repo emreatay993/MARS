@@ -4,8 +4,8 @@ This reference captures every Python module that ships with the refactored MARS 
 
 ## Snapshot (Current - v0.98)
 
-- 50 Python files (including package initialisers) live under `src/`
-- ~13,100 lines of implementation code
+- 49 Python files (including package initialisers) live under `src/`
+- ~13,081 lines of implementation code
 - UI layer spans 31 Python files (~8,255 lines) split across controller/tab views, builders, dialogs, 15 handler modules, widgets, and centralised style constants
 - Automated tests: 5 unit-test modules plus 3 living guides in `tests/`
 - Application resources: Icon system in `resources/icons/` with SVG source, PNG/ICO outputs, and generation script
@@ -33,15 +33,14 @@ This reference captures every Python module that ships with the refactored MARS 
 
 ---
 
-## File I/O Package (5 files – 1,358 lines)
+## File I/O Package (4 files – 1,321 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/file_io/exporters.py` | 192 | CSV exports, APDL initial-condition writer, and mesh/point-data exporters |
-| `src/file_io/fea_utilities.py` | 41 | Legacy finite-element helper preserved for compatibility |
-| `src/file_io/loaders.py` | 777 | Loaders that return typed data models after validation |
-| `src/file_io/validators.py` | 341 | Validators for modal coordinate, stress, deformation, and steady-state inputs |
-| `src/file_io/__init__.py` | 7 | Package initialiser |
+| `src/file_io/exporters.py` | 193 | CSV exports, APDL initial-condition writer, and mesh/point-data exporters |
+| `src/file_io/loaders.py` | 778 | Loaders that return typed data models after validation |
+| `src/file_io/validators.py` | 342 | Validators for modal coordinate, stress, deformation, and steady-state inputs |
+| `src/file_io/__init__.py` | 8 | Package initialiser |
 
 ---
 
@@ -157,7 +156,7 @@ This reference captures every Python module that ships with the refactored MARS 
 
 ## Totals
 
-- **Source totals**: 50 Python files, ~13,100 lines overall
+- **Source totals**: 49 Python files, ~13,081 lines overall
 - **UI footprint**: 31 files, ~8,255 lines (controllers/tabs, builders, dialogs, 15 handlers, widgets, styles)
 - **Testing footprint**: 5 automated test modules plus 3 living guides/checklists
 

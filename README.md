@@ -36,7 +36,6 @@ src/
 │   └── visualization.py      - Visualization managers
 ├── file_io/               # File I/O operations
 │   ├── exporters.py          - Result export (CSV, APDL)
-│   ├── fea_utilities.py      - FEA utility helpers
 │   ├── loaders.py            - File loading with structured output
 │   └── validators.py         - Input file validation
 ├── ui/                    # User interface

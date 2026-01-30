@@ -33,7 +33,7 @@ legacy/original_baseline_20251012/        src/
 ├── main_app.py (3028 lines)              ├── main.py (35 lines)
 ├── display_tab.py (2332 lines)           ├── core/
 ├── solver_engine.py (1023 lines)         │   ├── computation.py (228 lines)
-└── fea_utilities.py (41 lines)           │   └── visualization.py (332 lines)
+                                          │   └── visualization.py (332 lines)
                                           ├── ui/
                                           │   ├── application_controller.py (~217 lines)
                                           │   ├── solver_tab.py (~517 lines)
