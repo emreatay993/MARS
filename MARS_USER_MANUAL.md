@@ -40,7 +40,6 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 - **Python**: Version 3.10 or higher
 - **Operating System**: Windows 10/11 (primary), Linux/macOS (compatible)
 - **RAM**: Minimum 8 GB; 16+ GB recommended for large models
-- **GPU (Optional)**: NVIDIA GPU with CUDA support for acceleration
 
 ### Installation Steps
 
@@ -492,15 +491,6 @@ Access advanced settings via **Settings → Advanced** in the menu bar.
 - Very sensitive stress gradients
 - Critical aerospace components
 
-### GPU Acceleration
-
-| Setting | Requirements |
-|---------|--------------|
-| **Enable GPU Acceleration** | NVIDIA GPU + CUDA toolkit installed |
-
-- Provides 2-10x speedup for large models (>100k nodes)
-- Automatic fallback to CPU if GPU unavailable
-
 ### Applying Settings
 
 1. Modify desired parameters
@@ -508,7 +498,7 @@ Access advanced settings via **Settings → Advanced** in the menu bar.
 3. Settings apply to the next SOLVE operation
 4. Settings persist across sessions
 
-[**Image Placeholder**: Advanced Settings dialog showing RAM slider, precision radio buttons, and GPU checkbox]
+[**Image Placeholder**: Advanced Settings dialog showing RAM slider and precision controls]
 
 ---
 
@@ -1395,7 +1385,7 @@ A: When elastic stress at notches, holes, or fillets exceeds the material yield 
 A: Start with Neuber (faster). Use Glinka if you need more conservative energy-based results.
 
 **Q: How can I speed up large analyses?**  
-A: Go to Settings → Advanced. Increase RAM allocation, use Single precision, or enable GPU acceleration.
+A: Go to Settings → Advanced. Increase RAM allocation, use Single precision, or reduce output scope.
 
 **Q: What does "Skip first n modes" do?**  
 A: It excludes the first n modes from reconstruction. Use this to skip rigid-body modes (typically 6 for free-free structures).

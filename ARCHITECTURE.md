@@ -36,7 +36,7 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Surface warnings (e.g., animation precomputation failures) and restore UI state
 
 **Key Components**:
-- `ApplicationController` class (~212 lines)
+- `ApplicationController` class (~233 lines)
 - `NavigatorHandler`, `SettingsHandler`, and `PlottingHandler` collaborators
 - Dock widget and menu construction helpers
 
@@ -61,8 +61,8 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Result visualization
 
 **Key Components**:
-- `SolverTab` class (~510 lines) focused on UI wiring, signal emission, and console surfaces
-- `SolverAnalysisHandler` (871 lines) executes solves, builds configurations, monitors resources, and coordinates plotting
+- `SolverTab` class (~566 lines) focused on UI wiring, signal emission, and console surfaces
+- `SolverAnalysisHandler` (1108 lines) executes solves, builds configurations, monitors resources, and coordinates plotting
 - `SolverFileHandler` (file dialogs and modal data life cycle)
 - `SolverUIHandler` (checkbox state, visibility, and plot refresh)
 - `SolverLogHandler` (routes stdout to the embedded console widget)
@@ -70,7 +70,7 @@ This document provides a comprehensive guide to the MARS application's modular a
 
 **Refactoring Impact**: 
 - Original: Monolithic 1,700+ line widget with deeply nested handler logic
-- Refactored: View class trimmed to ~520 lines; long-running flows moved into dedicated handler modules
+- Refactored: View class trimmed to ~566 lines; long-running flows moved into dedicated handler modules
 - Solve orchestration consolidated inside `SolverAnalysisHandler`
 - UI state changes captured in `SolverUIHandler` for easier testing and reuse
 
@@ -87,14 +87,14 @@ This document provides a comprehensive guide to the MARS application's modular a
 - Result export (CSV, APDL)
 
 **Key Components**:
-- `DisplayTab` class (599 lines) handles widget construction, signal wiring, and high-level state
-- Display handler suite (~2,100 lines across 6 modules) drives file loading, rendering, animation (with absolute/relative deformation modes), interaction, exporting, and results application (`display_file_handler`, `display_visualization_handler`, `display_animation_handler`, `display_interaction_handler`, `display_export_handler`, `display_results_handler`)
+- `DisplayTab` class (650 lines) handles widget construction, signal wiring, and high-level state
+- Display handler suite (~1,730 lines across 6 modules) drives file loading, rendering, animation (with absolute/relative deformation modes), interaction, exporting, and results application (`display_file_handler`, `display_visualization_handler`, `display_animation_handler`, `display_interaction_handler`, `display_export_handler`, `display_results_handler`)
 - `DisplayState` dataclass coordinates shared state between handlers and the tab
 - Visualization methods delegate to `VisualizationManager`, `AnimationManager`, and `HotspotDetector`
 
 **Refactoring Impact**:
 - Original: 2000+ lines, monolithic with mixed concerns
-- Refactored: View logic reduced to 602 lines while specialised handlers encapsulate hover annotations, node tracking, hotspot detection, exports, and animation workflows
+- Refactored: View logic reduced to ~650 lines while specialised handlers encapsulate hover annotations, node tracking, hotspot detection, exports, and animation workflows
 - Visualization delegated to `VisualizationManager`
 - Animation delegated to `AnimationManager`
 - Hotspot detection delegated to `HotspotDetector`
@@ -114,12 +114,12 @@ This document provides a comprehensive guide to the MARS application's modular a
    - Buffers output for performance
    - Auto-scrolling
 
-2. `plotting.py` - Plot widgets (546 lines)
+2. `plotting.py` - Plot widgets (689 lines)
    - MatplotlibWidget: Interactive plots with tables
    - PlotlyWidget: Modal coordinate visualization
    - PlotlyMaxWidget: Multi-trace plots
 
-3. `dialogs.py` - Dialog windows (219 lines)
+3. `dialogs.py` - Dialog windows (202 lines)
    - AdvancedSettingsDialog: Solver configuration
    - HotspotDialog: Hotspot analysis results
 
@@ -130,11 +130,11 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: Construct complex UI layouts
 
 **Modules**:
-1. `solver_ui.py` - SolverTabUIBuilder (468 lines - includes plasticity options with IBG disabled)
+1. `solver_ui.py` - SolverTabUIBuilder (499 lines - includes plasticity options with IBG disabled)
    - Builds: file inputs, outputs, fatigue params, node selection
    - 8 builder methods, each <25 lines
 
-2. `display_ui.py` - DisplayTabUIBuilder (304 lines)
+2. `display_ui.py` - DisplayTabUIBuilder (324 lines)
    - Builds: file controls, visualization, time point, animation
    - 6 builder methods, each <25 lines
 
@@ -164,7 +164,7 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: High-level analysis orchestration
 
 **Key Components**:
-- `AnalysisEngine` class (228 lines)
+- `AnalysisEngine` class (291 lines)
   - Wraps MSUPSmartSolverTransient
   - Handles mode filtering
   - Orchestrates batch and single-node analysis
@@ -282,9 +282,9 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: Centralized solver configuration and runtime settings
 
 **Categories**:
-1. Solver configuration (RAM, precision, GPU)
-2. Data types (NumPy, PyTorch, result dtypes)
-3. Environment toggles (OpenBLAS threads, GPU enablement)
+1. Solver configuration (RAM, precision)
+2. Data types (NumPy, result dtypes)
+3. Environment toggles (OpenBLAS threads)
 4. Display defaults (point size, colours, animation intervals)
 
 > UI stylesheet strings now live in `src/ui/styles/style_constants.py` to keep visual theming alongside the rest of the UI package.
@@ -315,13 +315,13 @@ This document provides a comprehensive guide to the MARS application's modular a
 **Purpose**: Core numerical computation (minimal changes from legacy)
 
 **Key Class**:
-- `MSUPSmartSolverTransient` (1011 lines, preserved)
+- `MSUPSmartSolverTransient` (1319 lines, preserved)
   - JIT-compiled kernels for performance
   - Memory management
   - Batch processing
   - Stress/deformation calculations
 
-**Changes from Legacy**: Only imports updated to use new constants
+**Changes from Legacy**: Torch/GPU paths removed; tensor operations converted to NumPy while preserving numerical kernels
 
 **Risk Level**: HIGH - Therefore minimal changes made
 
@@ -526,7 +526,6 @@ if not is_valid:
 
 ```
 numpy, pandas  → Data manipulation
-torch          → GPU acceleration, tensor operations
 numba          → JIT compilation for performance
 PyQt5          → GUI framework
 matplotlib     → 2D plotting
@@ -578,11 +577,9 @@ All modules use utils.constants for configuration
 1. **Solver Configuration**
    - `RAM_PERCENT` - Memory allocation (default: 0.9)
    - `DEFAULT_PRECISION` - Single or Double (default: Double)
-   - `IS_GPU_ACCELERATION_ENABLED` - GPU usage (default: False)
 
 2. **Data Types** (derived from precision)
    - `NP_DTYPE` - NumPy dtype
-   - `TORCH_DTYPE` - PyTorch dtype
    - `RESULT_DTYPE` - Result file dtype
 
 3. **UI Styles** (centralized CSS)
@@ -597,7 +594,7 @@ All modules use utils.constants for configuration
 
 **Method 2**: Use Advanced Settings dialog (runtime, doesn't persist)
 - Settings → Advanced
-- Adjust RAM, Precision, GPU
+- Adjust RAM, Precision
 - Click OK
 - Settings apply to next solve
 
@@ -676,9 +673,9 @@ config = SolverConfig(
 - Extensively tested legacy code
 
 **Implementation**:
-- Only updated imports
-- No logic changes
-- Preserves all computations
+- Replaced torch tensors/matmul with NumPy arrays and `np.matmul`
+- Removed GPU memory management paths
+- Preserved core numerical computations
 
 ### 2. Builder Pattern for UI
 
@@ -710,7 +707,7 @@ config = SolverConfig(
 - `AnimationManager` for animation logic
 - `HotspotDetector` for analysis
 
-**Impact**: DisplayTab reduced from 2000+ to 283 lines
+**Impact**: DisplayTab reduced from 2000+ to ~650 lines
 
 ### 4. Data Models for Structure
 
@@ -786,16 +783,12 @@ config = SolverConfig(
    - Velocity/acceleration derivatives
    - Rainflow counting
 
-2. **GPU Acceleration** (PyTorch)
-   - Matrix multiplication for stress/deformation
-   - Optional CUDA support
-
-3. **Memory Efficiency**
+2. **Memory Efficiency**
    - Chunked processing
    - Memory-mapped files for large results
    - Explicit garbage collection
 
-4. **UI Responsiveness**
+3. **UI Responsiveness**
    - Buffered console output
    - Progress signals every chunk
    - QApplication.processEvents()
@@ -958,22 +951,22 @@ config = SolverConfig(
 
 ---
 
-**Document Version**: 1.3  
-**Last Updated**: November 2025 (v0.97 Release)  
+**Document Version**: 1.4  
+**Last Updated**: January 2026  
 **Status**: ✅ Complete and Current
 
-**Recent Updates (v0.97)**:
+**Recent Updates (v0.97+)**:
 - Fixed node hover detection to accurately identify nodes under cursor
 - Added visual pick indicator (black marker with red label) for time history node selection
 - Fixed camera reset issues during node picking and hotspot navigation
 - Fixed camera orientation widget sizing on first Display tab load
 - Updated FILE_INDEX with accurate line counts and new modules
+- Removed PyTorch/GPU acceleration paths; solver is NumPy-only
 
 **Previous Updates (v0.96)**:
 - Added application icon system in `resources/icons/`
-- Updated application_controller.py to 217 lines (added icon loading)
-- Updated solver_ui.py to 468 lines (added IBG disable logic)
+- Updated application_controller.py to 233 lines (added icon loading)
+- Updated solver_ui.py to 499 lines (added IBG disable logic)
 - Documented IBG plasticity algorithm status (disabled pending validation)
 - Updated version numbering to v0.96
-- Overall codebase: ~9,200 lines
-
+- Overall codebase: ~13,100 lines

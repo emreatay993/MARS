@@ -136,7 +136,7 @@ Main Thread (via signal):
 
 ### ✅ Safe from Any Thread
 - Reading data
-- Number crunching (numpy, torch)
+- Number crunching (numpy)
 - File I/O
 - **Qt Signals** (thread-safe communication)
 

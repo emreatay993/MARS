@@ -32,7 +32,6 @@ UAT-SET-001,Open Advanced Settings,Application launched,Click Settings menu > Ad
 UAT-SET-002,Adjust RAM allocation,Advanced Settings dialog open,Change RAM spinbox value to 85,Value updates to 85
 UAT-SET-003,Select Single precision,Advanced Settings dialog open,Open Solver Precision dropdown > Select Single,Single displays as selected
 UAT-SET-004,Select Double precision,Advanced Settings dialog open,Open Solver Precision dropdown > Select Double,Double displays as selected
-UAT-SET-005,Enable GPU acceleration,Advanced Settings dialog open,Check Enable GPU Acceleration checkbox,Checkbox becomes checked
 UAT-SET-006,Apply Advanced Settings,Settings modified in dialog,Click OK button,Dialog closes and confirmation message displays
 UAT-SET-007,Cancel Advanced Settings,Settings modified in dialog,Click Cancel button,Dialog closes without applying changes
 UAT-SOLV-001,Solve button enabled,Modal coordinate and stress files loaded with at least one output selected,Observe SOLVE button state,SOLVE button is enabled and clickable

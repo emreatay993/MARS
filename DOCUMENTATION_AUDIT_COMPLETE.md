@@ -22,7 +22,7 @@ Completed comprehensive documentation audit covering:
 
 ## Phase 1: User Manual Updates (Earlier Today)
 
-### Features Documented (10 Major Additions):
+### Features Documented (9 Major Additions):
 1. Advanced Settings Dialog (Settings → Advanced)
 2. Plasticity Iteration Controls (Max Iterations, Tolerance)
 3. Plasticity Diagnostics (Δεp, εp overlay)
@@ -30,9 +30,8 @@ Completed comprehensive documentation audit covering:
 5. Skip Modes Guidance (when/why/how)
 6. Animation "Every nth" Throttling
 7. Navigator File Filtering
-8. GPU Acceleration Details
-9. Precision Selection Trade-offs
-10. RAM Allocation Impact
+8. Precision Selection Trade-offs
+9. RAM Allocation Impact
 
 ### Files Updated:
 - DETAILED_USER_MANUAL_20_Pages.md (34 → 35 pages)
@@ -84,7 +83,6 @@ Completed comprehensive documentation audit covering:
 ✅ **Added Section:** Advanced Settings (Performance Tuning)
 - RAM Allocation details
 - Solver Precision explanation
-- GPU Acceleration information
 
 ✅ **Enhanced Section:** Plasticity Correction
 - Added iteration controls mention
@@ -281,8 +279,7 @@ These files are either developer-focused, historical, or specific to completed m
 
 ### Long Term:
 8. ⬜ Create case studies demonstrating Advanced Settings impact
-9. ⬜ Benchmark and document GPU performance by model size
-10. ⬜ When IBG re-enabled, update all documentation accordingly
+9. ⬜ When IBG re-enabled, update all documentation accordingly
 
 ---
 

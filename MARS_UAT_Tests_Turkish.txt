@@ -131,37 +131,33 @@ TEST NO: 4
 
 BAŞLIK: Gelişmiş Ayarlar ve Performans Ayarlaması
 
-AÇIKLAMA: RAM tahsisi, solver hassasiyet seçimi ve GPU hızlandırma konfigürasyonu dahil olmak üzere performans ayarlama kontrollerini doğrular
+AÇIKLAMA: RAM tahsisi ve solver hassasiyet seçimi dahil olmak üzere performans ayarlama kontrollerini doğrular
 
 GİRDİLER:
 
 - Varsayılan ayarlarla başlatılmış uygulama
 - Hedef RAM Allocation: %95 (varsayılan %90'dan artırılmıştır)
 - Hedef Solver Precision: Single (varsayılan Double'dan değiştirilmiştir)
-- GPU Acceleration: Enabled (NVIDIA CUDA mevcutsa)
 
 TEST ADIMLARI:
 
 1. Settings menüsüne gidin ve Advanced Settings diyaloğunu açmak için Advanced'e tıklayın
-2. Mevcut ayarlar görüntüsünün varsayılan değerleri gösterdiğini gözlemleyin (RAM: %90, Precision: Double, GPU: Disabled)
+2. Mevcut ayarlar görüntüsünün varsayılan değerleri gösterdiğini gözlemleyin (RAM: %90, Precision: Double)
 3. RAM Allocation spinbox'ını 90'dan 95'e değiştirin
 4. Solver Precision dropdown'unu açın ve mevcut seçeneklerden Single'ı seçin
-5. GPU Acceleration checkbox'ını etkinleştirin
-6. Ayarları uygulamak için OK düğmesine tıklayın
-7. Ayarların uygulandığına dair mesaj içeren onay diyalogunun göründüğünü doğrulayın
-8. Settings > Advanced üzerinden Advanced Settings diyalogunu yeniden açın
-9. Tüm değişikliklerin kalıcı olduğunu onaylayın (RAM: %95, Precision: Single, GPU: Enabled)
+5. Ayarları uygulamak için OK düğmesine tıklayın
+6. Ayarların uygulandığına dair mesaj içeren onay diyalogunun göründüğünü doğrulayın
+7. Settings > Advanced üzerinden Advanced Settings diyalogunu yeniden açın
+8. Tüm değişikliklerin kalıcı olduğunu onaylayın (RAM: %95, Precision: Single)
 
 BEKLENEN SONUÇLAR:
 
 - Advanced Settings diyalogu en üstte mevcut ayarlar etiketini göstererek açılır
 - RAM spinbox'ı 10'dan 95'e kadar değerleri kabul eder
 - Solver Precision dropdown Single ve Double seçeneklerini sunar
-- GPU Acceleration checkbox açılıp kapatılabilir
 - OK düğmesi diyalogu kapatır ve onay mesajı görüntüler
 - Ayarlar, diyalog yeniden açıldığında kalıcıdır
 - Console, bir sonraki SOLVE çalıştırıldığında uygulanan ayarları gösterir
-- GPU mevcut değilse, solver bir console mesajıyla CPU'ya geri döner
 
 GEREKSINIM NO: N/A
 

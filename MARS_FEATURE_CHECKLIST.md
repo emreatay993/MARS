@@ -46,7 +46,6 @@
 ### Performance Tuning (Settings → Advanced)
 - [ ] Adjust RAM Allocation percentage (10-95%)
 - [ ] Select Solver Precision (Single or Double)
-- [ ] Enable GPU Acceleration (if NVIDIA CUDA available)
 
 ---
 
@@ -161,7 +160,6 @@ When solver completes, MARS generates:
 - [ ] Filters Navigator to .mcf, .csv, .txt files only
 - [ ] Enables/disables output checkboxes based on loaded files
 - [ ] Validates file consistency (Node IDs, time ranges)
-- [ ] Falls back to CPU if GPU fails
 - [ ] Chunks large datasets if RAM limit exceeded
 - [ ] Unwraps modal coordinates if needed
 
@@ -173,7 +171,6 @@ When solver completes, MARS generates:
 - All stress/deformation outputs
 - Damage index calculations
 - Plasticity correction (Neuber, Glinka)
-- GPU acceleration
 - All visualization features
 - Animation export
 
@@ -195,7 +192,6 @@ When solver completes, MARS generates:
 3. **Plasticity Correction**: Only use if elastic stress exceeds yield; requires cyclic material data
 4. **Large Animations**: Use "Actual Data Time Steps" with "Every 10th" or "Every 20th"
 5. **Hotspot Analysis**: Right-click → Find Hotspots after solver completes
-6. **GPU Not Working**: Check that CUDA toolkit is installed; solver will work on CPU as fallback
 
 ---
 
@@ -246,7 +242,6 @@ When solver completes, MARS generates:
 | Plasticity Correction | Section 6 | Page 13 | Sections 8.1-8.10 |
 | Skip Modes | Step 7 | Page 10 | Section 6.3 |
 | Animation Throttling | Section 5 | Page 21 | — |
-| GPU Acceleration | Section 4 | Page 15 | Section 10.3 |
 | Context Menu | Section 5 | Pages 22-25 | — |
 | File Formats | (implied) | Page 33 | Section 3 |
 

@@ -7,34 +7,23 @@ Centralises configuration values and Qt styles used across the application.
 import os
 import numpy as np
 
-# Import torch via setup module (handles Windows CUDA DLL compatibility)
-from utils.torch_setup import torch
-
 # ===== Solver Configuration =====
 # These constants control the core behavior and precision of the solver.
 
 RAM_PERCENT = 0.9
 """Default RAM allocation percentage based on available memory."""
 
-GPU_MEMORY_PERCENT = 0.92
-"""GPU VRAM allocation percentage. Reserves ~8% for CUDA context and fragmentation."""
-
 DEFAULT_PRECISION = 'Double'
 """Precision for numerical computations: 'Single' or 'Double'."""
 
-IS_GPU_ACCELERATION_ENABLED = False
-"""Set to True to use GPU (requires compatible NVIDIA GPU and CUDA)."""
-
 # ===== Data Type Configuration =====
-# Dynamically set NumPy and Torch data types based on the selected precision.
+# Dynamically set NumPy data types based on the selected precision.
 
 if DEFAULT_PRECISION == 'Single':
     NP_DTYPE = np.float32
-    TORCH_DTYPE = torch.float32
     RESULT_DTYPE = 'float32'
 elif DEFAULT_PRECISION == 'Double':
     NP_DTYPE = np.float64
-    TORCH_DTYPE = torch.float64
     RESULT_DTYPE = 'float64'
 else:
     raise ValueError(f"Invalid precision: {DEFAULT_PRECISION}. Must be 'Single' or 'Double'.")

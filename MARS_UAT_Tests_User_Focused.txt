@@ -130,37 +130,33 @@ TEST NO: 4
 
 TITLE: Advanced Settings and Performance Tuning
 
-DESCRIPTION: Validates performance tuning controls including RAM allocation, solver precision selection, and GPU acceleration configuration
+DESCRIPTION: Validates performance tuning controls including RAM allocation and solver precision selection
 
 INPUTS:
 
 - Application launched with default settings
 - Target RAM Allocation: 95% (increased from default 90%)
 - Target Solver Precision: Single (changed from default Double)
-- GPU Acceleration: Enabled (if NVIDIA CUDA available)
 
 TEST STEPS:
 
 1. Navigate to Settings menu and click Advanced to open Advanced Settings dialog
-2. Observe current settings display shows default values (RAM: 90%, Precision: Double, GPU: Disabled)
+2. Observe current settings display shows default values (RAM: 90%, Precision: Double)
 3. Change RAM Allocation spinbox from 90 to 95
 4. Open Solver Precision dropdown and select Single from available options
-5. Enable GPU Acceleration checkbox
-6. Click OK button to apply settings
-7. Verify confirmation dialog appears with message about settings being applied
-8. Re-open Advanced Settings dialog via Settings > Advanced
-9. Confirm all changes persisted (RAM: 95%, Precision: Single, GPU: Enabled)
+5. Click OK button to apply settings
+6. Verify confirmation dialog appears with message about settings being applied
+7. Re-open Advanced Settings dialog via Settings > Advanced
+8. Confirm all changes persisted (RAM: 95%, Precision: Single)
 
 EXPECTED RESULTS:
 
 - Advanced Settings dialog opens showing current settings label at top
 - RAM spinbox accepts values from 10 to 95
 - Solver Precision dropdown offers Single and Double options
-- GPU Acceleration checkbox can be toggled on/off
 - OK button closes dialog and displays confirmation message
 - Settings persist across dialog re-opening
 - Console shows applied settings when next SOLVE is executed
-- If GPU not available, solver falls back to CPU with console message
 
 REQUIREMENT NO: N/A
 

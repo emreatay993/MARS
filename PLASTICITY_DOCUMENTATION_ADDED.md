@@ -278,14 +278,13 @@ All documentation updates have been:
 
 ## Comprehensive Documentation Update (November 22, 2025)
 
-Following the initial plasticity documentation, a comprehensive code inspection revealed 10 additional undocumented features:
+Following the initial plasticity documentation, a comprehensive code inspection revealed 9 additional undocumented features:
 
 ### Features Added to Documentation:
 
 1. **Advanced Settings Dialog** (Settings → Advanced)
    - RAM Allocation control (10-95%)
    - Solver Precision toggle (Single/Double)
-   - GPU Acceleration configuration
 
 2. **Plasticity Iteration Controls**
    - Max Iterations parameter (default 60)
@@ -313,16 +312,11 @@ Following the initial plasticity documentation, a comprehensive code inspection 
 7. **Navigator File Filtering**
    - Automatic .mcf/.csv/.txt filtering documented
 
-8. **GPU Acceleration Details**
-   - Requirements (CUDA toolkit)
-   - Expected speedup profiles
-   - Fallback behavior
-
-9. **Precision Selection Trade-offs**
+8. **Precision Selection Trade-offs**
    - Single vs Double accuracy comparison
    - Speed and memory differences
 
-10. **RAM Allocation Impact**
+9. **RAM Allocation Impact**
     - Performance tuning guidance
     - When to increase/decrease
 

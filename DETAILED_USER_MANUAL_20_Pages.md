@@ -268,13 +268,6 @@ Access via **Settings → Advanced** in the menu bar. This dialog controls globa
 - **Double Precision**: Slower, uses 2× memory, provides maximum accuracy (~15 significant digits)
 - **When to use Double**: Extremely sensitive stress gradients, fatigue life > 10⁶ cycles, or critical aerospace components
 
-### GPU Acceleration
-
-- **Enable GPU Acceleration**: Uses NVIDIA CUDA for matrix operations
-- **Requirements**: NVIDIA GPU with CUDA support, CUDA toolkit installed
-- **Speed improvement**: 2-10× faster for large models (>100k nodes)
-- If GPU is not detected, solver automatically falls back to CPU
-
 ### Applying Changes
 
 1) Modify desired settings
@@ -502,7 +495,6 @@ Keep exports in project-specific folders for traceability.
 | Hotspots disabled | No active scalar | Apply a scalar via CSV or results |
 | Plasticity won't enable | Von Mises not selected or temp field missing | Select Von Mises output and load temperature file |
 | Corrected stress > elastic | Material data incorrect or solver didn't converge | Check material curves and increase max iterations |
-| GPU not being used | CUDA not installed or no NVIDIA GPU | Check Settings → Advanced; install CUDA toolkit or disable GPU option |
 | Solver very slow | RAM allocation too low or precision too high | Go to Settings → Advanced; increase RAM % or switch to Single precision |
 | Temperature file error | Wrong format or missing columns | Ensure CSV format with NodeID and Temperature columns (see Page 13) |
 
@@ -581,7 +573,7 @@ Q: Which plasticity method should I choose?
 A: Start with Neuber (faster); use Glinka if you need energy-based conservatism. IBG is currently experimental.
 
 Q: How do I speed up large analyses?
-A: Go to Settings → Advanced. Increase RAM allocation to 90%, switch to Single precision, or enable GPU acceleration if you have NVIDIA CUDA.
+A: Go to Settings → Advanced. Increase RAM allocation to 90%, switch to Single precision, or reduce output scope.
 
 Q: What does "Skip first n modes" do?
 A: Excludes the first n modes from analysis. Use this to skip rigid-body modes (usually 6 for free-free structures) or modes with bad data.
@@ -603,4 +595,3 @@ If you encounter issues:
 Contact your MARS maintainer for assistance.
 
 [Image Placeholder: Support footer]
-

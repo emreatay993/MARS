@@ -706,7 +706,7 @@ MARS offers two numerical precision modes (configurable via `Settings → Advanc
 - **Significand**: ~7 decimal digits (24-bit mantissa)
 - **Range**: ±1.2×10⁻³⁸ to ±3.4×10³⁸
 - **Memory**: 4 bytes per value
-- **Speed**: 2-4× faster than double on modern CPUs; GPU acceleration particularly effective
+- **Speed**: 2-4× faster than double on modern CPUs
 - **Suitable for**: Most engineering analyses where stress gradients are smooth and fatigue lives < 10⁶ cycles
 
 #### Double Precision (float64)
@@ -732,17 +732,6 @@ MARS dynamically allocates memory for matrix operations based on the **RAM Alloc
 **Typical requirements** (double precision):
 - 10,000 nodes × 100 modes × 1000 timesteps ≈ 8 GB
 - 100,000 nodes × 200 modes × 5000 timesteps ≈ 800 GB (requires chunking)
-
-### 10.3 GPU Acceleration
-
-When enabled (requires NVIDIA CUDA):
-
-- **Accelerated operations**: Dense matrix-matrix and matrix-vector multiplications (modal superposition)
-- **Not accelerated**: File I/O, rainflow counting, VTK rendering
-- **Speedup**: Typically 3-8× for models > 50,000 nodes; diminishing returns below 10,000 nodes
-- **Precision**: Both float32 and float64 supported on modern GPUs (Compute Capability ≥6.0)
-
-If CUDA is not detected, solver silently falls back to CPU with a console message.
 
 ---
 
@@ -805,7 +794,6 @@ If CUDA is not detected, solver silently falls back to CPU with a console messag
 | Temperature field | Spatial distribution of temperature used to adjust material properties node-by-node. |
 | Single precision | Floating-point format with ~7 significant digits; faster but less accurate. |
 | Double precision | Floating-point format with ~15 significant digits; slower but more accurate. |
-| GPU acceleration | Use of NVIDIA CUDA for parallel matrix operations; requires compatible hardware. |
 | RAM allocation | Percentage of system memory MARS is allowed to use for solver operations. |
 
 ---

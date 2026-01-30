@@ -38,13 +38,11 @@ echo [INFO] Virtual environment: %VIRTUAL_ENV%
 echo.
 
 REM Parse command line arguments
-set CUDA_BUILD=0
 set CLEAN_BUILD=0
 set SKIP_DEPS=0
 
 :parse_args
 if "%~1"=="" goto :done_parsing
-if /i "%~1"=="--cuda" set CUDA_BUILD=1
 if /i "%~1"=="--clean" set CLEAN_BUILD=1
 if /i "%~1"=="--skip-deps" set SKIP_DEPS=1
 if /i "%~1"=="--help" goto :show_help
@@ -69,13 +67,8 @@ if %SKIP_DEPS%==0 (
     REM Upgrade pip first
     python -m pip install --upgrade pip
     
-    if %CUDA_BUILD%==1 (
-        echo [INFO] Installing with CUDA support...
-        pip install -r requirements-portable.txt --extra-index-url https://download.pytorch.org/whl/cu126
-    ) else (
-        echo [INFO] Installing CPU-only version...
-        pip install -r requirements-portable.txt
-    )
+    echo [INFO] Installing dependencies...
+    pip install -r requirements-portable.txt
     
     if %ERRORLEVEL% NEQ 0 (
         echo [ERROR] Failed to install dependencies.
@@ -85,15 +78,6 @@ if %SKIP_DEPS%==0 (
     echo [INFO] Dependencies installed successfully.
     echo.
 )
-
-REM Verify torch installation
-echo [INFO] Verifying PyTorch installation...
-python -c "import torch; print(f'PyTorch {torch.__version__}'); print(f'CUDA available: {torch.cuda.is_available()}')"
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] PyTorch verification failed.
-    exit /b 1
-)
-echo.
 
 REM Build with PyInstaller
 echo [INFO] Building executable with PyInstaller...
@@ -124,15 +108,13 @@ echo.
 echo Usage: build.bat [options]
 echo.
 echo Options:
-echo   --cuda       Build with CUDA support (requires NVIDIA GPU)
 echo   --clean      Clean previous build directories before building
 echo   --skip-deps  Skip dependency installation (use existing packages)
 echo   --help       Show this help message
 echo.
 echo Examples:
-echo   build.bat                    # CPU-only build
-echo   build.bat --cuda             # CUDA-enabled build
-echo   build.bat --clean --cuda     # Clean CUDA build
+echo   build.bat                    # Build with default settings
+echo   build.bat --clean            # Clean build
 echo.
 goto :eof
 

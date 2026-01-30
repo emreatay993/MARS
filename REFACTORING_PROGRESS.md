@@ -21,8 +21,8 @@ This document tracks the progress of modularizing the legacy MSUP Smart Solver c
 - `src/solver/__init__.py` - Solver package
 
 **Extracted Constants** (`src/utils/constants.py`):
-- Solver configuration: `RAM_PERCENT`, `DEFAULT_PRECISION`, `IS_GPU_ACCELERATION_ENABLED`
-- Data types: `NP_DTYPE`, `TORCH_DTYPE`, `RESULT_DTYPE`
+- Solver configuration: `RAM_PERCENT`, `DEFAULT_PRECISION`
+- Data types: `NP_DTYPE`, `RESULT_DTYPE`
 - UI styles: `BUTTON_STYLE`, `GROUP_BOX_STYLE`, `TAB_STYLE`, etc.
 - Display constants: `DEFAULT_POINT_SIZE`, `DEFAULT_ANIMATION_INTERVAL_MS`
 

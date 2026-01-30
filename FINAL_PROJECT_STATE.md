@@ -21,7 +21,7 @@
 6. Max/Min over time plots - With dynamic checkbox updates
 7. Modal coordinates plot - Interactive Plotly
 8. Progress tracking - Bar and console
-9. Advanced settings - RAM, precision, GPU
+9. Advanced settings - RAM, precision
 10. Navigator - File browsing and drag-drop
 
 #### ✅ **Display Tab Core Features** (85%)

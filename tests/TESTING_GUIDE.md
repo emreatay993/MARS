@@ -265,7 +265,6 @@ def test_complete_workflow():
 - [ ] Current settings displayed
 - [ ] RAM allocation adjustable (10-95%)
 - [ ] Precision selection works (Single/Double)
-- [ ] GPU acceleration toggle works
 - [ ] OK applies settings
 - [ ] Cancel discards changes
 - [ ] Console confirms settings applied

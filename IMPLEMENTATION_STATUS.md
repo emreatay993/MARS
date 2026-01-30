@@ -17,7 +17,7 @@
 - ✅ **Max/Min Over Time Plots**: Tabs show and update dynamically
 - ✅ **Modal Coordinates Plot**: Plotly visualization of modes
 - ✅ **Steady-State Stress**: Optional inclusion working
-- ✅ **Advanced Settings**: RAM, precision, GPU settings
+- ✅ **Advanced Settings**: RAM and precision settings
 - ✅ **Navigator**: File browsing and drag-drop
 - ✅ **3D Visualization**: Basic file loading and display
 
@@ -221,7 +221,7 @@
 
 ### Why These Are Incomplete:
 The DisplayTab in legacy code is **2,000+ lines** with **extremely complex logic**:
-- Animation involves frame precomputation, GPU/CPU rendering, video encoding
+- Animation involves frame precomputation, rendering, video encoding
 - Context menu has 10+ features (hotspots, picking, box selection, etc.)
 - Node tracking involves camera manipulation, markers, coordinate systems
 

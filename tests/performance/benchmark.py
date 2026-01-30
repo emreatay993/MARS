@@ -165,17 +165,13 @@ def benchmark(num_runs=3, enable_profiling=False):
     if avg_time > 35:
         print("✓ Apply Phase 1 optimizations (vectorization)")
         print("  Expected result: ~10s (4x speedup)")
-        print("  See: tests/performance/optimizations_phase1.py")
     elif avg_time > 10:
         print("✓ Phase 1 optimizations complete or partial")
-        print("✓ Apply Phase 2 optimizations (GPU pipeline)")
+        print("✓ Apply additional memory/chunking optimizations")
         print("  Expected result: ~4s (10x speedup)")
-        print("  See: tests/performance/OPTIMIZATION_GUIDE.md (Priority 2)")
     elif avg_time > 5:
         print("✓ Phase 1 & 2 optimizations complete")
-        print("✓ Consider Phase 3 optimizations (CuPy, mixed precision)")
-        print("  Expected result: ~2.5s (16x speedup)")
-        print("  See: tests/performance/OPTIMIZATION_GUIDE.md (Priority 3)")
+        print("✓ Consider deeper profiling for remaining bottlenecks")
     else:
         print("✓ Excellent performance achieved!")
         print("✓ Focus on other bottlenecks or features")

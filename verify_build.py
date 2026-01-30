@@ -7,7 +7,7 @@ and the application can start successfully.
 
 Usage:
     python verify_build.py           # Quick check
-    python verify_build.py --full    # Full verification with GPU test
+    python verify_build.py --full    # Full verification
 """
 
 from __future__ import annotations
@@ -71,29 +71,6 @@ def check_import(module_name: str, display_name: str = None) -> bool:
         return False
 
 
-def check_torch_cuda() -> tuple[bool, bool]:
-    """Check PyTorch and CUDA availability."""
-    try:
-        import torch
-        print_status("PyTorch", True, f"v{torch.__version__}")
-        
-        cuda_available = torch.cuda.is_available()
-        if cuda_available:
-            device_name = torch.cuda.get_device_name(0)
-            print_status("CUDA", True, f"{device_name}")
-        else:
-            print_status("CUDA", False, "Not available (CPU mode will be used)")
-        
-        return True, cuda_available
-        
-    except ImportError as e:
-        print_status("PyTorch", False, str(e))
-        return False, False
-    except Exception as e:
-        print_status("PyTorch", False, f"Error: {e}")
-        return False, False
-
-
 def check_pyqt() -> bool:
     """Check PyQt5 installation."""
     try:
@@ -122,7 +99,6 @@ def check_vtk_pyvista() -> bool:
 def check_application_modules() -> bool:
     """Check that application modules can be imported."""
     modules = [
-        ("utils.torch_setup", "torch_setup"),
         ("utils.constants", "constants"),
         ("core.data_models", "data_models"),
         ("core.computation", "computation"),
@@ -143,32 +119,9 @@ def check_application_modules() -> bool:
     return all_ok
 
 
-def run_gpu_test() -> bool:
-    """Run a simple GPU computation test."""
-    try:
-        import torch
-        
-        if not torch.cuda.is_available():
-            print("  (Skipping GPU test - CUDA not available)")
-            return True
-        
-        # Simple tensor operation on GPU
-        x = torch.randn(1000, 1000, device="cuda")
-        y = torch.randn(1000, 1000, device="cuda")
-        z = torch.matmul(x, y)
-        _ = z.cpu()  # Sync with CPU
-        
-        print_status("GPU computation test", True, "Matrix multiply OK")
-        return True
-        
-    except Exception as e:
-        print_status("GPU computation test", False, str(e))
-        return False
-
-
 def main():
     parser = argparse.ArgumentParser(description="MARS Build Verification")
-    parser.add_argument("--full", action="store_true", help="Run full verification including GPU test")
+    parser.add_argument("--full", action="store_true", help="Run full verification")
     args = parser.parse_args()
     
     print_header("MARS Build Verification")
@@ -191,11 +144,6 @@ def main():
     all_ok &= check_import("pandas", "Pandas")
     all_ok &= check_import("matplotlib", "Matplotlib")
     
-    # PyTorch
-    print_header("PyTorch & CUDA")
-    torch_ok, cuda_ok = check_torch_cuda()
-    all_ok &= torch_ok
-    
     # GUI
     print_header("GUI Libraries")
     all_ok &= check_pyqt()
@@ -211,11 +159,6 @@ def main():
     # Application modules
     print_header("Application Modules")
     all_ok &= check_application_modules()
-    
-    # GPU test (if full mode)
-    if args.full and torch_ok:
-        print_header("GPU Test")
-        run_gpu_test()
     
     # Summary
     print_header("Verification Result")

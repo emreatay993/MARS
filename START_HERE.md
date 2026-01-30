@@ -20,7 +20,7 @@ Your legacy MSUP Smart Solver codebase now lives on as **MARS: Modal Analysis Re
 - ✅ **Documentation & testing refreshed**: README, architecture, migration, and testing guides align with the latest `src/` layout
 - ✅ **Bug fixes retained**: Hover annotation, scalar bar refresh, and time-history stability improvements remain in place
 - ✅ **Comprehensive Documentation**: User manuals, theory manual, feature checklists, and UAT tests
-- ✅ **Performance Controls**: Advanced Settings for RAM, precision, and GPU acceleration
+- ✅ **Performance Controls**: Advanced Settings for RAM and precision
 
 **Bottom line**: Same functionality you relied on, better code, with comprehensive documentation and performance tuning!
 

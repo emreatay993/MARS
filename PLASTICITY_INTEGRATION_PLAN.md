@@ -165,7 +165,7 @@ Deliverables can be merged incrementally, but maintaining the above order minimi
 ## 6. Open Questions / Assumptions
 - **IBG in batch mode**: the initial implementation will prioritise time-history (single-node) scenarios; extending IBG to batch mode may require additional storage and is out of scope unless deemed critical.
 - **Temperature defaults**: plan assumes we can fall back to a constant temperature (from material profile or UI field) if a temperature file is not provided.
-- **GPU/Numba compatibility**: plasticity routines rely on NumPy/Numba. Need to confirm compatibility with existing GPU acceleration flags (probably run on CPU only).
+- **Numba compatibility**: plasticity routines rely on NumPy/Numba.
 
 ---
 

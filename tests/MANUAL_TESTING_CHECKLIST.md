@@ -330,7 +330,6 @@
 - [ ] Dialog shows current settings
 - [ ] Adjust RAM allocation (e.g., 80%)
 - [ ] Change precision (Single ↔ Double)
-- [ ] Toggle GPU acceleration
 - [ ] Click OK
 - [ ] Console confirms changes
 - [ ] Next solve uses new settings

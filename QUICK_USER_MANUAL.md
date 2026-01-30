@@ -8,7 +8,6 @@ This guide condenses the end-to-end workflow for experienced analysts who need a
 
 - Python 3.10+ with libraries from `requirements.txt`.
 - Modal coordinate file (`.mcf`), modal stress CSV, optional deformation CSV, optional steady-state TXT.
-- Optional CUDA-capable GPU if `utils/constants.py::IS_GPU_ACCELERATION_ENABLED` is set to `True`.
 
 ---
 
@@ -52,7 +51,6 @@ Access via `Settings → Advanced`:
 - **Solver Precision**: 
   - *Single* = faster, less memory (~7 digits accuracy)
   - *Double* = slower, 2× memory (~15 digits accuracy)
-- **GPU Acceleration**: Enable if NVIDIA CUDA is installed for 2-10× speedup on large models.
 
 Changes apply on next SOLVE. Use defaults unless experiencing performance issues.
 
@@ -101,8 +99,7 @@ Outputs default to the solver's configured directory; update it before running i
 | Solver stalls at 0% | Large dataset chunking – wait for progress or reduce outputs. |
 | Blank Display | Load mesh or ensure exported CSV has `Result` column; reset camera. |
 | Animation fails | Reduce frame count / adjust range; confirm deformation data exists. |
-| GPU not used | Check `Settings → Advanced`; install CUDA toolkit or disable GPU. |
-| Solver too slow | Increase RAM allocation, switch to Single precision, or enable GPU in Advanced Settings. |
+| Solver too slow | Increase RAM allocation, switch to Single precision, or reduce output scope. |
 | Temperature file error | Use CSV format with `NodeID, Temperature` columns (not tab-delimited .txt). |
 
 Use the console log for diagnostics and re-run after correcting inputs.
@@ -115,4 +112,3 @@ Use the console log for diagnostics and re-run after correcting inputs.
 - **Algorithm & architecture deep dive**: `DETAILED_THEORY_MANUAL.md`
 
 Keep your project-specific notes alongside `PROJECT_COMPLETE.md` or `ARCHITECTURE.md` for team-wide visibility.
-

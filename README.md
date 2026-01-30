@@ -170,7 +170,6 @@ pytest tests/test_validators.py -v
 - Access via **Settings → Advanced** menu
 - **RAM Allocation**: Adjust percentage (10-95%) for large datasets
 - **Solver Precision**: Choose Single (faster) or Double (more accurate)
-- **GPU Acceleration**: Enable NVIDIA CUDA for 2-10× speedup on large models
 
 #### Plasticity Correction
 - Apply Neuber or Glinka corrections to account for local yielding at notches
@@ -343,7 +342,6 @@ Edit `utils/constants.py`:
 ```python
 RAM_PERCENT = 0.9           # RAM allocation (90% of available)
 DEFAULT_PRECISION = 'Double'  # 'Single' or 'Double'
-IS_GPU_ACCELERATION_ENABLED = False  # True to use CUDA GPU
 ```
 
 Or use **Settings → Advanced** menu at runtime (doesn't persist).
@@ -399,43 +397,10 @@ python main.py
 python -m src.main
 ```
 
-### PyTorch DLL load failure on Windows (WinError 126 / 127)
-
-If the application fails immediately on startup while importing PyTorch and you see an error like:
-
-- `OSError: [WinError 126] The specified module could not be found`
-- `OSError: [WinError 127] The specified procedure could not be found`
-- Errors mentioning torch internal binaries such as `c10.dll`, `fbgemm.dll`, `torch_cpu.dll`, or `torch_python.dll`
-
-This usually means **a dependency DLL is missing or incompatible** on that computer (most commonly the
-**Microsoft Visual C++ 2015–2022 Redistributable (x64)**), or antivirus/EDR has quarantined a torch DLL.
-
-MARS includes a built-in diagnostic that reports the *exact missing DLL name(s)* and suggested fixes.
-If the UI cannot open, run the diagnostics directly:
-
-```bash
-# From project root
-python -m src.utils.torch_dll_diagnostics
-
-# Or from inside src/
-cd src
-python -m utils.torch_dll_diagnostics
-```
-
-**Fix order (recommended)**:
-- Install/repair **Microsoft Visual C++ Redistributable 2015–2022 (x64)**, then retry.
-- Reinstall torch/torchaudio/torchvision (corrupted or incomplete wheel installs can miss DLLs).
-- Check antivirus/EDR quarantine logs for torch DLLs and add an allowlist if needed.
-
 **Missing Dependencies**:
 ```bash
 pip install -r requirements.txt
 ```
-
-**GPU Not Detected**:
-- Check CUDA installation
-- Verify PyTorch CUDA version matches CUDA toolkit
-- Set `IS_GPU_ACCELERATION_ENABLED = True` in constants.py
 
 **Memory Errors**:
 - Reduce `RAM_PERCENT` in `utils/constants.py` or via Settings → Advanced menu
@@ -445,7 +410,6 @@ pip install -r requirements.txt
 **Slow Performance**:
 - Increase RAM allocation to 85-90% via Settings → Advanced
 - Switch to Single precision if accuracy permits
-- Enable GPU Acceleration if NVIDIA CUDA is available
 
 ## 🤝 Contributing
 
@@ -493,7 +457,7 @@ For issues, questions, or contributions:
 - Complete refactoring to modular architecture
 - 36 modules (45 files) with clear separation of concerns
 - Comprehensive documentation and tests
-- Advanced Settings for performance tuning (RAM, Precision, GPU)
+- Advanced Settings for performance tuning (RAM, Precision)
 - Plasticity correction with Neuber and Glinka methods
 - Zero behavioral changes from legacy
 - All complexity metrics met
@@ -520,5 +484,5 @@ For issues, questions, or contributions:
 
 ---
 
-**Built with Python, PyQt5, PyTorch, PyVista, and love for clean code! 💙**
+**Built with Python, PyQt5, NumPy, PyVista, and love for clean code! 💙**
 

@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-Completed comprehensive documentation audit and update of all MARS user manuals. Identified **10 major undocumented features** through systematic code inspection and added detailed documentation across three manuals.
+Completed comprehensive documentation audit and update of all MARS user manuals. Identified **9 major undocumented features** through systematic code inspection and added detailed documentation across three manuals.
 
 **Result**: All user-facing features are now fully documented with step-by-step guidance, troubleshooting, and theoretical background.
 
@@ -23,7 +23,7 @@ Completed comprehensive documentation audit and update of all MARS user manuals.
 ✅ Compared implementation against existing documentation
 
 ### 2. Gap Analysis
-Identified 10 major undocumented features:
+Identified 9 major undocumented features:
 1. **Advanced Settings Dialog** (Settings → Advanced) - COMPLETE FEATURE MISSING
 2. **Plasticity Iteration Controls** (Max Iterations, Tolerance)
 3. **Plasticity Diagnostics** (Δεp, εp overlay)
@@ -31,16 +31,15 @@ Identified 10 major undocumented features:
 5. **Skip Modes Guidance** (when/why/how)
 6. **Animation "Every nth"** (frame throttling)
 7. **Navigator File Filtering** (automatic behavior)
-8. **GPU Acceleration** (requirements, behavior)
-9. **Precision Selection** (Single vs Double)
-10. **RAM Allocation** (performance tuning)
+8. **Precision Selection** (Single vs Double)
+9. **RAM Allocation** (performance tuning)
 
 ### 3. Documentation Updates
 
 #### DETAILED_USER_MANUAL_20_Pages.md
 **Changes**: 34 pages → 35 pages
 
-- ✅ **New Page 15**: Complete Advanced Settings section (RAM, Precision, GPU)
+- ✅ **New Page 15**: Complete Advanced Settings section (RAM, Precision)
 - ✅ **Page 5**: Added Navigator file filtering note
 - ✅ **Page 10**: Expanded "Skip first n modes" with full guidance
 - ✅ **Page 13**: Expanded plasticity section with:
@@ -68,11 +67,10 @@ Identified 10 major undocumented features:
 - ✅ **New Section 10**: "Computational Precision and Performance"
   - 10.1: Floating-point precision (Single vs Double)
   - 10.2: Memory management (RAM allocation)
-  - 10.3: GPU acceleration (CUDA details)
 - ✅ **Section 8.5.4**: New subsection on iteration control parameters
 - ✅ **Section 8.6.3**: Expanded temperature field file documentation
 - ✅ **Section 8.6.4**: New subsection on advanced tuning and diagnostics
-- ✅ **Section 14 (Glossary)**: Added 4 new terms
+- ✅ **Section 14 (Glossary)**: Added 3 new terms
 - ✅ Renumbered sections 11-14
 
 ### 4. New Deliverables Created
@@ -92,7 +90,6 @@ Executive summary and validation report
 
 ### Critical (Prevents User Errors)
 🔴 **Temperature Field Format**: Users were getting errors due to format confusion  
-🔴 **GPU Acceleration**: Users unable to discover performance features  
 🔴 **RAM Allocation**: Users experiencing slowdowns on large models
 
 ### High (Improves User Success)
@@ -280,7 +277,6 @@ Executive summary and validation report
 1. ⬜ Add screenshots to replace placeholders
 2. ⬜ Create video tutorials for Advanced Settings
 3. ⬜ Develop case studies for plasticity correction
-4. ⬜ Benchmark and document GPU performance by model size
 
 ---
 

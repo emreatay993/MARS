@@ -21,8 +21,7 @@ class AdvancedSettingsDialog(QDialog):
     A dialog for configuring advanced global settings for the solver engine.
     
     This dialog allows the user to view the current solver settings and modify
-    key performance parameters such as RAM allocation, numerical precision,
-    and GPU acceleration.
+    key performance parameters such as RAM allocation and numerical precision.
     """
     
     def __init__(self, parent=None):
@@ -41,8 +40,7 @@ class AdvancedSettingsDialog(QDialog):
         global_settings_text = (
             f"Current settings:\n"
             f"- Precision: {constants.DEFAULT_PRECISION}\n"
-            f"- RAM Limit: {constants.RAM_PERCENT * 100:.0f}%\n"
-            f"- GPU Acceleration: {'Enabled' if constants.IS_GPU_ACCELERATION_ENABLED else 'Disabled'}"
+            f"- RAM Limit: {constants.RAM_PERCENT * 100:.0f}%"
         )
         self.current_settings_label = QLabel(global_settings_text)
         self.current_settings_label.setProperty("class", "currentSettingsLabel")
@@ -66,21 +64,11 @@ class AdvancedSettingsDialog(QDialog):
             "Double precision is more accurate but slower."
         )
         
-        self.gpu_checkbox = QCheckBox(
-            "Enable GPU Acceleration (Only works if NVIDIA CUDA is installed in PC)"
-        )
-        self.gpu_checkbox.setChecked(constants.IS_GPU_ACCELERATION_ENABLED)
-        self.gpu_checkbox.setToolTip(
-            "Uses the GPU for matrix multiplication if a compatible NVIDIA GPU "
-            "is found and CUDA is installed in the system."
-        )
-        
         # Apply font to the widgets
         self.ram_label.setFont(main_font)
         self.ram_spinbox.setFont(main_font)
         self.precision_label.setFont(main_font)
         self.precision_combobox.setFont(main_font)
-        self.gpu_checkbox.setFont(main_font)
         
         # Layout
         layout = QGridLayout()
@@ -89,7 +77,6 @@ class AdvancedSettingsDialog(QDialog):
         layout.addWidget(self.ram_spinbox, 0, 1)
         layout.addWidget(self.precision_label, 1, 0)
         layout.addWidget(self.precision_combobox, 1, 1)
-        layout.addWidget(self.gpu_checkbox, 2, 0, 1, 2)
         
         # GroupBox to hold the settings
         settings_group = QGroupBox("Modify Global Parameters")
@@ -121,12 +108,11 @@ class AdvancedSettingsDialog(QDialog):
         Returns the selected settings from the dialog widgets.
         
         Returns:
-            dict: Dictionary containing 'ram_percent', 'precision', and 'gpu_acceleration'.
+            dict: Dictionary containing 'ram_percent' and 'precision'.
         """
         return {
             "ram_percent": self.ram_spinbox.value() / 100.0,
             "precision": self.precision_combobox.currentText(),
-            "gpu_acceleration": self.gpu_checkbox.isChecked(),
         }
 
 

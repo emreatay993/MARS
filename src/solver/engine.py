@@ -14,9 +14,6 @@ import pandas as pd
 from PyQt5.QtCore import QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication
 
-# Import torch via setup module (handles Windows CUDA DLL compatibility)
-from utils.torch_setup import torch
-
 # ---- Local Imports ----
 import utils.constants as constants
 from solver.plasticity_engine import (
@@ -71,28 +68,24 @@ class MSUPSmartSolverTransient(QObject):
         # Use selected output directory or fallback to script location
         self.output_directory = output_directory if output_directory else os.path.dirname(os.path.abspath(__file__))
 
-        # Global settings (accessed directly from constants module)
-        self.device = torch.device("cuda" if constants.IS_GPU_ACCELERATION_ENABLED and torch.cuda.is_available() else "cpu")
-
-        self.modal_coord = torch.tensor(modal_coord, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_coord = np.asarray(modal_coord, dtype=constants.NP_DTYPE)
 
         if modal_deformations is not None:
-            self.modal_deformations_ux = torch.tensor(modal_deformations[0], dtype=constants.TORCH_DTYPE).to(self.device)
-            self.modal_deformations_uy = torch.tensor(modal_deformations[1], dtype=constants.TORCH_DTYPE).to(self.device)
-            self.modal_deformations_uz = torch.tensor(modal_deformations[2], dtype=constants.TORCH_DTYPE).to(self.device)
+            self.modal_deformations_ux = np.asarray(modal_deformations[0], dtype=constants.NP_DTYPE)
+            self.modal_deformations_uy = np.asarray(modal_deformations[1], dtype=constants.NP_DTYPE)
+            self.modal_deformations_uz = np.asarray(modal_deformations[2], dtype=constants.NP_DTYPE)
         else:
             self.modal_deformations_ux = None
             self.modal_deformations_uy = None
             self.modal_deformations_uz = None
 
         # Initialize modal inputs
-        self.modal_sx = torch.tensor(modal_sx, dtype=constants.TORCH_DTYPE).to(self.device)
-        self.modal_sy = torch.tensor(modal_sy, dtype=constants.TORCH_DTYPE).to(self.device)
-        self.modal_sz = torch.tensor(modal_sz, dtype=constants.TORCH_DTYPE).to(self.device)
-        self.modal_sxy = torch.tensor(modal_sxy, dtype=constants.TORCH_DTYPE).to(self.device)
-        self.modal_syz = torch.tensor(modal_syz, dtype=constants.TORCH_DTYPE).to(self.device)
-        self.modal_sxz = torch.tensor(modal_sxz, dtype=constants.TORCH_DTYPE).to(self.device)
-        self.modal_coord = torch.tensor(modal_coord, dtype=constants.TORCH_DTYPE).to(self.device)
+        self.modal_sx = np.asarray(modal_sx, dtype=constants.NP_DTYPE)
+        self.modal_sy = np.asarray(modal_sy, dtype=constants.NP_DTYPE)
+        self.modal_sz = np.asarray(modal_sz, dtype=constants.NP_DTYPE)
+        self.modal_sxy = np.asarray(modal_sxy, dtype=constants.NP_DTYPE)
+        self.modal_syz = np.asarray(modal_syz, dtype=constants.NP_DTYPE)
+        self.modal_sxz = np.asarray(modal_sxz, dtype=constants.NP_DTYPE)
 
         # Store modal node IDs
         self.modal_node_ids = modal_node_ids
@@ -108,13 +101,12 @@ class MSUPSmartSolverTransient(QObject):
             self.steady_syz = self.map_steady_state_stresses(steady_syz, steady_node_ids, modal_node_ids)
             self.steady_sxz = self.map_steady_state_stresses(steady_sxz, steady_node_ids, modal_node_ids)
 
-            # Convert to torch tensors and move to device
-            self.steady_sx = torch.tensor(self.steady_sx, dtype=constants.TORCH_DTYPE).to(self.device)
-            self.steady_sy = torch.tensor(self.steady_sy, dtype=constants.TORCH_DTYPE).to(self.device)
-            self.steady_sz = torch.tensor(self.steady_sz, dtype=constants.TORCH_DTYPE).to(self.device)
-            self.steady_sxy = torch.tensor(self.steady_sxy, dtype=constants.TORCH_DTYPE).to(self.device)
-            self.steady_syz = torch.tensor(self.steady_syz, dtype=constants.TORCH_DTYPE).to(self.device)
-            self.steady_sxz = torch.tensor(self.steady_sxz, dtype=constants.TORCH_DTYPE).to(self.device)
+            self.steady_sx = np.asarray(self.steady_sx, dtype=constants.NP_DTYPE)
+            self.steady_sy = np.asarray(self.steady_sy, dtype=constants.NP_DTYPE)
+            self.steady_sz = np.asarray(self.steady_sz, dtype=constants.NP_DTYPE)
+            self.steady_sxy = np.asarray(self.steady_sxy, dtype=constants.NP_DTYPE)
+            self.steady_syz = np.asarray(self.steady_syz, dtype=constants.NP_DTYPE)
+            self.steady_sxz = np.asarray(self.steady_sxz, dtype=constants.NP_DTYPE)
         else:
             self.is_steady_state_included = False
 
@@ -122,72 +114,19 @@ class MSUPSmartSolverTransient(QObject):
         self.time_values = time_values.astype(constants.NP_DTYPE)
 
     # region Memory Management
-    def _is_gpu_mode(self) -> bool:
-        """Check if solver is running in GPU mode."""
-        return self.device.type == 'cuda'
-
-    def _get_gpu_memory_info(self) -> dict:
-        """
-        Get GPU memory information from both driver and PyTorch levels.
-        
-        Returns:
-            dict with keys:
-                - total: Total VRAM on device
-                - used: Actual VRAM used (driver-level, matches Task Manager)
-                - free: Actual VRAM free (driver-level)
-                - pytorch_allocated: Memory used by PyTorch tensors
-                - pytorch_reserved: Memory reserved by PyTorch's caching allocator
-                - available_for_chunks: Memory available for new chunk allocations
-        """
-        if not self._is_gpu_mode():
-            return {
-                'total': 0, 'used': 0, 'free': 0,
-                'pytorch_allocated': 0, 'pytorch_reserved': 0,
-                'available_for_chunks': 0
-            }
-        
-        # Driver-level memory info (matches Task Manager)
-        free_driver, total_driver = torch.cuda.mem_get_info(self.device)
-        used_driver = total_driver - free_driver
-        
-        # PyTorch allocator-level info (for debugging)
-        pytorch_allocated = torch.cuda.memory_allocated(self.device)
-        pytorch_reserved = torch.cuda.memory_reserved(self.device)
-        
-        # Available for new chunks = driver-level free memory with safety margin
-        available_for_chunks = int(free_driver * constants.GPU_MEMORY_PERCENT)
-        
-        return {
-            'total': total_driver,
-            'used': used_driver,
-            'free': free_driver,
-            'pytorch_allocated': pytorch_allocated,
-            'pytorch_reserved': pytorch_reserved,
-            'available_for_chunks': max(0, available_for_chunks)
-        }
-
     def _get_available_memory(self) -> int:
         """
-        Get available memory for computation based on device type.
+        Get available memory for computation.
         
         Returns:
             Available memory in bytes.
         """
-        if self._is_gpu_mode():
-            return self._get_gpu_memory_info()['available_for_chunks']
-        else:
-            return int(psutil.virtual_memory().available * constants.RAM_PERCENT)
+        return int(psutil.virtual_memory().available * constants.RAM_PERCENT)
 
     def _get_current_memory_usage_str(self) -> str:
         """Get a formatted string of current memory usage for logging."""
-        if self._is_gpu_mode():
-            info = self._get_gpu_memory_info()
-            used_pct = (info['used'] / info['total']) * 100 if info['total'] > 0 else 0
-            return (f"GPU VRAM - Used: {info['used'] / (1024**3):.2f} GB / "
-                    f"{info['total'] / (1024**3):.2f} GB ({used_pct:.1f}%)")
-        else:
-            mem = psutil.virtual_memory()
-            return f"RAM Available: {mem.available / (1024**3):.2f} GB"
+        mem = psutil.virtual_memory()
+        return f"RAM Available: {mem.available / (1024**3):.2f} GB"
 
     def _estimate_chunk_size(self, num_time_points, calculate_von_mises, calculate_max_principal_stress,
                              calculate_damage, calculate_deformation=False,
@@ -195,54 +134,21 @@ class MSUPSmartSolverTransient(QObject):
         """
         Calculate the optimal chunk size for processing based on available memory.
         
-        For GPU mode: Uses GPU VRAM, only counting tensors that actually reside on GPU.
-        For CPU mode: Uses system RAM for all arrays.
+        Uses system RAM for all arrays.
         """
         available_memory = self._get_available_memory()
-        
-        if self._is_gpu_mode():
-            # GPU mode: Only the 6 stress matmul outputs + 3 deformation outputs are on GPU
-            # Von Mises, principal stresses, etc. are computed on CPU with Numba
-            memory_per_node = self._get_gpu_memory_per_node(
-                num_time_points,
-                calculate_deformation or calculate_velocity or calculate_acceleration
-            )
-        else:
-            # CPU mode: All arrays are in RAM
-            memory_per_node = self._get_memory_per_node(
-                num_time_points,
-                calculate_von_mises,
-                calculate_max_principal_stress,
-                calculate_damage,
-                calculate_deformation,
-                calculate_velocity,
-                calculate_acceleration
-            )
+        memory_per_node = self._get_memory_per_node(
+            num_time_points,
+            calculate_von_mises,
+            calculate_max_principal_stress,
+            calculate_damage,
+            calculate_deformation,
+            calculate_velocity,
+            calculate_acceleration
+        )
         
         max_nodes_per_iteration = available_memory // memory_per_node
         return max(1, int(max_nodes_per_iteration))
-    
-    def _get_gpu_memory_per_node(self, num_time_points, calculate_kinematics=False):
-        """
-        Calculate GPU VRAM required per node for GPU-resident tensors only.
-        
-        Only counts tensors that actually live on GPU during computation:
-        - 6 stress component outputs from torch.matmul
-        - 3 deformation outputs from torch.matmul (if kinematics enabled)
-        
-        Note: Von Mises, principal stresses, etc. are computed on CPU with Numba,
-        so they don't consume GPU memory.
-        """
-        # Base: 6 stress component tensors from matmul (sx, sy, sz, sxy, syz, sxz)
-        num_gpu_arrays = 6
-        
-        # Deformation tensors if kinematics are computed (ux, uy, uz)
-        if calculate_kinematics:
-            num_gpu_arrays += 3
-        
-        dtype_size = np.dtype(constants.NP_DTYPE).itemsize
-        memory_per_node = num_gpu_arrays * num_time_points * dtype_size
-        return memory_per_node
 
     def _estimate_memory_required_per_iteration(self, chunk_size, memory_per_node):
         """Estimate the total memory required per iteration to compute stresses."""
@@ -659,7 +565,7 @@ class MSUPSmartSolverTransient(QObject):
         return damages
     # endregion
 
-    # region Core Computations (PyTorch/Numpy)
+    # region Core Computations (NumPy)
     @staticmethod
     def map_steady_state_stresses(steady_stress, steady_node_ids, modal_node_ids):
         """Map steady-state stress data to modal node IDs."""
@@ -672,44 +578,43 @@ class MSUPSmartSolverTransient(QObject):
 
     def compute_normal_stresses(self, start_idx, end_idx):
         """Compute actual stresses using matrix multiplication."""
-        actual_sx = torch.matmul(self.modal_sx[start_idx:end_idx, :], self.modal_coord)
-        actual_sy = torch.matmul(self.modal_sy[start_idx:end_idx, :], self.modal_coord)
-        actual_sz = torch.matmul(self.modal_sz[start_idx:end_idx, :], self.modal_coord)
-        actual_sxy = torch.matmul(self.modal_sxy[start_idx:end_idx, :], self.modal_coord)
-        actual_syz = torch.matmul(self.modal_syz[start_idx:end_idx, :], self.modal_coord)
-        actual_sxz = torch.matmul(self.modal_sxz[start_idx:end_idx, :], self.modal_coord)
+        actual_sx = np.matmul(self.modal_sx[start_idx:end_idx, :], self.modal_coord)
+        actual_sy = np.matmul(self.modal_sy[start_idx:end_idx, :], self.modal_coord)
+        actual_sz = np.matmul(self.modal_sz[start_idx:end_idx, :], self.modal_coord)
+        actual_sxy = np.matmul(self.modal_sxy[start_idx:end_idx, :], self.modal_coord)
+        actual_syz = np.matmul(self.modal_syz[start_idx:end_idx, :], self.modal_coord)
+        actual_sxz = np.matmul(self.modal_sxz[start_idx:end_idx, :], self.modal_coord)
 
         # Add steady-state stresses if included
         if self.is_steady_state_included:
-            actual_sx += self.steady_sx[start_idx:end_idx].unsqueeze(1)
-            actual_sy += self.steady_sy[start_idx:end_idx].unsqueeze(1)
-            actual_sz += self.steady_sz[start_idx:end_idx].unsqueeze(1)
-            actual_sxy += self.steady_sxy[start_idx:end_idx].unsqueeze(1)
-            actual_syz += self.steady_syz[start_idx:end_idx].unsqueeze(1)
-            actual_sxz += self.steady_sxz[start_idx:end_idx].unsqueeze(1)
+            actual_sx += self.steady_sx[start_idx:end_idx][:, None]
+            actual_sy += self.steady_sy[start_idx:end_idx][:, None]
+            actual_sz += self.steady_sz[start_idx:end_idx][:, None]
+            actual_sxy += self.steady_sxy[start_idx:end_idx][:, None]
+            actual_syz += self.steady_syz[start_idx:end_idx][:, None]
+            actual_sxz += self.steady_sxz[start_idx:end_idx][:, None]
 
-        return actual_sx.cpu().numpy(), actual_sy.cpu().numpy(), actual_sz.cpu().numpy(), \
-            actual_sxy.cpu().numpy(), actual_syz.cpu().numpy(), actual_sxz.cpu().numpy()
+        return actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz
 
     def compute_normal_stresses_for_a_single_node(self, selected_node_idx):
         """Compute actual stresses using matrix multiplication."""
-        actual_sx = torch.matmul(self.modal_sx[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
-        actual_sy = torch.matmul(self.modal_sy[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
-        actual_sz = torch.matmul(self.modal_sz[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
-        actual_sxy = torch.matmul(self.modal_sxy[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
-        actual_syz = torch.matmul(self.modal_syz[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
-        actual_sxz = torch.matmul(self.modal_sxz[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
+        actual_sx = np.matmul(self.modal_sx[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
+        actual_sy = np.matmul(self.modal_sy[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
+        actual_sz = np.matmul(self.modal_sz[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
+        actual_sxy = np.matmul(self.modal_sxy[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
+        actual_syz = np.matmul(self.modal_syz[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
+        actual_sxz = np.matmul(self.modal_sxz[selected_node_idx: selected_node_idx + 1, :], self.modal_coord)
 
         # Add steady-state stresses if included
         if self.is_steady_state_included:
-            actual_sx += self.steady_sx[selected_node_idx].unsqueeze(0)
-            actual_sy += self.steady_sy[selected_node_idx].unsqueeze(0)
-            actual_sz += self.steady_sz[selected_node_idx].unsqueeze(0)
-            actual_sxy += self.steady_sxy[selected_node_idx].unsqueeze(0)
-            actual_syz += self.steady_syz[selected_node_idx].unsqueeze(0)
-            actual_sxz += self.steady_sxz[selected_node_idx].unsqueeze(0)
+            actual_sx += self.steady_sx[selected_node_idx]
+            actual_sy += self.steady_sy[selected_node_idx]
+            actual_sz += self.steady_sz[selected_node_idx]
+            actual_sxy += self.steady_sxy[selected_node_idx]
+            actual_syz += self.steady_syz[selected_node_idx]
+            actual_sxz += self.steady_sxz[selected_node_idx]
 
-        return actual_sx.cpu().numpy(), actual_sy.cpu().numpy(), actual_sz.cpu().numpy(), actual_sxy.cpu().numpy(), actual_syz.cpu().numpy(), actual_sxz.cpu().numpy()
+        return actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz
 
     def compute_deformations(self, start_idx, end_idx):
         """
@@ -720,10 +625,10 @@ class MSUPSmartSolverTransient(QObject):
             return None  # No deformations data available
 
         # Compute displacements
-        actual_ux = torch.matmul(self.modal_deformations_ux[start_idx:end_idx, :], self.modal_coord)
-        actual_uy = torch.matmul(self.modal_deformations_uy[start_idx:end_idx, :], self.modal_coord)
-        actual_uz = torch.matmul(self.modal_deformations_uz[start_idx:end_idx, :], self.modal_coord)
-        return (actual_ux.cpu().numpy(), actual_uy.cpu().numpy(), actual_uz.cpu().numpy())
+        actual_ux = np.matmul(self.modal_deformations_ux[start_idx:end_idx, :], self.modal_coord)
+        actual_uy = np.matmul(self.modal_deformations_uy[start_idx:end_idx, :], self.modal_coord)
+        actual_uz = np.matmul(self.modal_deformations_uz[start_idx:end_idx, :], self.modal_coord)
+        return (actual_ux, actual_uy, actual_uz)
 
     def set_plasticity_context(self, context: Optional[PlasticityRuntimeContext]):
         """Assign the runtime plasticity context (``None`` disables plasticity)."""
@@ -1090,47 +995,26 @@ class MSUPSmartSolverTransient(QObject):
         num_nodes, _ = self.modal_sx.shape
         num_time_points = self.modal_coord.shape[1]
 
-        # Display memory information based on compute device
-        if self._is_gpu_mode():
-            gpu_info = self._get_gpu_memory_info()
-            gpu_name = torch.cuda.get_device_name(self.device)
-            self.total_memory = gpu_info['total'] / (1024 ** 3)
-            self.available_memory = gpu_info['available_for_chunks'] / (1024 ** 3)
-            self.allocated_memory = self.available_memory
-            used_pct = (gpu_info['used'] / gpu_info['total']) * 100 if gpu_info['total'] > 0 else 0
-            print(f"Compute Device: GPU ({gpu_name})")
-            print(f"Total GPU VRAM: {self.total_memory:.2f} GB")
-            print(f"Currently Used: {gpu_info['used'] / (1024 ** 3):.2f} GB ({used_pct:.1f}%)")
-            print(f"Available for Processing: {self.available_memory:.2f} GB")
-        else:
-            my_virtual_memory = psutil.virtual_memory()
-            self.total_memory = my_virtual_memory.total / (1024 ** 3)
-            self.available_memory = my_virtual_memory.available / (1024 ** 3)
-            self.allocated_memory = my_virtual_memory.available * constants.RAM_PERCENT / (1024 ** 3)
-            print(f"Compute Device: CPU")
-            print(f"Total system RAM: {self.total_memory:.2f} GB")
-            print(f"Available system RAM: {self.available_memory:.2f} GB")
-            print(f"Allocated for Processing: {self.allocated_memory:.2f} GB")
+        my_virtual_memory = psutil.virtual_memory()
+        self.total_memory = my_virtual_memory.total / (1024 ** 3)
+        self.available_memory = my_virtual_memory.available / (1024 ** 3)
+        self.allocated_memory = my_virtual_memory.available * constants.RAM_PERCENT / (1024 ** 3)
+        print("Compute Device: CPU")
+        print(f"Total system RAM: {self.total_memory:.2f} GB")
+        print(f"Available system RAM: {self.available_memory:.2f} GB")
+        print(f"Allocated for Processing: {self.allocated_memory:.2f} GB")
 
         chunk_size = self._estimate_chunk_size(
             num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
             calculate_deformation, calculate_velocity, calculate_acceleration)
         num_iterations = (num_nodes + chunk_size - 1) // chunk_size
 
-        # Calculate memory per node based on device type
-        is_kinematics = calculate_deformation or calculate_velocity or calculate_acceleration
-        if self._is_gpu_mode():
-            gpu_mem_per_node = self._get_gpu_memory_per_node(num_time_points, is_kinematics)
-            gpu_mem_per_iter = self._estimate_memory_required_per_iteration(chunk_size, gpu_mem_per_node)
-            print(f"Processing {num_nodes} nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
-            print(f"Estimated GPU VRAM per iteration: {gpu_mem_per_iter:.2f} GB")
-        else:
-            ram_per_node = self._get_memory_per_node(
-                num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-                calculate_deformation, calculate_velocity, calculate_acceleration)
-            ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
-            print(f"Processing {num_nodes} nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
-            print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
+        ram_per_node = self._get_memory_per_node(
+            num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
+            calculate_deformation, calculate_velocity, calculate_acceleration)
+        ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
+        print(f"Processing {num_nodes} nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
+        print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
         print()  # Blank line for readability
 
         # --- 2. Setup Calculation Jobs and Memmap Files ---
@@ -1163,8 +1047,6 @@ class MSUPSmartSolverTransient(QObject):
             start_time = time.time()
             del actual_stresses
             gc.collect()
-            if self._is_gpu_mode():
-                torch.cuda.empty_cache()
             print(f"Elapsed time for garbage collection: {(time.time() - start_time):.3f} seconds")
 
             progress_percentage = ((i + 1) / num_iterations) * 100

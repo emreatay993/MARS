@@ -38,11 +38,6 @@ Previously, the Settings menu was mentioned but never explained. Now fully docum
   - Memory usage (2× for double)
   - When to use each
 
-- **GPU Acceleration**: NVIDIA CUDA toggle
-  - Requirements (CUDA toolkit, compatible GPU)
-  - Expected speedup (2-10× for large models)
-  - Automatic CPU fallback behavior
-
 #### Location in Manuals:
 - **Detailed Manual**: New Page 15 (all subsequent pages renumbered)
 - **Quick Manual**: New Section 4
@@ -156,8 +151,7 @@ Previously, the Settings menu was mentioned but never explained. Now fully docum
 
 | Issue | Fix | Manual(s) |
 |-------|-----|-----------|
-| GPU not being used | Check Settings → Advanced; install CUDA or disable | Detailed (Page 29), Quick (Section 8) |
-| Solver very slow | Increase RAM %, switch to Single precision, or enable GPU | Detailed (Page 29), Quick (Section 8) |
+| Solver very slow | Increase RAM %, switch to Single precision, or reduce output scope | Detailed (Page 29), Quick (Section 8) |
 | Temperature file error | Use CSV format with NodeID, Temperature columns | Detailed (Page 29), Quick (Section 8) |
 
 ---
@@ -167,7 +161,7 @@ Previously, the Settings menu was mentioned but never explained. Now fully docum
 ### New Questions Added to Detailed Manual (Page 34):
 
 1. **Q**: How do I speed up large analyses?  
-   **A**: Go to Settings → Advanced. Increase RAM allocation to 90%, switch to Single precision, or enable GPU acceleration if you have NVIDIA CUDA.
+   **A**: Go to Settings → Advanced. Increase RAM allocation to 90%, switch to Single precision, or reduce output scope.
 
 2. **Q**: What does "Skip first n modes" do?  
    **A**: Excludes the first n modes from analysis. Use this to skip rigid-body modes (usually 6 for free-free structures) or modes with bad data.
@@ -204,12 +198,6 @@ Comprehensive technical discussion of:
 - RAM allocation impact
 - Chunking behavior
 - Typical memory requirements by model size
-
-#### 10.3 GPU Acceleration
-- Which operations are accelerated
-- Expected speedup profiles
-- CUDA requirements
-- Fallback behavior
 
 ### Section 8.5.4: Iteration Control Parameters (NEW)
 
@@ -295,8 +283,7 @@ Four new terms added:
 
 1. **Single precision**: Floating-point format with ~7 significant digits; faster but less accurate.
 2. **Double precision**: Floating-point format with ~15 significant digits; slower but more accurate.
-3. **GPU acceleration**: Use of NVIDIA CUDA for parallel matrix operations; requires compatible hardware.
-4. **RAM allocation**: Percentage of system memory MARS is allowed to use for solver operations.
+3. **RAM allocation**: Percentage of system memory MARS is allowed to use for solver operations.
 
 ---
 
@@ -378,7 +365,7 @@ Throughout updates, added cross-references between manuals:
 
 ### Long Term:
 7. **Case Studies**: Add example analyses demonstrating when to use each Advanced Setting
-8. **Benchmark Data**: Include performance benchmarks for Single vs. Double, CPU vs. GPU
+8. **Benchmark Data**: Include performance benchmarks for Single vs. Double precision
 9. **Material Database**: Provide example temperature-dependent material profiles for common alloys
 
 ---
@@ -394,7 +381,7 @@ All three updated manuals are ready for:
 
 ## Conclusion
 
-These updates address **10 major documentation gaps** discovered through systematic code inspection:
+These updates address **9 major documentation gaps** discovered through systematic code inspection:
 
 1. Advanced Settings dialog (complete feature)
 2. Plasticity iteration controls (GUI parameters)
@@ -403,16 +390,15 @@ These updates address **10 major documentation gaps** discovered through systema
 5. Skip modes guidance (when/why/how)
 6. Animation throttling (Every nth)
 7. Navigator filtering (hidden behavior)
-8. GPU acceleration details (requirements, behavior)
-9. Precision selection (trade-offs)
-10. RAM allocation (performance tuning)
+8. Precision selection (trade-offs)
+9. RAM allocation (performance tuning)
 
 **Total content added**: ~2,500 words across three manuals  
 **New sections**: 3 major sections + 8 subsections  
 **Pages added**: 1 (Detailed Manual: 34 → 35 pages)  
 **Troubleshooting entries**: +3  
 **FAQ entries**: +3  
-**Glossary terms**: +4
+**Glossary terms**: +3
 
 All updates maintain consistency with existing documentation style, technical accuracy verified against implementation code.
 
