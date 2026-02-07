@@ -6,6 +6,20 @@ These styles are applied directly to widgets using setStyleSheet() to match
 the legacy approach, but centralized here for maintainability.
 """
 
+# Tooltip styles (applied globally via QApplication or QMainWindow)
+TOOLTIP_STYLE = """
+QToolTip {
+    background-color: #f7f9fc;
+    color: #1a1a2e;
+    border: 1px solid #5b9bd5;
+    border-radius: 4px;
+    padding: 8px 10px;
+    font-family: Arial, sans-serif;
+    font-size: 8pt;
+    opacity: 245;
+}
+"""
+
 # Button styles
 BUTTON_STYLE = """
     QPushButton {

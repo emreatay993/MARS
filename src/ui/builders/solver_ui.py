@@ -21,6 +21,7 @@ from ui.styles.style_constants import (
     CHECKBOX_STYLE, CONSOLE_STYLE, PROGRESS_BAR_STYLE
 )
 from ui.widgets.plotting import MatplotlibWidget, PlotlyWidget
+from ui import tooltips
 
 
 class SolverTabUIBuilder:
@@ -43,69 +44,84 @@ class SolverTabUIBuilder:
             QGroupBox: Group box containing file input controls.
         """
         # Modal Coordinate File
-        coord_file_button = QPushButton('Read Modal Coordinate File (.mcf)')
+        coord_file_button = QPushButton('Read Modal Coordinate File (.mcf / .pch)')
         coord_file_button.setStyleSheet(BUTTON_STYLE)
         coord_file_button.setFont(QFont('Arial', 8))
+        coord_file_button.setToolTip(tooltips.COORD_FILE_BUTTON)
         coord_file_path = QLineEdit()
         coord_file_path.setReadOnly(True)
         coord_file_path.setStyleSheet(READONLY_INPUT_STYLE)
+        coord_file_path.setToolTip(tooltips.COORD_FILE_PATH)
 
         # Modal Stress File
         stress_file_button = QPushButton('Read Modal Stress File (.csv)')
         stress_file_button.setStyleSheet(BUTTON_STYLE)
         stress_file_button.setFont(QFont('Arial', 8))
+        stress_file_button.setToolTip(tooltips.STRESS_FILE_BUTTON)
         stress_file_path = QLineEdit()
         stress_file_path.setReadOnly(True)
         stress_file_path.setStyleSheet(READONLY_INPUT_STYLE)
+        stress_file_path.setToolTip(tooltips.STRESS_FILE_PATH)
         
         # Steady-State Stress (optional)
         steady_state_checkbox = QCheckBox("Include Steady-State Stress Field (Optional)")
         steady_state_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        steady_state_checkbox.setToolTip(tooltips.STEADY_STATE_CHECKBOX)
 
         steady_state_file_button = QPushButton('Read Full Stress Tensor File (.txt)')
         steady_state_file_button.setStyleSheet(BUTTON_STYLE)
         steady_state_file_button.setFont(QFont('Arial', 8))
         steady_state_file_button.setVisible(False)
+        steady_state_file_button.setToolTip(tooltips.STEADY_STATE_FILE_BUTTON)
 
         steady_state_file_path = QLineEdit()
         steady_state_file_path.setReadOnly(True)
         steady_state_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         steady_state_file_path.setVisible(False)
+        steady_state_file_path.setToolTip(tooltips.STEADY_STATE_FILE_PATH)
 
         # Deformations (optional)
         deformations_checkbox = QCheckBox("Include Deformations (Optional)")
         deformations_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        deformations_checkbox.setToolTip(tooltips.DEFORMATIONS_CHECKBOX)
 
         deformations_file_button = QPushButton('Read Modal Deformations File (.csv)')
         deformations_file_button.setStyleSheet(BUTTON_STYLE)
         deformations_file_button.setFont(QFont('Arial', 8))
         deformations_file_button.setVisible(False)
+        deformations_file_button.setToolTip(tooltips.DEFORMATIONS_FILE_BUTTON)
 
         deformations_file_path = QLineEdit()
         deformations_file_path.setReadOnly(True)
         deformations_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         deformations_file_path.setVisible(False)
+        deformations_file_path.setToolTip(tooltips.DEFORMATIONS_FILE_PATH)
         
         # Element Nodal Forces & Moments (optional)
         force_moment_checkbox = QCheckBox("Include Element Nodal Forces && Moments (Optional)")
         force_moment_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        force_moment_checkbox.setToolTip(tooltips.FORCE_MOMENT_CHECKBOX)
 
         force_moment_file_button = QPushButton('Read Element Nodal Forces && Moments File (.csv)')
         force_moment_file_button.setStyleSheet(BUTTON_STYLE)
         force_moment_file_button.setFont(QFont('Arial', 8))
         force_moment_file_button.setVisible(False)
+        force_moment_file_button.setToolTip(tooltips.FORCE_MOMENT_FILE_BUTTON)
 
         force_moment_file_path = QLineEdit()
         force_moment_file_path.setReadOnly(True)
         force_moment_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         force_moment_file_path.setVisible(False)
+        force_moment_file_path.setToolTip(tooltips.FORCE_MOMENT_FILE_PATH)
 
         # Skip modes controls
         skip_modes_label = QLabel("Skip first n modes:")
         skip_modes_label.setVisible(False)
+        skip_modes_label.setToolTip(tooltips.SKIP_MODES_LABEL)
         skip_modes_combo = QComboBox()
         skip_modes_combo.setFixedWidth(80)
         skip_modes_combo.setVisible(False)
+        skip_modes_combo.setToolTip(tooltips.SKIP_MODES_COMBO)
         
         # Layout
         file_layout = QGridLayout()
@@ -360,7 +376,7 @@ class SolverTabUIBuilder:
         # Diagnostics toggle: optional overlay of Δεp and εp in time-history
         diag_checkbox = QCheckBox('Show plasticity diagnostics (Δεp, εp)')
         diag_checkbox.setStyleSheet(CHECKBOX_STYLE)
-        diag_checkbox.setToolTip('Plot per-step Δεp and cumulative εp on a secondary axis in Time History mode.')
+        diag_checkbox.setToolTip(tooltips.PLASTICITY_DIAG_CHECKBOX)
 
         # Extrapolation mode
         extrap_row = QHBoxLayout()

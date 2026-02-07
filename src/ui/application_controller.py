@@ -21,7 +21,8 @@ from ui.handlers.plotting_handler import PlottingHandler
 from ui.handlers.settings_handler import SettingsHandler
 from ui.handlers.navigator_handler import NavigatorHandler
 from ui.styles.style_constants import (
-    MENU_BAR_STYLE, NAVIGATOR_TITLE_STYLE, TREE_VIEW_STYLE, TAB_STYLE
+    MENU_BAR_STYLE, NAVIGATOR_TITLE_STYLE, TREE_VIEW_STYLE, TAB_STYLE,
+    TOOLTIP_STYLE
 )
 
 
@@ -41,6 +42,9 @@ class ApplicationController(QMainWindow):
         palette = self.palette()
         palette.setColor(QPalette.Window, QColor(230, 230, 230))  # Light gray background
         self.setPalette(palette)
+
+        # Apply global tooltip style
+        self.setStyleSheet(TOOLTIP_STYLE)
 
         # Handlers
         self.plotting_handler = PlottingHandler()

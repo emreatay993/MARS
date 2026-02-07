@@ -11,7 +11,7 @@ from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 # Import your existing loaders
 from file_io.loaders import (
-    load_modal_coordinates, load_modal_stress,
+    load_modal_coordinates, load_modal_coordinates_pch, load_modal_stress,
     load_modal_deformations, load_element_nodal_forces_moments,
     load_steady_state_stress, load_temperature_field
 )
@@ -64,7 +64,7 @@ class SolverFileHandler:
         """Open file dialog for modal coordinate file."""
         file_name, _ = QFileDialog.getOpenFileName(
             self.tab, 'Open Modal Coordinate File', '',
-            'Coordinate Files (*.mcf)'
+            'Coordinate Files (*.mcf *.pch);;MCF Files (*.mcf);;NASTRAN Punch Files (*.pch);;All Files (*)'
         )
         if file_name:
             self._load_coordinate_file(file_name)
@@ -74,9 +74,15 @@ class SolverFileHandler:
         # Disable UI during load
         self.tab.setEnabled(False)
         self.tab.console_textbox.append("⏳ Loading coordinate file in background...\n")
-        
+
+        # Select loader based on file extension
+        if filename.lower().endswith('.pch'):
+            loader_func = load_modal_coordinates_pch
+        else:
+            loader_func = load_modal_coordinates
+
         # Create and start loader thread
-        self.coord_loader_thread = FileLoaderThread(load_modal_coordinates, filename)
+        self.coord_loader_thread = FileLoaderThread(loader_func, filename)
         self.coord_loader_thread.finished.connect(
             lambda data: self._on_coordinate_loaded(data, filename)
         )
