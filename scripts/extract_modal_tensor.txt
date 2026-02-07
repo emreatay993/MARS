@@ -25,6 +25,7 @@ from System.Windows.Forms import (
     Form,
     FormBorderStyle,
     FormWindowState,
+    ToolTip,
     Label,
     ComboBox,
     ComboBoxStyle,
@@ -74,20 +75,11 @@ class _NoOpTransaction(object):
 
 
 def begin_transaction(suspend_clicks=True):
-    try:
-        return Transaction(suspend_clicks)
-    except Exception:
-        try:
-            return Transaction()
-        except Exception:
-            return _NoOpTransaction()
+    return Transaction(suspend_clicks)
 
 
 def begin_graphics_suspend():
-    try:
-        return ExtAPI.Graphics.Suspend()
-    except Exception:
-        return _NoOpTransaction()
+    return ExtAPI.Graphics.Suspend()
 
 
 def restore_ui_interaction_state():
@@ -228,12 +220,9 @@ def as_list(sequence):
 
 def safe_float(value, default_value=0.0):
     try:
-        return float(value)
+        return float(value.Value if hasattr(value, "Value") else value)
     except Exception:
-        try:
-            return float(value.Value)
-        except Exception:
-            return default_value
+        return default_value
 
 
 def bytes_to_gib(num_bytes):
@@ -302,43 +291,31 @@ def is_modal_analysis_candidate(analysis):
     if analysis is None:
         return False
 
-    # Primary filter: explicit analysis type enum.
-    try:
-        analysis_type = analysis.AnalysisType
-    except Exception:
-        analysis_type = None
+    analysis_type = getattr(analysis, "AnalysisType", None)
 
     if analysis_type is not None:
         # Enum numeric check (Modal=5 in Mechanical AnalysisType enum).
-        at_int = None
-        try:
-            at_int = int(analysis_type)
-        except Exception:
+        int_candidates = [
+            analysis_type,
+            getattr(analysis_type, "Value", None),
+            getattr(analysis_type, "value__", None),
+        ]
+        for candidate in int_candidates:
             try:
-                at_int = int(analysis_type.Value)
+                if int(candidate) == ANALYSIS_TYPE_MODAL_VALUE:
+                    return True
             except Exception:
-                try:
-                    at_int = int(analysis_type.value__)
-                except Exception:
-                    at_int = None
-        if at_int == ANALYSIS_TYPE_MODAL_VALUE:
-            return True
+                pass
 
         # Enum name check across Mechanical versions.
-        try:
-            at_text = str(analysis_type).strip().lower()
-            if at_text == "modal" or at_text.endswith(".modal"):
-                return True
-        except Exception:
-            pass
+        at_text = str(analysis_type).strip().lower()
+        if at_text == "modal" or at_text.endswith(".modal"):
+            return True
 
     # Secondary filter by runtime .NET type name.
-    try:
-        type_text = str(analysis.GetType().FullName).lower()
-        if "modal" in type_text:
-            return True
-    except Exception:
-        pass
+    type_text = str(analysis.GetType().FullName).lower()
+    if "modal" in type_text:
+        return True
 
     return False
 
@@ -387,74 +364,51 @@ def get_analysis_solution_and_modes(selected_analysis):
 
 def get_mesh_data_global():
     try:
-        return DataModel.MeshDataByName("Global")
+        return ExtAPI.DataModel.MeshDataByName("Global")
     except Exception:
-        try:
-            return ExtAPI.DataModel.MeshDataByName("Global")
-        except Exception:
-            return None
+        return None
 
 
 def get_global_coordinate_system_object():
-    # Preferred source: Model > Coordinate Systems branch.
-    try:
-        cs_children = as_list(ExtAPI.DataModel.Project.Model.CoordinateSystems.Children)
+    cs_children = as_list(ExtAPI.DataModel.Project.Model.CoordinateSystems.Children)
+    if len(cs_children) > 0:
         for cs in cs_children:
-            try:
-                if bool(cs.IsGlobal):
-                    return cs
-            except Exception:
-                pass
-        if len(cs_children) > 0:
-            return cs_children[0]
-    except Exception:
-        pass
+            if bool(getattr(cs, "IsGlobal", False)):
+                return cs
+        return cs_children[0]
 
-    # Fallback source: all coordinate systems from DataModel.
-    try:
-        all_cs = as_list(ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.CoordinateSystem))
+    all_cs = as_list(ExtAPI.DataModel.GetObjectsByType(DataModelObjectCategory.CoordinateSystem))
+    if len(all_cs) > 0:
         for cs in all_cs:
-            try:
-                if bool(cs.IsGlobal):
-                    return cs
-            except Exception:
-                pass
-        if len(all_cs) > 0:
-            return all_cs[0]
-    except Exception:
-        pass
+            if bool(getattr(cs, "IsGlobal", False)):
+                return cs
+        return all_cs[0]
 
     return None
 
 
 def is_nodal_named_selection(named_selection, mesh_data):
-    # Fast path: selection type text contains mesh node.
     try:
-        sel_type_text = str(named_selection.Location.SelectionType).lower().replace("_", "")
+        location = named_selection.Location
+        sel_type_text = str(location.SelectionType).lower().replace("_", "")
         if "meshnode" in sel_type_text:
             return True
         if "node" in sel_type_text and "mesh" in sel_type_text:
             return True
-    except Exception:
-        pass
 
-    # Fallback: probe a few IDs against mesh nodes.
-    try:
-        ids = named_selection.Location.Ids
+        ids = location.Ids
         if ids is None or len(ids) == 0:
             return False
         if mesh_data is None:
             return True
+
         probe_count = min(5, len(ids))
         hits = 0
         for i in xrange(probe_count):
-            try:
-                nid = int(ids[i])
-                node = mesh_data.NodeById(nid)
-                if node is not None:
-                    hits += 1
-            except Exception:
-                pass
+            nid = int(ids[i])
+            node = mesh_data.NodeById(nid)
+            if node is not None:
+                hits += 1
         return hits > 0
     except Exception:
         return False
@@ -486,14 +440,17 @@ class ExtractOptionsDialog(Form):
         self.Text = "Modal Tensor Extractor"
         self.StartPosition = FormStartPosition.CenterScreen
         self.Size = Size(920, 500)
-        try:
-            self.FormBorderStyle = FormBorderStyle.FixedSingle
-        except Exception:
-            self.FormBorderStyle = getattr(FormBorderStyle, "None")
+        self.FormBorderStyle = FormBorderStyle.FixedSingle
         self.MaximizeBox = False
         self.MinimizeBox = False
         self.TopMost = False
         self.FormClosing += self._on_form_closing
+
+        self.tooltips = ToolTip()
+        self.tooltips.ShowAlways = True
+        self.tooltips.AutoPopDelay = 30000
+        self.tooltips.InitialDelay = 400
+        self.tooltips.ReshowDelay = 200
 
         title = Label()
         title.Text = "Modal Tensor Extractor"
@@ -501,6 +458,10 @@ class ExtractOptionsDialog(Form):
         title.Size = Size(860, 24)
         title.Font = Font(title.Font, FontStyle.Bold)
         self.Controls.Add(title)
+        self.tooltips.SetToolTip(
+            title,
+            "Extracts requested modal result tensors to CSV with RAM-aware batching and temporary-object cleanup.",
+        )
 
         analysis_label = Label()
         analysis_label.Text = "Modal Analysis Environment:"
@@ -519,6 +480,11 @@ class ExtractOptionsDialog(Form):
             self.analysis_combo.SelectedIndex = 0
         self.analysis_combo.Enabled = (self.analysis_combo.Items.Count > 1)
         self.Controls.Add(self.analysis_combo)
+        self.tooltips.SetToolTip(
+            self.analysis_combo,
+            "Select the modal analysis environment. Only modal analyses are listed; "
+            "if none are detected, extraction stops before run.",
+        )
 
         ns_label = Label()
         ns_label.Text = "Nodal Named Selection:"
@@ -535,12 +501,22 @@ class ExtractOptionsDialog(Form):
         if self.ns_combo.Items.Count > 0:
             self.ns_combo.SelectedIndex = 0
         self.Controls.Add(self.ns_combo)
+        self.tooltips.SetToolTip(
+            self.ns_combo,
+            "Scope for extraction. Nodal named selections are preferred. "
+            "If classification is ambiguous, IDs are probed against mesh nodes.",
+        )
 
         grp = GroupBox()
         grp.Text = "Result Types (Select one or more)"
         grp.Location = Point(20, 172)
         grp.Size = Size(860, 108)
         self.Controls.Add(grp)
+        self.tooltips.SetToolTip(
+            grp,
+            "Choose one or more result families. Selected families are executed sequentially "
+            "to keep peak RAM lower.",
+        )
 
         self.cb_stress = CheckBox()
         self.cb_stress.Text = RESULT_KIND_OPTIONS[0][1]
@@ -548,18 +524,34 @@ class ExtractOptionsDialog(Form):
         self.cb_stress.Size = Size(820, 22)
         self.cb_stress.Checked = True
         grp.Controls.Add(self.cb_stress)
+        self.tooltips.SetToolTip(
+            self.cb_stress,
+            "Exports sx, sy, sz, sxy, syz, sxz. Unit conversion: Pa -> MPa when source unit is Pa; "
+            "otherwise values are written in native result unit.",
+        )
 
         self.cb_deformation = CheckBox()
         self.cb_deformation.Text = RESULT_KIND_OPTIONS[1][1]
         self.cb_deformation.Location = Point(16, 48)
         self.cb_deformation.Size = Size(820, 22)
         grp.Controls.Add(self.cb_deformation)
+        self.tooltips.SetToolTip(
+            self.cb_deformation,
+            "Exports ux, uy, uz. Unit conversion: m -> mm when source unit is m; "
+            "otherwise values are written in native result unit.",
+        )
 
         self.cb_forces = CheckBox()
         self.cb_forces.Text = RESULT_KIND_OPTIONS[2][1]
         self.cb_forces.Location = Point(16, 72)
         self.cb_forces.Size = Size(820, 22)
         grp.Controls.Add(self.cb_forces)
+        self.tooltips.SetToolTip(
+            self.cb_forces,
+            "Exports ENFOX/ENFOY/ENFOZ and ENMOX/ENMOY/ENMOZ together via temporary UDRs. "
+            "Global coordinate system is enforced. No extra unit conversion is applied. "
+            "If force/moment channels are unavailable for selected mode/scope, extraction fails fast.",
+        )
 
         self.cb_use_no_graphics = CheckBox()
         self.cb_use_no_graphics.Text = "Temporarily set Graphics Level of Detail to 'No Graphics' during extraction (restore afterward)"
@@ -567,12 +559,21 @@ class ExtractOptionsDialog(Form):
         self.cb_use_no_graphics.Size = Size(860, 24)
         self.cb_use_no_graphics.Checked = True
         self.Controls.Add(self.cb_use_no_graphics)
+        self.tooltips.SetToolTip(
+            self.cb_use_no_graphics,
+            "Sets Mechanical preference PID_Level_Of_Detail to No Graphics during extraction and restores it after run. "
+            "Preference set/get uses direct API first, then PreferenceMgr fallback when needed.",
+        )
 
         self.status_label = Label()
         self.status_label.Text = "Ready."
         self.status_label.Location = Point(20, 320)
         self.status_label.Size = Size(860, 40)
         self.Controls.Add(self.status_label)
+        self.tooltips.SetToolTip(
+            self.status_label,
+            "Live status for setup, mode extraction, batch merge, and output path.",
+        )
 
         self.progress_bar = ProgressBar()
         self.progress_bar.Location = Point(20, 364)
@@ -582,6 +583,10 @@ class ExtractOptionsDialog(Form):
         self.progress_bar.Value = 0
         self.progress_bar.Style = ProgressBarStyle.Continuous
         self.Controls.Add(self.progress_bar)
+        self.tooltips.SetToolTip(
+            self.progress_bar,
+            "Progress indicator (0..1000 internal scale). Most progress is allocated to per-mode extraction.",
+        )
 
         self.run_button = Button()
         self.run_button.Text = "Run Extractions"
@@ -589,6 +594,11 @@ class ExtractOptionsDialog(Form):
         self.run_button.Size = Size(150, 32)
         self.run_button.Click += self._on_run_clicked
         self.Controls.Add(self.run_button)
+        self.tooltips.SetToolTip(
+            self.run_button,
+            "Run extraction for selected analysis, scope, and result types. "
+            "Each selected result type is exported sequentially to reduce memory pressure.",
+        )
 
         self.close_button = Button()
         self.close_button.Text = "Close"
@@ -596,18 +606,16 @@ class ExtractOptionsDialog(Form):
         self.close_button.Size = Size(70, 32)
         self.close_button.Click += self._on_close_clicked
         self.Controls.Add(self.close_button)
+        self.tooltips.SetToolTip(
+            self.close_button,
+            "Close this dialog. Closing is blocked while extraction is running.",
+        )
 
     def _show_warning(self, text, caption):
-        try:
-            MessageBox.Show(self, text, caption, MessageBoxButtons.OK, MessageBoxIcon.Warning)
-        except Exception:
-            MessageBox.Show(text, caption, MessageBoxButtons.OK, MessageBoxIcon.Warning)
+        MessageBox.Show(self, text, caption, MessageBoxButtons.OK, MessageBoxIcon.Warning)
 
     def _show_error(self, text, caption):
-        try:
-            MessageBox.Show(self, text, caption, MessageBoxButtons.OK, MessageBoxIcon.Error)
-        except Exception:
-            MessageBox.Show(text, caption, MessageBoxButtons.OK, MessageBoxIcon.Error)
+        MessageBox.Show(self, text, caption, MessageBoxButtons.OK, MessageBoxIcon.Error)
 
     def _set_extract_controls_enabled(self, enabled):
         self.analysis_combo.Enabled = (enabled and self.analysis_combo.Items.Count > 1)
@@ -622,19 +630,10 @@ class ExtractOptionsDialog(Form):
     def _ensure_visible_foreground(self):
         # During heavy Mechanical updates (notably UDR/ENFO-ENMO evaluation),
         # Windows focus can move away from this dialog. Keep it visible.
-        try:
-            if self.WindowState == FormWindowState.Minimized:
-                return
-        except Exception:
-            pass
-        try:
-            self.BringToFront()
-        except Exception:
-            pass
-        try:
-            self.Activate()
-        except Exception:
-            pass
+        if self.WindowState == FormWindowState.Minimized:
+            return
+        self.BringToFront()
+        self.Activate()
 
     def _on_run_clicked(self, sender, args):
         if self._is_running:
@@ -651,10 +650,7 @@ class ExtractOptionsDialog(Form):
 
         self._is_running = True
         self._set_extract_controls_enabled(False)
-        try:
-            self.TopMost = True
-        except Exception:
-            pass
+        self.TopMost = True
         self._ensure_visible_foreground()
         self.update_progress("Starting extraction...", 0, 1000)
 
@@ -666,10 +662,7 @@ class ExtractOptionsDialog(Form):
             self._show_error(err, "Modal Extractor Error")
         finally:
             self._is_running = False
-            try:
-                self.TopMost = False
-            except Exception:
-                pass
+            self.TopMost = False
             self._set_extract_controls_enabled(True)
             Application.DoEvents()
 
@@ -706,39 +699,24 @@ class ExtractOptionsDialog(Form):
         return kinds
 
     def use_no_graphics_enabled(self):
-        try:
-            return bool(self.cb_use_no_graphics.Checked)
-        except Exception:
-            return False
+        return bool(self.cb_use_no_graphics.Checked)
 
     def update_progress(self, message, current=None, total=None):
-        try:
-            self.status_label.Text = str(message)
-        except Exception:
-            pass
+        self.status_label.Text = str(message)
 
         if current is not None and total is not None and total > 0:
-            try:
-                pct = int((float(current) / float(total)) * 1000.0)
-                if pct < 0:
-                    pct = 0
-                if pct > 1000:
-                    pct = 1000
-                self.progress_bar.Value = pct
-            except Exception:
-                pass
+            pct = int((float(current) / float(total)) * 1000.0)
+            if pct < 0:
+                pct = 0
+            if pct > 1000:
+                pct = 1000
+            self.progress_bar.Value = pct
         self._ensure_visible_foreground()
-        try:
-            Application.DoEvents()
-        except Exception:
-            pass
+        Application.DoEvents()
 
 
 def apply_named_selection_scope(result_object, named_selection):
-    try:
-        result_object.ScopingMethod = GeometryDefineByType.Component
-    except Exception:
-        pass
+    result_object.ScopingMethod = GeometryDefineByType.Component
     try:
         result_object.Location = named_selection
         return
@@ -771,10 +749,7 @@ def create_component_objects(solution, named_selection, result_kind):
                 else:
                     obj = solution.AddShearStress()
                     obj.ShearOrientation = orient
-                try:
-                    obj.Name = "__TMP_MODAL_{0}".format(comp_name.upper())
-                except Exception:
-                    pass
+                obj.Name = "__TMP_MODAL_{0}".format(comp_name.upper())
                 apply_named_selection_scope(obj, named_selection)
                 component_names.append(comp_name)
                 component_objects.append(obj)
@@ -788,10 +763,7 @@ def create_component_objects(solution, named_selection, result_kind):
             for comp_name, orient in definitions:
                 obj = solution.AddDirectionalDeformation()
                 obj.NormalOrientation = orient
-                try:
-                    obj.Name = "__TMP_MODAL_{0}".format(comp_name.upper())
-                except Exception:
-                    pass
+                obj.Name = "__TMP_MODAL_{0}".format(comp_name.upper())
                 apply_named_selection_scope(obj, named_selection)
                 component_names.append(comp_name)
                 component_objects.append(obj)
@@ -814,20 +786,8 @@ def create_component_objects(solution, named_selection, result_kind):
             for comp_name, expression in definitions:
                 obj = solution.AddUserDefinedResult()
                 obj.Expression = expression
-                cs_assigned = False
-                try:
-                    obj.CoordinateSystem = global_cs
-                    cs_assigned = True
-                except Exception:
-                    cs_assigned = False
-                if not cs_assigned:
-                    raise Exception(
-                        "Could not set global coordinate system for UDR '{0}'.".format(expression)
-                    )
-                try:
-                    obj.Name = "__TMP_MODAL_{0}".format(comp_name.upper())
-                except Exception:
-                    pass
+                obj.CoordinateSystem = global_cs
+                obj.Name = "__TMP_MODAL_{0}".format(comp_name.upper())
                 apply_named_selection_scope(obj, named_selection)
                 component_names.append(comp_name)
                 component_objects.append(obj)
@@ -840,8 +800,17 @@ def create_component_objects(solution, named_selection, result_kind):
 def cleanup_component_objects(component_objects):
     if component_objects is None:
         return
-    with begin_graphics_suspend():
-        with begin_transaction(True):
+    try:
+        graphics_ctx = begin_graphics_suspend()
+    except Exception:
+        graphics_ctx = _NoOpTransaction()
+    try:
+        tx_ctx = begin_transaction(True)
+    except Exception:
+        tx_ctx = _NoOpTransaction()
+
+    with graphics_ctx:
+        with tx_ctx:
             for obj in component_objects:
                 try:
                     obj.Delete()
@@ -874,23 +843,16 @@ def get_scale_factors(result_kind, component_count, unit_text):
 def extract_node_ids_from_result(result_object):
     independent = result_object.PlotData.Independents
     candidate_keys = ["Node", "Nodes", "NodeID", "Node ID"]
+    available_keys = [str(k) for k in independent.Keys]
 
     for key in candidate_keys:
-        try:
+        if key in available_keys:
             arr = independent[key]
             return [int(x) for x in arr]
-        except Exception:
-            pass
 
-    try:
-        for key in independent.Keys:
-            try:
-                arr = independent[key]
-                return [int(x) for x in arr]
-            except Exception:
-                pass
-    except Exception:
-        pass
+    if len(available_keys) > 0:
+        arr = independent[available_keys[0]]
+        return [int(x) for x in arr]
 
     raise Exception("Could not extract node IDs from PlotData.Independents.")
 
@@ -929,17 +891,15 @@ def get_node_coordinates(node_ids, progress_dialog=None):
     total = len(node_ids)
     for i in xrange(total):
         nid = int(node_ids[i])
-        x = ""
-        y = ""
-        z = ""
-        try:
-            node = mesh_data.NodeById(nid)
-            if node is not None:
-                x = safe_float(node.X, "")
-                y = safe_float(node.Y, "")
-                z = safe_float(node.Z, "")
-        except Exception:
-            pass
+        node = mesh_data.NodeById(nid)
+        if node is None:
+            x = ""
+            y = ""
+            z = ""
+        else:
+            x = safe_float(node.X, "")
+            y = safe_float(node.Y, "")
+            z = safe_float(node.Z, "")
         coords.append((x, y, z))
 
         if i > 0 and i % 20000 == 0:
@@ -982,12 +942,9 @@ def write_batch_csv(path, batch_modes, component_names, node_ids, batch_data):
 
 
 def should_use_solution_evaluate(solution, temp_component_count):
-    try:
-        children_count = len(solution.Children)
-        # If there are many existing results, evaluating the full solution can be slower.
-        return children_count <= (temp_component_count + 4)
-    except Exception:
-        return False
+    children_count = len(solution.Children)
+    # If there are many existing results, evaluating the full solution can be slower.
+    return children_count <= (temp_component_count + 4)
 
 
 def merge_pass(base_csv_path, batch_csv_paths, output_csv_path, node_count, pass_index, total_passes, progress_dialog):
@@ -1355,10 +1312,7 @@ def main():
 
         pref_state = None
         if use_no_graphics_pref:
-            try:
-                pref_state = enter_no_graphics_preference_mode(dialog)
-            except Exception as pref_ex:
-                log_message("No-Graphics preference toggle failed: {0}".format(str(pref_ex)), dialog)
+            pref_state = enter_no_graphics_preference_mode(dialog)
         else:
             log_message("No-Graphics preference toggle is disabled from GUI for this run.", dialog)
 
@@ -1397,21 +1351,13 @@ def main():
                 time.sleep(0.1)
 
             out_lines = "\n".join(output_csvs)
-            try:
-                MessageBox.Show(
-                    dialog,
-                    "Extraction completed.\n\nOutput CSV files:\n{0}".format(out_lines),
-                    "Modal Extractor",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information,
-                )
-            except Exception:
-                MessageBox.Show(
-                    "Extraction completed.\n\nOutput CSV files:\n{0}".format(out_lines),
-                    "Modal Extractor",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information,
-                )
+            MessageBox.Show(
+                dialog,
+                "Extraction completed.\n\nOutput CSV files:\n{0}".format(out_lines),
+                "Modal Extractor",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Information,
+            )
         finally:
             try:
                 restore_no_graphics_preference_mode(pref_state, dialog)
