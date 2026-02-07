@@ -41,9 +41,13 @@ class PlasticityRuntimeContext:
 class MSUPSmartSolverTransient(QObject):
     progress_signal = pyqtSignal(int)
 
-    def __init__(self, modal_sx, modal_sy, modal_sz, modal_sxy, modal_syz, modal_sxz, modal_coord, time_values,
+    def __init__(self, modal_sx=None, modal_sy=None, modal_sz=None,
+                 modal_sxy=None, modal_syz=None, modal_sxz=None,
+                 modal_coord=None, time_values=None,
                  steady_sx=None, steady_sy=None, steady_sz=None, steady_sxy=None, steady_syz=None, steady_sxz=None,
-                 steady_node_ids=None, modal_node_ids=None, output_directory=None, modal_deformations=None):
+                 steady_node_ids=None, modal_node_ids=None, output_directory=None, modal_deformations=None,
+                 modal_force_moment=None,
+                 force_moment_node_ids=None, force_moment_node_coords=None):
         super().__init__()
 
         # Initializing class attributes used
@@ -57,6 +61,8 @@ class MSUPSmartSolverTransient(QObject):
         self.max_over_time_def = None
         self.max_over_time_vel = None
         self.max_over_time_acc = None
+        self.max_over_time_force_mag = None
+        self.max_over_time_moment_mag = None
 
         self.max_over_time_svm_corrected = None
         self.plasticity_context: Optional[PlasticityRuntimeContext] = None
@@ -79,13 +85,39 @@ class MSUPSmartSolverTransient(QObject):
             self.modal_deformations_uy = None
             self.modal_deformations_uz = None
 
-        # Initialize modal inputs
-        self.modal_sx = np.asarray(modal_sx, dtype=constants.NP_DTYPE)
-        self.modal_sy = np.asarray(modal_sy, dtype=constants.NP_DTYPE)
-        self.modal_sz = np.asarray(modal_sz, dtype=constants.NP_DTYPE)
-        self.modal_sxy = np.asarray(modal_sxy, dtype=constants.NP_DTYPE)
-        self.modal_syz = np.asarray(modal_syz, dtype=constants.NP_DTYPE)
-        self.modal_sxz = np.asarray(modal_sxz, dtype=constants.NP_DTYPE)
+        # Element nodal forces & moments (optional, combined)
+        if modal_force_moment is not None:
+            self.modal_forces_fx = np.asarray(modal_force_moment[0], dtype=constants.NP_DTYPE)
+            self.modal_forces_fy = np.asarray(modal_force_moment[1], dtype=constants.NP_DTYPE)
+            self.modal_forces_fz = np.asarray(modal_force_moment[2], dtype=constants.NP_DTYPE)
+            self.modal_moments_mx = np.asarray(modal_force_moment[3], dtype=constants.NP_DTYPE)
+            self.modal_moments_my = np.asarray(modal_force_moment[4], dtype=constants.NP_DTYPE)
+            self.modal_moments_mz = np.asarray(modal_force_moment[5], dtype=constants.NP_DTYPE)
+        else:
+            self.modal_forces_fx = None
+            self.modal_forces_fy = None
+            self.modal_forces_fz = None
+            self.modal_moments_mx = None
+            self.modal_moments_my = None
+            self.modal_moments_mz = None
+        self.force_moment_node_ids = force_moment_node_ids
+        self.force_moment_node_coords = force_moment_node_coords
+
+        # Initialize modal stress inputs (optional -- not needed for force/moment-only runs)
+        if modal_sx is not None:
+            self.modal_sx = np.asarray(modal_sx, dtype=constants.NP_DTYPE)
+            self.modal_sy = np.asarray(modal_sy, dtype=constants.NP_DTYPE)
+            self.modal_sz = np.asarray(modal_sz, dtype=constants.NP_DTYPE)
+            self.modal_sxy = np.asarray(modal_sxy, dtype=constants.NP_DTYPE)
+            self.modal_syz = np.asarray(modal_syz, dtype=constants.NP_DTYPE)
+            self.modal_sxz = np.asarray(modal_sxz, dtype=constants.NP_DTYPE)
+        else:
+            self.modal_sx = None
+            self.modal_sy = None
+            self.modal_sz = None
+            self.modal_sxy = None
+            self.modal_syz = None
+            self.modal_sxz = None
 
         # Store modal node IDs
         self.modal_node_ids = modal_node_ids
@@ -630,6 +662,26 @@ class MSUPSmartSolverTransient(QObject):
         actual_uz = np.matmul(self.modal_deformations_uz[start_idx:end_idx, :], self.modal_coord)
         return (actual_ux, actual_uy, actual_uz)
 
+    def compute_forces_moments(self, start_idx, end_idx):
+        """
+        Compute actual element nodal forces and moments for nodes in [start_idx, end_idx].
+        Multiplies modal force/moment shapes with modal coordinate matrix.
+
+        Returns:
+            Tuple of (fx, fy, fz, mx, my, mz) arrays, each shape (chunk_size, num_time_points),
+            or None if force/moment data is not available.
+        """
+        if self.modal_forces_fx is None:
+            return None
+
+        actual_fx = np.matmul(self.modal_forces_fx[start_idx:end_idx, :], self.modal_coord)
+        actual_fy = np.matmul(self.modal_forces_fy[start_idx:end_idx, :], self.modal_coord)
+        actual_fz = np.matmul(self.modal_forces_fz[start_idx:end_idx, :], self.modal_coord)
+        actual_mx = np.matmul(self.modal_moments_mx[start_idx:end_idx, :], self.modal_coord)
+        actual_my = np.matmul(self.modal_moments_my[start_idx:end_idx, :], self.modal_coord)
+        actual_mz = np.matmul(self.modal_moments_mz[start_idx:end_idx, :], self.modal_coord)
+        return (actual_fx, actual_fy, actual_fz, actual_mx, actual_my, actual_mz)
+
     def set_plasticity_context(self, context: Optional[PlasticityRuntimeContext]):
         """Assign the runtime plasticity context (``None`` disables plasticity)."""
         self.plasticity_context = context
@@ -642,7 +694,8 @@ class MSUPSmartSolverTransient(QObject):
     # region Internal Batch Processing Helpers
     def _setup_calculation_jobs(self, calculate_von_mises, calculate_max_principal_stress,
                                 calculate_min_principal_stress, calculate_deformation,
-                                calculate_velocity, calculate_acceleration, calculate_damage):
+                                calculate_velocity, calculate_acceleration, calculate_damage,
+                                calculate_force_moment=False):
         """
         Initializes a dictionary of calculation jobs, their memmap files, and result metadata.
         This centralizes the configuration for all possible calculations.
@@ -738,6 +791,21 @@ class MSUPSmartSolverTransient(QObject):
                 'csv_header_time': "Time_of_ACC_Max",
                 'csv_value_name': 'max_acceleration.csv',
                 'csv_time_name': 'time_of_max_acceleration.csv'
+            }
+
+        if calculate_force_moment and self.modal_forces_fx is not None:
+            num_fm_nodes = self.modal_forces_fx.shape[0]
+            self.max_over_time_force_mag = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_moment_mag = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            jobs['force_moment'] = {
+                'force_max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_element_nodal_force.dat'),
+                                                    (num_fm_nodes,)),
+                'force_time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_element_nodal_force.dat'),
+                                                     (num_fm_nodes,)),
+                'moment_max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_element_nodal_moment.dat'),
+                                                     (num_fm_nodes,)),
+                'moment_time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_element_nodal_moment.dat'),
+                                                      (num_fm_nodes,)),
             }
 
         if calculate_damage:
@@ -863,6 +931,29 @@ class MSUPSmartSolverTransient(QObject):
                 job['max_memmap'][start_idx:end_idx] = np.max(acc_mag, axis=1)
                 job['time_memmap'][start_idx:end_idx] = time_values[np.argmax(acc_mag, axis=1)]
                 print(f"Elapsed time for acceleration magnitude and time: {(time.time() - start_time):.3f} seconds")
+    def _process_force_moment_chunk(self, jobs, time_values, start_idx, end_idx):
+        """Processes element nodal force and moment magnitude for a given chunk."""
+        if 'force_moment' not in jobs or self.modal_forces_fx is None:
+            return
+
+        start_time = time.time()
+        fx, fy, fz, mx, my, mz = self.compute_forces_moments(start_idx, end_idx)
+
+        job = jobs['force_moment']
+
+        # Force magnitude
+        force_mag = np.sqrt(fx ** 2 + fy ** 2 + fz ** 2)
+        self.max_over_time_force_mag = np.maximum(self.max_over_time_force_mag, np.max(force_mag, axis=0))
+        job['force_max_memmap'][start_idx:end_idx] = np.max(force_mag, axis=1)
+        job['force_time_memmap'][start_idx:end_idx] = time_values[np.argmax(force_mag, axis=1)]
+
+        # Moment magnitude
+        moment_mag = np.sqrt(mx ** 2 + my ** 2 + mz ** 2)
+        self.max_over_time_moment_mag = np.maximum(self.max_over_time_moment_mag, np.max(moment_mag, axis=0))
+        job['moment_max_memmap'][start_idx:end_idx] = np.max(moment_mag, axis=1)
+        job['moment_time_memmap'][start_idx:end_idx] = time_values[np.argmax(moment_mag, axis=1)]
+
+        print(f"Elapsed time for element nodal force & moment: {(time.time() - start_time):.3f} seconds")
     # endregion
 
     # region Main Methods
@@ -985,15 +1076,17 @@ class MSUPSmartSolverTransient(QObject):
                                  calculate_min_principal_stress=False,
                                  calculate_deformation=False,
                                  calculate_velocity=False,
-                                 calculate_acceleration=False):
+                                 calculate_acceleration=False,
+                                 calculate_force_moment=False):
         """
         Processes stress and deformation results in batches to manage memory usage.
         This method coordinates the setup, execution, and finalization of calculations.
         """
         # --- 1. Initialization and Memory Estimation ---
         print("--- Starting Batch Processing ---")
-        num_nodes, _ = self.modal_sx.shape
         num_time_points = self.modal_coord.shape[1]
+        has_stress_data = self.modal_sx is not None
+        num_nodes = self.modal_sx.shape[0] if has_stress_data else 0
 
         my_virtual_memory = psutil.virtual_memory()
         self.total_memory = my_virtual_memory.total / (1024 ** 3)
@@ -1004,60 +1097,104 @@ class MSUPSmartSolverTransient(QObject):
         print(f"Available system RAM: {self.available_memory:.2f} GB")
         print(f"Allocated for Processing: {self.allocated_memory:.2f} GB")
 
-        chunk_size = self._estimate_chunk_size(
-            num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-            calculate_deformation, calculate_velocity, calculate_acceleration)
-        num_iterations = (num_nodes + chunk_size - 1) // chunk_size
-
-        ram_per_node = self._get_memory_per_node(
-            num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-            calculate_deformation, calculate_velocity, calculate_acceleration)
-        ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
-        print(f"Processing {num_nodes} nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
-        print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
-        print()  # Blank line for readability
-
         # --- 2. Setup Calculation Jobs and Memmap Files ---
         calculation_jobs = self._setup_calculation_jobs(
             calculate_von_mises, calculate_max_principal_stress, calculate_min_principal_stress,
-            calculate_deformation, calculate_velocity, calculate_acceleration, calculate_damage
+            calculate_deformation, calculate_velocity, calculate_acceleration, calculate_damage,
+            calculate_force_moment
         )
 
         is_stress_needed = any(k in calculation_jobs for k in ['von_mises', 's1_max', 's3_min', 'damage'])
         is_kinematics_needed = any(k in calculation_jobs for k in ['deformation', 'velocity', 'acceleration'])
+        is_force_moment_needed = 'force_moment' in calculation_jobs
+        is_main_loop_needed = (is_stress_needed or is_kinematics_needed) and has_stress_data
 
-        # --- 3. Main Processing Loop ---
-        for i, start_idx in enumerate(range(0, num_nodes, chunk_size)):
-            end_idx = min(start_idx + chunk_size, num_nodes)
-            print(f"\n--- Iteration {i + 1}/{num_iterations} (Nodes {start_idx}-{end_idx - 1}) ---")
+        # Estimate chunks only when stress/kinematics loop is needed
+        chunk_size = 1
+        num_iterations = 0
+        if is_main_loop_needed:
+            chunk_size = self._estimate_chunk_size(
+                num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
+                calculate_deformation, calculate_velocity, calculate_acceleration)
+            num_iterations = (num_nodes + chunk_size - 1) // chunk_size
 
-            actual_stresses = None
-            if is_stress_needed:
+            ram_per_node = self._get_memory_per_node(
+                num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
+                calculate_deformation, calculate_velocity, calculate_acceleration)
+            ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
+            print(f"Processing {num_nodes} stress/deformation nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
+            print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
+            print()
+
+        # Determine progress ranges
+        if is_main_loop_needed and is_force_moment_needed:
+            main_progress_cap = 90.0  # main loop 0-90%, force/moment 90-100%
+        elif is_main_loop_needed:
+            main_progress_cap = 100.0
+        else:
+            main_progress_cap = 0.0   # no main loop, force/moment gets full 0-100%
+
+        # --- 3. Main Processing Loop (stress / kinematics) ---
+        if is_main_loop_needed:
+            for i, start_idx in enumerate(range(0, num_nodes, chunk_size)):
+                end_idx = min(start_idx + chunk_size, num_nodes)
+                print(f"\n--- Iteration {i + 1}/{num_iterations} (Nodes {start_idx}-{end_idx - 1}) ---")
+
+                actual_stresses = None
+                if is_stress_needed:
+                    start_time = time.time()
+                    actual_stresses = self.compute_normal_stresses(start_idx, end_idx)
+                    print(f"Elapsed time for normal stresses: {(time.time() - start_time):.3f} seconds")
+
+                if is_stress_needed:
+                    self._process_stress_chunk(calculation_jobs, time_values, start_idx, end_idx, *actual_stresses)
+
+                if is_kinematics_needed:
+                    self._process_kinematics_chunk(calculation_jobs, time_values, start_idx, end_idx)
+
+                # --- Memory Management and Progress Update ---
                 start_time = time.time()
-                actual_stresses = self.compute_normal_stresses(start_idx, end_idx)
-                print(f"Elapsed time for normal stresses: {(time.time() - start_time):.3f} seconds")
+                del actual_stresses
+                gc.collect()
+                print(f"Elapsed time for garbage collection: {(time.time() - start_time):.3f} seconds")
 
-            if is_stress_needed:
-                self._process_stress_chunk(calculation_jobs, time_values, start_idx, end_idx, *actual_stresses)
+                progress_percentage = ((i + 1) / num_iterations) * main_progress_cap
+                self.progress_signal.emit(int(progress_percentage))
+                QApplication.processEvents()
 
-            if is_kinematics_needed:
-                self._process_kinematics_chunk(calculation_jobs, time_values, start_idx, end_idx)
+                memory_status = self._get_current_memory_usage_str()
+                print(f"Iteration {i + 1} complete. {memory_status}. Progress: {progress_percentage:.1f}%")
+        elif not is_force_moment_needed:
+            print("No stress/deformation/force/moment outputs selected.")
 
-            # --- Memory Management and Progress Update ---
-            start_time = time.time()
-            del actual_stresses
-            gc.collect()
-            print(f"Elapsed time for garbage collection: {(time.time() - start_time):.3f} seconds")
+        # --- 4. Force/Moment Processing (separate node scope) ---
+        if is_force_moment_needed:
+            n_fm_nodes = self.modal_forces_fx.shape[0]
+            # 6 components + 2 magnitudes per node per time point
+            fm_mem_per_node = 8 * num_time_points * np.dtype(constants.NP_DTYPE).itemsize
+            available_memory = self._get_available_memory()
+            fm_chunk = max(1, int(available_memory // fm_mem_per_node)) if fm_mem_per_node > 0 else n_fm_nodes
+            fm_chunk = min(fm_chunk, n_fm_nodes)
+            fm_iters = (n_fm_nodes + fm_chunk - 1) // fm_chunk
 
-            progress_percentage = ((i + 1) / num_iterations) * 100
-            self.progress_signal.emit(int(progress_percentage))
-            QApplication.processEvents()
+            print(f"\n--- Processing forces & moments for {n_fm_nodes} nodes in {fm_iters} iteration(s) ---")
+            for qi, qs in enumerate(range(0, n_fm_nodes, fm_chunk)):
+                qe = min(qs + fm_chunk, n_fm_nodes)
+                self._process_force_moment_chunk(calculation_jobs, time_values, qs, qe)
+                fm_progress = main_progress_cap + ((qi + 1) / fm_iters) * (100.0 - main_progress_cap)
+                self.progress_signal.emit(int(fm_progress))
+                QApplication.processEvents()
+                print(f"  Force/moment iteration {qi + 1}/{fm_iters} done.")
 
-            # Log memory status based on compute device
-            memory_status = self._get_current_memory_usage_str()
-            print(f"Iteration {i + 1} complete. {memory_status}. Progress: {progress_percentage:.1f}%")
+            # Finalize force/moment CSVs with their own node IDs/coords
+            self._finalize_force_moment_job(
+                calculation_jobs['force_moment'],
+                self.force_moment_node_ids,
+                self.force_moment_node_coords
+            )
+            del calculation_jobs['force_moment']
 
-        # --- 4. Finalization ---
+        # --- 5. Finalization ---
         print("\n--- Finalizing Results ---")
         self._finalize_and_convert_results(calculation_jobs, df_node_ids, node_coords)
         print("--- Batch Processing Finished ---")
@@ -1071,7 +1208,8 @@ class MSUPSmartSolverTransient(QObject):
                                           calculate_min_principal_stress=False,
                                           calculate_deformation=False,
                                           calculate_velocity=False,
-                                          calculate_acceleration=False):
+                                          calculate_acceleration=False,
+                                          calculate_force_moment=False):
         """
         Process results for a single node and return the stress data for plotting.
 
@@ -1169,6 +1307,27 @@ class MSUPSmartSolverTransient(QObject):
                         print(f"Acceleration calculated for Node {selected_node_id}\n")
                         return np.arange(acc_mag.shape[1]), acceleration_data, metadata
 
+        if calculate_force_moment:
+            if self.modal_forces_fx is None:
+                print("Force/moment data missing – calculation is skipped.")
+            else:
+                result = self.compute_forces_moments(selected_node_idx, selected_node_idx + 1)
+                fx, fy, fz, mx, my, mz = result
+                force_mag = np.sqrt(fx ** 2 + fy ** 2 + fz ** 2)
+                moment_mag = np.sqrt(mx ** 2 + my ** 2 + mz ** 2)
+                fm_data = {
+                    'Force Mag': force_mag[0, :],
+                    'Fx': fx[0, :],
+                    'Fy': fy[0, :],
+                    'Fz': fz[0, :],
+                    'Moment Mag': moment_mag[0, :],
+                    'Mx': mx[0, :],
+                    'My': my[0, :],
+                    'Mz': mz[0, :]
+                }
+                print(f"Element Nodal Forces & Moments calculated for Node {selected_node_id}\n")
+                return np.arange(force_mag.shape[1]), fm_data, metadata
+
         # Return none if no output is requested
         return None, None, metadata
     # endregion
@@ -1192,6 +1351,81 @@ class MSUPSmartSolverTransient(QObject):
             print(f"Successfully written {csv_filename}.")
         except Exception as e:
             print(f"Error writing {csv_filename}: {e}")
+
+    def _finalize_force_moment_job(self, job_data, node_ids, node_coords):
+        """Finalize the combined force/moment job -- writes 4 CSV files."""
+        def _flush_memmap(memmap_obj):
+            if memmap_obj is None:
+                return None, None
+            try:
+                memmap_obj.flush()
+            except Exception:
+                pass
+            data_copy = np.asarray(memmap_obj, dtype=float).copy()
+            path = getattr(memmap_obj, 'filename', None)
+            return data_copy, path
+
+        for prefix, label in [('force', 'Force_Mag'), ('moment', 'Moment_Mag')]:
+            max_vals, max_path = _flush_memmap(job_data.get(f'{prefix}_max_memmap'))
+            time_vals, time_path = _flush_memmap(job_data.get(f'{prefix}_time_memmap'))
+            if max_vals is not None:
+                self._write_csv(
+                    node_ids, node_coords, max_vals,
+                    os.path.join(self.output_directory, f'max_element_nodal_{prefix}.csv'),
+                    f"{label}_Max"
+                )
+            if time_vals is not None:
+                self._write_csv(
+                    node_ids, node_coords, time_vals,
+                    os.path.join(self.output_directory, f'time_of_max_element_nodal_{prefix}.csv'),
+                    f"Time_of_{label}_Max"
+                )
+            for p in (max_path, time_path):
+                if p:
+                    try:
+                        os.remove(p)
+                    except OSError:
+                        pass
+            job_data[f'{prefix}_max_memmap'] = None
+            job_data[f'{prefix}_time_memmap'] = None
+
+    def _finalize_single_job(self, job_data, job_name, node_ids, node_coords):
+        """Finalize a single max-value job (force or moment) with its own node scope."""
+        def _finalize_memmap(memmap_obj):
+            if memmap_obj is None:
+                return None, None
+            try:
+                memmap_obj.flush()
+            except Exception:
+                pass
+            data_copy = np.asarray(memmap_obj, dtype=float).copy()
+            path = getattr(memmap_obj, 'filename', None)
+            return data_copy, path
+
+        max_values, max_path = _finalize_memmap(job_data.get('max_memmap'))
+        time_values, time_path = _finalize_memmap(job_data.get('time_memmap'))
+        if max_values is not None:
+            self._write_csv(
+                node_ids, node_coords,
+                max_values,
+                os.path.join(self.output_directory, job_data['csv_value_name']),
+                job_data['csv_header_val']
+            )
+        if time_values is not None:
+            self._write_csv(
+                node_ids, node_coords,
+                time_values,
+                os.path.join(self.output_directory, job_data['csv_time_name']),
+                job_data['csv_header_time']
+            )
+        for p in (max_path, time_path):
+            if p:
+                try:
+                    os.remove(p)
+                except OSError:
+                    pass
+        job_data['max_memmap'] = None
+        job_data['time_memmap'] = None
 
     def _finalize_and_convert_results(self, jobs, df_node_ids, node_coords):
         """Flushes all memmap files and converts them to CSV."""

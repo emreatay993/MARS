@@ -23,14 +23,14 @@ class SolverUIHandler:
 
     def update_output_checkboxes_state(self):
         """Enable/disable output checkboxes based on loaded files."""
-        # Stress-related outputs
+        # Stress-related outputs (require coord + stress)
         stress_enabled = self.tab.coord_loaded and self.tab.stress_loaded
         for cb in self.tab._coord_stress_outputs:
             cb.setEnabled(stress_enabled)
             if not stress_enabled:
                 cb.setChecked(False)
 
-        # Deformation-related outputs
+        # Deformation-related outputs (require coord + deformation)
         deformations_enabled = (
                 self.tab.coord_loaded and
                 self.tab.deformations_checkbox.isChecked() and
@@ -40,6 +40,23 @@ class SolverUIHandler:
             cb.setEnabled(deformations_enabled)
             if not deformations_enabled:
                 cb.setChecked(False)
+
+        # Force/moment-related outputs (require coord + force_moment -- no stress needed)
+        force_moment_enabled = (
+                self.tab.coord_loaded and
+                self.tab.force_moment_checkbox.isChecked() and
+                self.tab.force_moment_loaded
+        )
+        for cb in self.tab._force_moment_outputs:
+            cb.setEnabled(force_moment_enabled)
+            if not force_moment_enabled:
+                cb.setChecked(False)
+
+        # Time history mode: enabled if any data source can produce output
+        any_output_possible = stress_enabled or deformations_enabled or force_moment_enabled
+        self.tab.time_history_checkbox.setEnabled(any_output_possible)
+        if not any_output_possible:
+            self.tab.time_history_checkbox.setChecked(False)
 
         # Ensure dependent controls track Von Mises selection state
         self._update_plasticity_state()
@@ -60,6 +77,15 @@ class SolverUIHandler:
         if not is_checked:
             self.tab.deformations_file_path.clear()
             self.tab.deformation_loaded = False
+
+    def toggle_force_moment_inputs(self, is_checked):
+        """Show/hide element nodal forces & moments file controls."""
+        self.tab.force_moment_file_button.setVisible(is_checked)
+        self.tab.force_moment_file_path.setVisible(is_checked)
+        self.update_output_checkboxes_state()
+        if not is_checked:
+            self.tab.force_moment_file_path.clear()
+            self.tab.force_moment_loaded = False
 
     def toggle_damage_index_checkbox_visibility(self, is_checked=None):
         """Keep damage index checkbox hidden until benchmarking completes."""
@@ -117,7 +143,8 @@ class SolverUIHandler:
     def _on_time_history_toggled(self, is_checked):
         """Handle time history mode toggle."""
         if is_checked:
-            all_output_checkboxes = self.tab._coord_stress_outputs + self.tab._deformation_outputs
+            all_output_checkboxes = (self.tab._coord_stress_outputs + self.tab._deformation_outputs
+                                     + self.tab._force_moment_outputs)
             for checkbox in all_output_checkboxes:
                 if checkbox is self.tab.time_history_checkbox:
                     continue
@@ -177,7 +204,8 @@ class SolverUIHandler:
                 is_von_mises=self.tab.von_mises_checkbox.isChecked(),
                 is_deformation=self.tab.deformation_checkbox.isChecked(),
                 is_velocity=self.tab.velocity_checkbox.isChecked(),
-                is_acceleration=self.tab.acceleration_checkbox.isChecked()
+                is_acceleration=self.tab.acceleration_checkbox.isChecked(),
+                is_force_moment=self.tab.force_moment_output_checkbox.isChecked()
             )
         except Exception as e:
             print(f"Error updating plot based on checkbox states: {e}")
@@ -236,6 +264,18 @@ class SolverUIHandler:
                 'name': 'Acceleration (mm/s²)',
                 'data': solver.max_over_time_acc
             })
+
+        if self.tab.force_moment_output_checkbox.isChecked():
+            if hasattr(solver, 'max_over_time_force_mag') and solver.max_over_time_force_mag is not None:
+                max_traces.append({
+                    'name': 'Force (N)',
+                    'data': solver.max_over_time_force_mag
+                })
+            if hasattr(solver, 'max_over_time_moment_mag') and solver.max_over_time_moment_mag is not None:
+                max_traces.append({
+                    'name': 'Moment (N·mm)',
+                    'data': solver.max_over_time_moment_mag
+                })
 
         # Update or hide max tab
         if max_traces and self.tab.plot_max_over_time_tab is not None:
@@ -361,9 +401,21 @@ class SolverUIHandler:
 
     def _update_solve_button_state(self):
         """Enable/disable solve button based on loaded files and selected outputs."""
-        files_loaded = self.tab.coord_loaded and self.tab.stress_loaded
-        
-        # Check if at least one result output is selected
+        # Core requirement: modal coordinates must always be loaded
+        if not self.tab.coord_loaded:
+            self.tab.solve_button.setEnabled(False)
+            return
+
+        # Check if any data source is loaded that can produce results
+        has_any_data = (
+            self.tab.stress_loaded or
+            self.tab.force_moment_loaded
+        )
+        if not has_any_data:
+            self.tab.solve_button.setEnabled(False)
+            return
+
+        # Check if at least one enabled result output is selected
         result_outputs = [
             self.tab.max_principal_stress_checkbox,
             self.tab.min_principal_stress_checkbox,
@@ -371,13 +423,14 @@ class SolverUIHandler:
             self.tab.deformation_checkbox,
             self.tab.velocity_checkbox,
             self.tab.acceleration_checkbox,
+            self.tab.force_moment_output_checkbox,
             self.tab.damage_index_checkbox,
             self.tab.plasticity_correction_checkbox
         ]
         
-        output_selected = any(cb.isChecked() for cb in result_outputs)
+        output_selected = any(cb.isChecked() and cb.isEnabled() for cb in result_outputs)
         
-        self.tab.solve_button.setEnabled(files_loaded and output_selected)
+        self.tab.solve_button.setEnabled(output_selected)
 
     def _hide_plot_tabs(self):
         """Hide all plot tabs."""

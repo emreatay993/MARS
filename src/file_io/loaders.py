@@ -18,6 +18,7 @@ from core.data_models import (
     ModalData,
     ModalStressData,
     DeformationData,
+    ElementNodalForceMomentData,
     SteadyStateData,
     TemperatureFieldData,
     MaterialProfileData,
@@ -27,6 +28,7 @@ from file_io.validators import (
     validate_pch_file,
     validate_modal_stress_file,
     validate_deformation_file,
+    validate_element_nodal_force_moment_file,
     validate_steady_state_file,
     validate_material_profile_payload,
 )
@@ -641,6 +643,78 @@ def load_modal_deformations(filename: str) -> DeformationData:
         elapsed = time.time() - start_time
         _log_loading_complete("Modal Deformation", elapsed, result.num_nodes, result.num_modes)
     
+    return result
+
+
+def load_element_nodal_forces_moments(filename: str) -> ElementNodalForceMomentData:
+    """
+    Load combined modal element nodal force and moment data from a CSV file.
+
+    Expects columns: NodeID, [X, Y, Z], enfox_ModeN, enfoy_ModeN, enfoz_ModeN,
+    enmox_ModeN, enmoy_ModeN, enmoz_ModeN for each mode.
+
+    Args:
+        filename: Path to the element nodal forces & moments CSV file.
+
+    Returns:
+        ElementNodalForceMomentData object containing all 6 components.
+
+    Raises:
+        ValueError: If the file is invalid or cannot be loaded.
+    """
+    show_progress, file_size_mb = _should_show_progress(filename)
+    start_time = time.time()
+
+    if show_progress:
+        _log_loading_start(filename, "Element Nodal Forces & Moments", file_size_mb)
+
+    if show_progress:
+        print("🔍 Validating file structure...")
+        sys.stdout.flush()
+
+    is_valid, error_msg = validate_element_nodal_force_moment_file(filename)
+    if not is_valid:
+        raise ValueError(f"Invalid element nodal forces & moments file: {error_msg}")
+
+    if show_progress:
+        print("✓ Validation passed")
+        sys.stdout.flush()
+
+    df = _read_csv_with_progress(filename, file_size_mb, "force_moment")
+
+    if show_progress:
+        print("⚙️  Processing data...")
+        sys.stdout.flush()
+
+    df.drop_duplicates(subset=['NodeID'], keep='last', inplace=True)
+
+    node_ids = df['NodeID'].to_numpy().flatten()
+
+    node_coords = None
+    if {'X', 'Y', 'Z'}.issubset(df.columns):
+        node_coords = df[['X', 'Y', 'Z']].to_numpy()
+
+    # Extract force components
+    modal_fx = df.filter(regex='(?i)enfox_.*').to_numpy().astype(NP_DTYPE)
+    modal_fy = df.filter(regex='(?i)enfoy_.*').to_numpy().astype(NP_DTYPE)
+    modal_fz = df.filter(regex='(?i)enfoz_.*').to_numpy().astype(NP_DTYPE)
+
+    # Extract moment components
+    modal_mx = df.filter(regex='(?i)enmox_.*').to_numpy().astype(NP_DTYPE)
+    modal_my = df.filter(regex='(?i)enmoy_.*').to_numpy().astype(NP_DTYPE)
+    modal_mz = df.filter(regex='(?i)enmoz_.*').to_numpy().astype(NP_DTYPE)
+
+    result = ElementNodalForceMomentData(
+        node_ids=node_ids,
+        modal_fx=modal_fx, modal_fy=modal_fy, modal_fz=modal_fz,
+        modal_mx=modal_mx, modal_my=modal_my, modal_mz=modal_mz,
+        node_coords=node_coords
+    )
+
+    if show_progress:
+        elapsed = time.time() - start_time
+        _log_loading_complete("Element Nodal Forces & Moments", elapsed, result.num_nodes, result.num_modes)
+
     return result
 
 

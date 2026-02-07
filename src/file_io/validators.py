@@ -214,6 +214,42 @@ def validate_deformation_file(filename: str) -> Tuple[bool, Optional[str]]:
         return False, str(e)
 
 
+def validate_element_nodal_force_moment_file(filename: str) -> Tuple[bool, Optional[str]]:
+    """
+    Validate a combined Modal Element Nodal Forces & Moments CSV file.
+
+    Expects columns: NodeID, [X, Y, Z], enfox_ModeN, enfoy_ModeN, enfoz_ModeN,
+    enmox_ModeN, enmoy_ModeN, enmoz_ModeN for each mode.
+
+    Args:
+        filename: Path to the element nodal forces & moments CSV file.
+
+    Returns:
+        Tuple of (is_valid, error_message). error_message is None if valid.
+    """
+    try:
+        if not os.path.exists(filename):
+            return False, "File does not exist."
+
+        # Only read first 10 rows for validation
+        df_val = pd.read_csv(filename, nrows=10)
+
+        # Check for required NodeID column
+        if 'NodeID' not in df_val.columns:
+            return False, "Required 'NodeID' column not found."
+
+        # Check for required force and moment component columns
+        required_components = ['enfox_', 'enfoy_', 'enfoz_', 'enmox_', 'enmoy_', 'enmoz_']
+        for comp in required_components:
+            if df_val.filter(regex=f'(?i){comp}').empty:
+                return False, f"Required component columns matching '{comp}*' not found."
+
+        return True, None
+
+    except Exception as e:
+        return False, str(e)
+
+
 def validate_steady_state_file(filename: str) -> Tuple[bool, Optional[str]]:
     """
     Validate a Steady-State Stress TXT file.

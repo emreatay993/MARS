@@ -16,8 +16,9 @@ from core.plasticity import (
     map_temperature_field_to_nodes,
 )
 from core.data_models import (
-    ModalData, ModalStressData, DeformationData, SteadyStateData,
-    SolverConfig, AnalysisResult, PlasticityConfig
+    ModalData, ModalStressData, DeformationData,
+    ElementNodalForceMomentData,
+    SteadyStateData, SolverConfig, AnalysisResult, PlasticityConfig
 )
 from utils.node_utils import get_node_index_from_id
 
@@ -37,13 +38,15 @@ class AnalysisEngine:
         self.stress_data = None
         self.deformation_data = None
         self.steady_state_data = None
+        self.force_moment_data: Optional[ElementNodalForceMomentData] = None
         self.plasticity_config: Optional[PlasticityConfig] = None
     
     def configure_data(self,
                       modal_data: ModalData,
                       stress_data: ModalStressData,
                       deformation_data: Optional[DeformationData] = None,
-                      steady_state_data: Optional[SteadyStateData] = None):
+                      steady_state_data: Optional[SteadyStateData] = None,
+                      force_moment_data: Optional[ElementNodalForceMomentData] = None):
         """
         Configure the engine with analysis data.
         
@@ -52,11 +55,13 @@ class AnalysisEngine:
             stress_data: Modal stress data.
             deformation_data: Optional deformation data.
             steady_state_data: Optional steady-state stress data.
+            force_moment_data: Optional element nodal force & moment data.
         """
         self.modal_data = modal_data
         self.stress_data = stress_data
         self.deformation_data = deformation_data
         self.steady_state_data = steady_state_data
+        self.force_moment_data = force_moment_data
     
     def create_solver(self, config: SolverConfig) -> MSUPSmartSolverTransient:
         """
@@ -74,13 +79,20 @@ class AnalysisEngine:
         # Prepare modal coordinates
         modal_coord_filtered = self.modal_data.modal_coord[mode_slice, :]
         
-        # Prepare stress data
-        modal_sx = self.stress_data.modal_sx[:, mode_slice]
-        modal_sy = self.stress_data.modal_sy[:, mode_slice]
-        modal_sz = self.stress_data.modal_sz[:, mode_slice]
-        modal_sxy = self.stress_data.modal_sxy[:, mode_slice]
-        modal_syz = self.stress_data.modal_syz[:, mode_slice]
-        modal_sxz = self.stress_data.modal_sxz[:, mode_slice]
+        # Prepare stress data (optional -- not needed for force/moment-only runs)
+        modal_sx = None
+        modal_sy = None
+        modal_sz = None
+        modal_sxy = None
+        modal_syz = None
+        modal_sxz = None
+        if self.stress_data is not None:
+            modal_sx = self.stress_data.modal_sx[:, mode_slice]
+            modal_sy = self.stress_data.modal_sy[:, mode_slice]
+            modal_sz = self.stress_data.modal_sz[:, mode_slice]
+            modal_sxy = self.stress_data.modal_sxy[:, mode_slice]
+            modal_syz = self.stress_data.modal_syz[:, mode_slice]
+            modal_sxz = self.stress_data.modal_sxz[:, mode_slice]
         
         # Prepare steady-state data
         steady_sx = None
@@ -109,12 +121,28 @@ class AnalysisEngine:
                 self.deformation_data.modal_uz[:, mode_slice]
             )
         
+        # Prepare force/moment data (combined)
+        modal_force_moment = None
+        fm_node_ids = None
+        fm_node_coords = None
+        if self.force_moment_data is not None:
+            modal_force_moment = (
+                self.force_moment_data.modal_fx[:, mode_slice],
+                self.force_moment_data.modal_fy[:, mode_slice],
+                self.force_moment_data.modal_fz[:, mode_slice],
+                self.force_moment_data.modal_mx[:, mode_slice],
+                self.force_moment_data.modal_my[:, mode_slice],
+                self.force_moment_data.modal_mz[:, mode_slice]
+            )
+            fm_node_ids = self.force_moment_data.node_ids
+            fm_node_coords = self.force_moment_data.node_coords
+
         # Create solver instance
         solver = MSUPSmartSolverTransient(
-            modal_sx, modal_sy, modal_sz,
-            modal_sxy, modal_syz, modal_sxz,
-            modal_coord_filtered,
-            self.modal_data.time_values,
+            modal_sx=modal_sx, modal_sy=modal_sy, modal_sz=modal_sz,
+            modal_sxy=modal_sxy, modal_syz=modal_syz, modal_sxz=modal_sxz,
+            modal_coord=modal_coord_filtered,
+            time_values=self.modal_data.time_values,
             steady_sx=steady_sx,
             steady_sy=steady_sy,
             steady_sz=steady_sz,
@@ -122,9 +150,12 @@ class AnalysisEngine:
             steady_syz=steady_syz,
             steady_sxz=steady_sxz,
             steady_node_ids=steady_node_ids,
-            modal_node_ids=self.stress_data.node_ids,
+            modal_node_ids=self.stress_data.node_ids if self.stress_data else None,
             output_directory=config.output_directory,
-            modal_deformations=modal_deformations
+            modal_deformations=modal_deformations,
+            modal_force_moment=modal_force_moment,
+            force_moment_node_ids=fm_node_ids,
+            force_moment_node_coords=fm_node_coords
         )
         
         # Set fatigue parameters if damage calculation is enabled
@@ -154,15 +185,16 @@ class AnalysisEngine:
         # Run batch processing
         self.solver.process_results_in_batch(
             self.modal_data.time_values,
-            self.stress_data.node_ids,
-            self.stress_data.node_coords,
+            self.stress_data.node_ids if self.stress_data else None,
+            self.stress_data.node_coords if self.stress_data else None,
             calculate_damage=config.calculate_damage,
             calculate_von_mises=config.calculate_von_mises,
             calculate_max_principal_stress=config.calculate_max_principal_stress,
             calculate_min_principal_stress=config.calculate_min_principal_stress,
             calculate_deformation=config.calculate_deformation,
             calculate_velocity=config.calculate_velocity,
-            calculate_acceleration=config.calculate_acceleration
+            calculate_acceleration=config.calculate_acceleration,
+            calculate_force_moment=config.calculate_force_moment
         )
     
     def run_single_node_analysis(self, node_id: int, 
@@ -180,22 +212,29 @@ class AnalysisEngine:
         if self.solver is None:
             self.solver = self.create_solver(config)
         
-        # Get node index
-        node_idx = get_node_index_from_id(node_id, self.stress_data.node_ids)
-        if node_idx is None:
-            raise ValueError(f"Node ID {node_id} not found.")
+        # For force/moment, look up the node in force/moment node set
+        if config.calculate_force_moment and self.force_moment_data is not None:
+            node_idx = get_node_index_from_id(node_id, self.force_moment_data.node_ids)
+            if node_idx is None:
+                raise ValueError(f"Node ID {node_id} not found in force/moment data.")
+        else:
+            # Get node index from stress data
+            node_idx = get_node_index_from_id(node_id, self.stress_data.node_ids)
+            if node_idx is None:
+                raise ValueError(f"Node ID {node_id} not found.")
         
         # Run single-node processing
         time_indices, stress_values, metadata = self.solver.process_results_for_a_single_node(
             node_idx,
             node_id,
-            self.stress_data.node_ids,
+            self.stress_data.node_ids if self.stress_data else None,
             calculate_von_mises=config.calculate_von_mises,
             calculate_max_principal_stress=config.calculate_max_principal_stress,
             calculate_min_principal_stress=config.calculate_min_principal_stress,
             calculate_deformation=config.calculate_deformation,
             calculate_velocity=config.calculate_velocity,
-            calculate_acceleration=config.calculate_acceleration
+            calculate_acceleration=config.calculate_acceleration,
+            calculate_force_moment=config.calculate_force_moment
         )
         
         # Determine result type
@@ -212,6 +251,8 @@ class AnalysisEngine:
             result_type = "velocity"
         elif config.calculate_acceleration:
             result_type = "acceleration"
+        elif config.calculate_force_moment:
+            result_type = "force_moment"
         
         return AnalysisResult(
             time_values=time_indices,

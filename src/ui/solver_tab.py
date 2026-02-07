@@ -26,6 +26,7 @@ from ui.widgets.plotting import MatplotlibWidget
 from core.computation import AnalysisEngine
 from core.data_models import (
     ModalData, ModalStressData, DeformationData,
+    ElementNodalForceMomentData,
     SteadyStateData, TemperatureFieldData, MaterialProfileData,
     SolverConfig
 )
@@ -60,6 +61,7 @@ class SolverTab(QWidget):
         self.stress_data = None
         self.deformation_data = None
         self.steady_state_data = None
+        self.force_moment_data: Optional[ElementNodalForceMomentData] = None
 
         self.analysis_engine = AnalysisEngine()
         self.file_handler = SolverFileHandler(self)
@@ -71,6 +73,7 @@ class SolverTab(QWidget):
         self.coord_loaded = False
         self.stress_loaded = False
         self.deformation_loaded = False
+        self.force_moment_loaded = False
         self.temperature_field_data: Optional[TemperatureFieldData] = None
         self.material_profile_data: MaterialProfileData = MaterialProfileData.empty()
 
@@ -127,6 +130,9 @@ class SolverTab(QWidget):
         self.deformations_checkbox = self.components['deformations_checkbox']
         self.deformations_file_button = self.components['deformations_file_button']
         self.deformations_file_path = self.components['deformations_file_path']
+        self.force_moment_checkbox = self.components['force_moment_checkbox']
+        self.force_moment_file_button = self.components['force_moment_file_button']
+        self.force_moment_file_path = self.components['force_moment_file_path']
         self.skip_modes_label = self.components['skip_modes_label']
         self.skip_modes_combo = self.components['skip_modes_combo']
         
@@ -138,6 +144,7 @@ class SolverTab(QWidget):
         self.deformation_checkbox = self.components['deformation_checkbox']
         self.velocity_checkbox = self.components['velocity_checkbox']
         self.acceleration_checkbox = self.components['acceleration_checkbox']
+        self.force_moment_output_checkbox = self.components['force_moment_output_checkbox']
         self.damage_index_checkbox = self.components['damage_index_checkbox']
         self.plasticity_correction_checkbox = self.components['plasticity_correction_checkbox']
         
@@ -176,9 +183,12 @@ class SolverTab(QWidget):
             self.velocity_checkbox,
             self.acceleration_checkbox
         ]
+
+        self._force_moment_outputs = [
+            self.force_moment_output_checkbox
+        ]
         
         self._coord_stress_outputs = [
-            self.time_history_checkbox,
             self.max_principal_stress_checkbox,
             self.min_principal_stress_checkbox,
             self.von_mises_checkbox,
@@ -192,7 +202,8 @@ class SolverTab(QWidget):
             self.von_mises_checkbox,
             self.deformation_checkbox,
             self.velocity_checkbox,
-            self.acceleration_checkbox
+            self.acceleration_checkbox,
+            self.force_moment_output_checkbox
         ]
     
     def _connect_signals(self):
@@ -201,6 +212,7 @@ class SolverTab(QWidget):
         self.coord_file_button.clicked.connect(self.file_handler.select_coord_file)
         self.stress_file_button.clicked.connect(self.file_handler.select_stress_file)
         self.deformations_file_button.clicked.connect(self.file_handler.select_deformations_file)
+        self.force_moment_file_button.clicked.connect(self.file_handler.select_force_moment_file)
         self.steady_state_file_button.clicked.connect(self.file_handler.select_steady_state_file)
         self.temperature_field_button.clicked.connect(self.file_handler.select_temperature_field_file)
         self.material_profile_button.clicked.connect(self.open_material_profile_dialog)
@@ -208,6 +220,7 @@ class SolverTab(QWidget):
         # Checkboxes
         self.steady_state_checkbox.toggled.connect(self.ui_handler.toggle_steady_state_stress_inputs)
         self.deformations_checkbox.toggled.connect(self.ui_handler.toggle_deformations_inputs)
+        self.force_moment_checkbox.toggled.connect(self.ui_handler.toggle_force_moment_inputs)
         self.time_history_checkbox.toggled.connect(self.ui_handler.toggle_single_node_solution_group)
         self.time_history_checkbox.toggled.connect(self.ui_handler._on_time_history_toggled)
         self.von_mises_checkbox.toggled.connect(self.ui_handler.toggle_damage_index_checkbox_visibility)
@@ -223,7 +236,7 @@ class SolverTab(QWidget):
         self.plasticity_tolerance_input.textChanged.connect(self.ui_handler.on_plasticity_iteration_inputs_changed)
         
         # Update solve button state when any output is toggled
-        for cb in self._coord_stress_outputs + self._deformation_outputs:
+        for cb in self._coord_stress_outputs + self._deformation_outputs + self._force_moment_outputs:
             cb.toggled.connect(lambda: self.ui_handler._update_solve_button_state())
         
         # Plot updates
@@ -236,6 +249,9 @@ class SolverTab(QWidget):
         self.von_mises_checkbox.toggled.connect(
             self.ui_handler.update_single_node_plot_based_on_checkboxes
         )
+        self.force_moment_output_checkbox.toggled.connect(
+            self.ui_handler.update_single_node_plot_based_on_checkboxes
+        )
         
         # Connect checkboxes to update max/min over time plots
         self.von_mises_checkbox.toggled.connect(self.ui_handler._update_max_min_plots)
@@ -244,6 +260,7 @@ class SolverTab(QWidget):
         self.deformation_checkbox.toggled.connect(self.ui_handler._update_max_min_plots)
         self.velocity_checkbox.toggled.connect(self.ui_handler._update_max_min_plots)
         self.acceleration_checkbox.toggled.connect(self.ui_handler._update_max_min_plots)
+        self.force_moment_output_checkbox.toggled.connect(self.ui_handler._update_max_min_plots)
         
         # Skip modes
         self.skip_modes_combo.currentTextChanged.connect(self.ui_handler.on_skip_modes_changed)
@@ -343,6 +360,19 @@ class SolverTab(QWidget):
         # This just resets the UI state
         self.ui_handler.toggle_deformations_inputs()
 
+    def on_force_moment_file_loaded(self, fm_data, filename):
+        """Handle all UI and state updates after a force/moment file is loaded."""
+        self.ui_handler._update_skip_modes_combo(fm_data.num_modes)
+        self.ui_handler.update_output_checkboxes_state()
+        self.ui_handler._update_solve_button_state()
+        self.log_handler._log_force_moment_load(filename, fm_data)
+        sys.stdout.flush()
+        self._check_and_emit_initial_data()
+
+    def on_force_moment_file_failed(self):
+        """Handle UI updates when force/moment file fails to load."""
+        self.ui_handler.update_output_checkboxes_state()
+
     def on_steady_state_file_loaded(self, steady_data, filename):
         """Handle all UI and state updates after a steady-state file is loaded."""
         # 1. Log
@@ -350,12 +380,25 @@ class SolverTab(QWidget):
         sys.stdout.flush()
 
     def _check_and_emit_initial_data(self):
-        """Check if data is loaded and emit signal."""
-        if self.coord_loaded and self.stress_loaded:
+        """Check if data is loaded and emit signal for the display tab."""
+        if not self.coord_loaded:
+            return
+
+        # Determine best node coords/IDs from whichever dataset is loaded
+        node_coords = None
+        node_ids = None
+        if self.stress_data is not None:
+            node_coords = self.stress_data.node_coords
+            node_ids = self.stress_data.node_ids
+        elif self.force_moment_data is not None:
+            node_coords = self.force_moment_data.node_coords
+            node_ids = self.force_moment_data.node_ids
+
+        if node_coords is not None:
             initial_data = (
                 self.modal_data.time_values,
-                self.stress_data.node_coords,
-                self.stress_data.node_ids,
+                node_coords,
+                node_ids,
                 self.deformation_loaded
             )
             self.initial_data_loaded.emit(initial_data)
@@ -422,9 +465,9 @@ class SolverTab(QWidget):
 
     def _compute_time_history_for_node(self, node_id, require_single_output=True):
         """Validate selection and run time-history analysis."""
-        if not self.stress_data or node_id not in self.stress_data.node_ids:
-            QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in loaded data.")
-            return
+        # Determine if node exists in any loaded dataset
+        node_in_stress = self.stress_data and node_id in self.stress_data.node_ids
+        node_in_force_moment = self.force_moment_data and node_id in self.force_moment_data.node_ids
 
         outputs = {
             'Von-Mises Stress': self.von_mises_checkbox.isChecked(),
@@ -433,13 +476,14 @@ class SolverTab(QWidget):
             'Deformation': self.deformation_checkbox.isChecked(),
             'Velocity': self.velocity_checkbox.isChecked(),
             'Acceleration': self.acceleration_checkbox.isChecked(),
+            'Element Nodal Forces & Moments': self.force_moment_output_checkbox.isChecked(),
         }
 
         selected = [name for name, is_checked in outputs.items() if is_checked]
 
         if not selected:
             QMessageBox.warning(self, "No Output Selected",
-                                "Select an output (Von Mises, Principal Stress, Deformation, Velocity, or Acceleration) before plotting time history.")
+                                "Select an output before plotting time history.")
             return
 
         if require_single_output and len(selected) > 1:
@@ -449,6 +493,15 @@ class SolverTab(QWidget):
                 "Select only one output before plotting time history."
             )
             return
+
+        # Validate node exists in the relevant dataset
+        if outputs.get('Element Nodal Forces & Moments') and not node_in_force_moment:
+            QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in force/moment data.")
+            return
+        if not outputs.get('Element Nodal Forces & Moments'):
+            if not node_in_stress:
+                QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in loaded data.")
+                return
 
         needs_deformation = any(outputs[name] for name in ['Deformation', 'Velocity', 'Acceleration'])
         if needs_deformation and not self.deformation_loaded:
@@ -488,7 +541,8 @@ class SolverTab(QWidget):
             is_von_mises=(result.result_type == 'von_mises'),
             is_deformation=(result.result_type == 'deformation'),
             is_velocity=(result.result_type == 'velocity'),
-            is_acceleration=(result.result_type == 'acceleration')
+            is_acceleration=(result.result_type == 'acceleration'),
+            is_force_moment=(result.result_type == 'force_moment')
         )
 
         layout = QVBoxLayout(dialog)
@@ -531,6 +585,8 @@ class SolverTab(QWidget):
             self._load_stress_file(file_path)
         elif target_widget == self.deformations_file_path:
             self._load_deformation_file(file_path)
+        elif target_widget == self.force_moment_file_path:
+            self.file_handler._load_force_moment_file(file_path)
         elif target_widget == self.steady_state_file_path:
             self._load_steady_state_file(file_path)
         elif target_widget == self.temperature_field_file_path:

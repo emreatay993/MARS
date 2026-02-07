@@ -107,7 +107,8 @@ class DisplayAnimationHandler(DisplayBaseHandler):
             main_tab.min_principal_stress_checkbox.isChecked(),
             main_tab.deformation_checkbox.isChecked(),
             main_tab.velocity_checkbox.isChecked(),
-            main_tab.acceleration_checkbox.isChecked()
+            main_tab.acceleration_checkbox.isChecked(),
+            main_tab.force_moment_output_checkbox.isChecked()
         ]
 
         num_selected = sum(selected_outputs)
@@ -133,6 +134,7 @@ class DisplayAnimationHandler(DisplayBaseHandler):
             "compute_deformation_contour": main_tab.deformation_checkbox.isChecked(),
             "compute_velocity": main_tab.velocity_checkbox.isChecked(),
             "compute_acceleration": main_tab.acceleration_checkbox.isChecked(),
+            "compute_force_moment": main_tab.force_moment_output_checkbox.isChecked(),
             "include_steady": main_tab.steady_state_checkbox.isChecked(),
             "skip_n_modes": int(main_tab.skip_modes_combo.currentText())
             if main_tab.skip_modes_combo.currentText() else 0,

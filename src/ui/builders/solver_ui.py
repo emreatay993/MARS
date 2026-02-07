@@ -86,6 +86,20 @@ class SolverTabUIBuilder:
         deformations_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         deformations_file_path.setVisible(False)
         
+        # Element Nodal Forces & Moments (optional)
+        force_moment_checkbox = QCheckBox("Include Element Nodal Forces && Moments (Optional)")
+        force_moment_checkbox.setStyleSheet(CHECKBOX_STYLE)
+
+        force_moment_file_button = QPushButton('Read Element Nodal Forces && Moments File (.csv)')
+        force_moment_file_button.setStyleSheet(BUTTON_STYLE)
+        force_moment_file_button.setFont(QFont('Arial', 8))
+        force_moment_file_button.setVisible(False)
+
+        force_moment_file_path = QLineEdit()
+        force_moment_file_path.setReadOnly(True)
+        force_moment_file_path.setStyleSheet(READONLY_INPUT_STYLE)
+        force_moment_file_path.setVisible(False)
+
         # Skip modes controls
         skip_modes_label = QLabel("Skip first n modes:")
         skip_modes_label.setVisible(False)
@@ -105,6 +119,9 @@ class SolverTabUIBuilder:
         file_layout.addWidget(deformations_checkbox, 4, 0, 1, 2)
         file_layout.addWidget(deformations_file_button, 5, 0)
         file_layout.addWidget(deformations_file_path, 5, 1)
+        file_layout.addWidget(force_moment_checkbox, 6, 0, 1, 2)
+        file_layout.addWidget(force_moment_file_button, 7, 0)
+        file_layout.addWidget(force_moment_file_path, 7, 1)
         file_layout.addWidget(skip_modes_label, 1, 2)
         file_layout.addWidget(skip_modes_combo, 1, 3)
         
@@ -123,6 +140,9 @@ class SolverTabUIBuilder:
         self.components['deformations_checkbox'] = deformations_checkbox
         self.components['deformations_file_button'] = deformations_file_button
         self.components['deformations_file_path'] = deformations_file_path
+        self.components['force_moment_checkbox'] = force_moment_checkbox
+        self.components['force_moment_file_button'] = force_moment_file_button
+        self.components['force_moment_file_path'] = force_moment_file_path
         self.components['skip_modes_label'] = skip_modes_label
         self.components['skip_modes_combo'] = skip_modes_combo
         
@@ -152,6 +172,8 @@ class SolverTabUIBuilder:
         velocity_checkbox.setStyleSheet(CHECKBOX_STYLE)
         acceleration_checkbox = QCheckBox('Acceleration')
         acceleration_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        force_moment_output_checkbox = QCheckBox('Element Nodal Forces && Moments')
+        force_moment_output_checkbox.setStyleSheet(CHECKBOX_STYLE)
         damage_index_checkbox = QCheckBox('Damage Index / Potential Damage')
         damage_index_checkbox.setStyleSheet(CHECKBOX_STYLE)
         damage_index_checkbox.setVisible(False)  # TODO: Show once damage index workflow is benchmarked
@@ -163,6 +185,7 @@ class SolverTabUIBuilder:
         output_layout.addWidget(deformation_checkbox)
         output_layout.addWidget(velocity_checkbox)
         output_layout.addWidget(acceleration_checkbox)
+        output_layout.addWidget(force_moment_output_checkbox)
         output_layout.addWidget(damage_index_checkbox)
         output_layout.addWidget(time_history_checkbox)
         output_layout.addWidget(plasticity_correction_checkbox)
@@ -180,12 +203,14 @@ class SolverTabUIBuilder:
         self.components['deformation_checkbox'] = deformation_checkbox
         self.components['velocity_checkbox'] = velocity_checkbox
         self.components['acceleration_checkbox'] = acceleration_checkbox
+        self.components['force_moment_output_checkbox'] = force_moment_output_checkbox
         self.components['damage_index_checkbox'] = damage_index_checkbox
         
         # Initially disable checkboxes until files are loaded
         for key in ['max_principal_stress_checkbox', 'min_principal_stress_checkbox',
                     'von_mises_checkbox', 'plasticity_correction_checkbox', 'deformation_checkbox', 'velocity_checkbox',
-                    'acceleration_checkbox', 'damage_index_checkbox', 'time_history_checkbox']:
+                    'acceleration_checkbox', 'force_moment_output_checkbox',
+                    'damage_index_checkbox', 'time_history_checkbox']:
             self.components[key].setEnabled(False)
         
         return output_group

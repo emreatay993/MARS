@@ -183,6 +183,7 @@ class MatplotlibWidget(QWidget):
                    is_deformation=False,
                    is_velocity=False,
                    is_acceleration=False,
+                   is_force_moment=False,
                    plasticity_overlay=None):
         """Update the plot and table with new data."""
         # Reset state
@@ -205,36 +206,78 @@ class MatplotlibWidget(QWidget):
         
         # Handle dict data (multi-component)
         if isinstance(y, dict):
-            if is_velocity:
-                prefix, units = "Velocity", "(mm/s)"
-            elif is_acceleration:
-                prefix, units = "Acceleration", "(mm/s²)"
+            if is_force_moment:
+                # Combined force & moment: 8 components
+                prefix = "Forces & Moments"
+                self.ax.set_title(f"Element Nodal {prefix} (Node ID: {node_id})", fontsize=8)
+                self.ax.set_ylabel("Value", fontsize=8)
+
+                # Define styles for force/moment components
+                fm_styles = {
+                    'Force Mag': {'color': 'black', 'linestyle': '-', 'linewidth': 2},
+                    'Fx': {'color': 'red', 'linestyle': '-', 'linewidth': 1},
+                    'Fy': {'color': 'green', 'linestyle': '-', 'linewidth': 1},
+                    'Fz': {'color': 'blue', 'linestyle': '-', 'linewidth': 1},
+                    'Moment Mag': {'color': 'black', 'linestyle': '--', 'linewidth': 2},
+                    'Mx': {'color': 'red', 'linestyle': '--', 'linewidth': 1},
+                    'My': {'color': 'green', 'linestyle': '--', 'linewidth': 1},
+                    'Mz': {'color': 'blue', 'linestyle': '--', 'linewidth': 1},
+                }
+
+                headers = ["Time [s]"]
+                for comp_name in y.keys():
+                    headers.append(comp_name)
+                self.model.setHorizontalHeaderLabels(headers)
+
+                for component, data in y.items():
+                    style = fm_styles.get(component, {})
+                    line, = self.ax.plot(x, data, label=component, **style)
+                    self.plotted_lines.append(line)
+
+                for i in range(len(x)):
+                    items = [QStandardItem(f"{x[i]:.5f}")]
+                    for comp_data in y.values():
+                        items.append(QStandardItem(f"{comp_data[i]:.5f}"))
+                    self.model.appendRow(items)
+
+                if 'Force Mag' in y:
+                    max_f = np.max(y['Force Mag'])
+                    time_f = x[np.argmax(y['Force Mag'])]
+                    max_m = np.max(y['Moment Mag'])
+                    time_m = x[np.argmax(y['Moment Mag'])]
+                    textstr = (f'Max |F|: {max_f:.4f} @ {time_f:.5f}s\n'
+                               f'Max |M|: {max_m:.4f} @ {time_m:.5f}s')
             else:
-                prefix, units = "Deformation", "(mm)"
-            
-            self.ax.set_title(f"{prefix} (Node ID: {node_id})", fontsize=8)
-            self.ax.set_ylabel(f"{prefix} {units}", fontsize=8)
-            self.model.setHorizontalHeaderLabels(
-                ["Time [s]", f"Mag {units}", f"X {units}", f"Y {units}", f"Z {units}"])
-            
-            for component, data in y.items():
-                style = styles.get(component, {})
-                line, = self.ax.plot(x, data, label=f'{prefix} ({component})', **style)
-                self.plotted_lines.append(line)
-            
-            for i in range(len(x)):
-                items = [
-                    QStandardItem(f"{x[i]:.5f}"),
-                    QStandardItem(f"{y['Magnitude'][i]:.5f}"),
-                    QStandardItem(f"{y['X'][i]:.5f}"),
-                    QStandardItem(f"{y['Y'][i]:.5f}"),
-                    QStandardItem(f"{y['Z'][i]:.5f}")
-                ]
-                self.model.appendRow(items)
-            
-            max_y_value = np.max(y['Magnitude'])
-            time_of_max = x[np.argmax(y['Magnitude'])]
-            textstr = f'Max Magnitude: {max_y_value:.4f}\nTime of Max: {time_of_max:.5f} s'
+                if is_velocity:
+                    prefix, units = "Velocity", "(mm/s)"
+                elif is_acceleration:
+                    prefix, units = "Acceleration", "(mm/s²)"
+                else:
+                    prefix, units = "Deformation", "(mm)"
+                
+                self.ax.set_title(f"{prefix} (Node ID: {node_id})", fontsize=8)
+                self.ax.set_ylabel(f"{prefix} {units}", fontsize=8)
+                self.model.setHorizontalHeaderLabels(
+                    ["Time [s]", f"Mag {units}", f"X {units}", f"Y {units}", f"Z {units}"])
+                
+                for component, data in y.items():
+                    style = styles.get(component, {})
+                    line, = self.ax.plot(x, data, label=f'{prefix} ({component})', **style)
+                    self.plotted_lines.append(line)
+                
+                for i in range(len(x)):
+                    items = [
+                        QStandardItem(f"{x[i]:.5f}"),
+                        QStandardItem(f"{y['Magnitude'][i]:.5f}"),
+                        QStandardItem(f"{y['X'][i]:.5f}"),
+                        QStandardItem(f"{y['Y'][i]:.5f}"),
+                        QStandardItem(f"{y['Z'][i]:.5f}")
+                    ]
+                    self.model.appendRow(items)
+                
+                max_y_value = np.max(y['Magnitude'])
+                time_of_max = x[np.argmax(y['Magnitude'])]
+                textstr = f'Max Magnitude: {max_y_value:.4f}\nTime of Max: {time_of_max:.5f} s'
         
         # Handle array data (single component)
         else:
@@ -350,6 +393,93 @@ class MatplotlibWidget(QWidget):
         self.table.resizeColumnsToContents()
         QTimer.singleShot(0, self.adjust_splitter_size)
 
+    def update_plot_rotational_acceleration(self, time_values, alpha_x, alpha_y, alpha_z, alpha_mag, ref_point=None):
+        """
+        Update plot with rotational acceleration data (4 components).
+        
+        Args:
+            time_values: Array of time points
+            alpha_x: Angular acceleration about X axis (rad/s²)
+            alpha_y: Angular acceleration about Y axis (rad/s²)
+            alpha_z: Angular acceleration about Z axis (rad/s²)
+            alpha_mag: Magnitude of angular acceleration (rad/s²)
+            ref_point: Reference point tuple (x, y, z)
+        """
+        # Reset state
+        self.figure.clear()
+        self.plotted_lines.clear()
+        self.legend_map.clear()
+        
+        self.ax = self.figure.add_subplot(1, 1, 1)
+        
+        x = np.asarray(time_values)
+        ax_data = np.asarray(alpha_x)
+        ay_data = np.asarray(alpha_y)
+        az_data = np.asarray(alpha_z)
+        mag_data = np.asarray(alpha_mag)
+        
+        # Plot all 4 traces
+        line_mag, = self.ax.plot(x, mag_data, label='|α|', color='black', linewidth=2)
+        line_x, = self.ax.plot(x, ax_data, label='αx', color='red', linestyle='--', linewidth=1)
+        line_y, = self.ax.plot(x, ay_data, label='αy', color='green', linestyle='--', linewidth=1)
+        line_z, = self.ax.plot(x, az_data, label='αz', color='blue', linestyle='--', linewidth=1)
+        
+        self.plotted_lines = [line_mag, line_x, line_y, line_z]
+        
+        # Title and labels
+        ref_str = f"Ref: ({ref_point[0]:.2f}, {ref_point[1]:.2f}, {ref_point[2]:.2f})" if ref_point else ""
+        self.ax.set_title(f"Rotational Acceleration (Rigid Body) {ref_str}", fontsize=8)
+        self.ax.set_xlabel('Time [seconds]', fontsize=8)
+        self.ax.set_ylabel('Angular Acceleration [rad/s²]', fontsize=8)
+        self.ax.set_xlim(np.min(x), np.max(x))
+        self.ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
+        self.ax.grid(True, which='both', linestyle='-', linewidth=0.5)
+        self.ax.minorticks_on()
+        self.ax.tick_params(axis='both', which='major', labelsize=8)
+        
+        # Interactive legend
+        handles, labels = self.ax.get_legend_handles_labels()
+        if handles:
+            leg = self.ax.legend(handles, labels, fontsize=7, loc='upper right')
+            for legline, legtext, origline in zip(leg.get_lines(), leg.get_texts(), self.plotted_lines):
+                legline.set_picker(True)
+                legline.set_pickradius(5)
+                self.legend_map[legline] = origline
+                legtext.set_picker(True)
+                self.legend_map[legtext] = origline
+        
+        # Max annotation
+        max_mag = np.max(mag_data)
+        time_of_max = x[np.argmax(mag_data)]
+        textstr = f'Max |α|: {max_mag:.4e} rad/s²\nTime of Max: {time_of_max:.5f} s'
+        self.ax.text(0.05, 0.95, textstr, transform=self.ax.transAxes, fontsize=8,
+                    verticalalignment='top', horizontalalignment='left',
+                    bbox=dict(facecolor='white', alpha=0.5, boxstyle='round,pad=0.2'))
+        
+        # Annotation setup
+        self.annot = self.ax.annotate("", xy=(0, 0), xytext=(20, 20),
+                                      textcoords="offset points",
+                                      bbox=dict(boxstyle="round", fc="w"),
+                                      arrowprops=dict(arrowstyle="->"))
+        self.annot.set_visible(False)
+        
+        # Populate table
+        self.model.clear()
+        self.model.setHorizontalHeaderLabels(["Time [s]", "|α| [rad/s²]", "αx [rad/s²]", "αy [rad/s²]", "αz [rad/s²]"])
+        for i in range(len(x)):
+            items = [
+                QStandardItem(f"{x[i]:.5f}"),
+                QStandardItem(f"{mag_data[i]:.6e}"),
+                QStandardItem(f"{ax_data[i]:.6e}"),
+                QStandardItem(f"{ay_data[i]:.6e}"),
+                QStandardItem(f"{az_data[i]:.6e}")
+            ]
+            self.model.appendRow(items)
+        
+        self.table.resizeColumnsToContents()
+        self.canvas.draw()
+        QTimer.singleShot(0, self.adjust_splitter_size)
+    
     def clear_plot(self):
         """Clear the plot and table."""
         self.figure.clear()

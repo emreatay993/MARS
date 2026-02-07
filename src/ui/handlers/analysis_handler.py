@@ -181,6 +181,7 @@ class SolverAnalysisHandler:
             calculate_deformation=self.tab.deformation_checkbox.isChecked(),
             calculate_velocity=self.tab.velocity_checkbox.isChecked(),
             calculate_acceleration=self.tab.acceleration_checkbox.isChecked(),
+            calculate_force_moment=self.tab.force_moment_output_checkbox.isChecked(),
             calculate_damage=self.tab.damage_index_checkbox.isChecked(),
             time_history_mode=is_time_history,
             include_steady_state=self.tab.steady_state_checkbox.isChecked(),
@@ -205,15 +206,19 @@ class SolverAnalysisHandler:
             self.tab.progress_bar.setVisible(False)
             return None
 
-        # Validate skip modes
-        if self.tab.stress_data and config.skip_n_modes >= self.tab.stress_data.num_modes:
-            QMessageBox.critical(
-                self.tab, "Calculation Error",
-                f"Cannot skip {config.skip_n_modes} modes as only "
-                f"{self.tab.stress_data.num_modes} are available."
-            )
-            self.tab.progress_bar.setVisible(False)
-            return None
+        # Validate skip modes against all loaded datasets
+        for data_source, label in [
+            (self.tab.stress_data, "stress"),
+            (self.tab.force_moment_data, "force/moment"),
+        ]:
+            if data_source and config.skip_n_modes >= data_source.num_modes:
+                QMessageBox.critical(
+                    self.tab, "Calculation Error",
+                    f"Cannot skip {config.skip_n_modes} modes as only "
+                    f"{data_source.num_modes} are available in {label} data."
+                )
+                self.tab.progress_bar.setVisible(False)
+                return None
 
         # Get fatigue parameters if needed
         if config.calculate_damage:
@@ -233,6 +238,17 @@ class SolverAnalysisHandler:
 
         return config
 
+    def _node_exists_in_any_dataset(self, node_id):
+        """Check if a node ID exists in any loaded dataset relevant to selected outputs."""
+        # If force or moment output is selected, check those datasets
+        if self.tab.force_moment_output_checkbox.isChecked() and self.tab.force_moment_data is not None:
+            if node_id in self.tab.force_moment_data.node_ids:
+                return True
+        # Otherwise check stress data
+        if self.tab.stress_data is not None and node_id in self.tab.stress_data.node_ids:
+            return True
+        return False
+
     def _validate_time_history_mode(self, force_node_id):
         """
         Validate time history mode inputs.
@@ -244,7 +260,7 @@ class SolverAnalysisHandler:
             int: Validated node ID, or None if validation fails.
         """
         if force_node_id is not None:
-            if force_node_id not in self.tab.stress_data.node_ids:
+            if not self._node_exists_in_any_dataset(force_node_id):
                 QMessageBox.warning(
                     self.tab, "Invalid Node ID",
                     f"Node ID {force_node_id} was not found."
@@ -263,10 +279,10 @@ class SolverAnalysisHandler:
 
         try:
             node_id = int(node_id_text)
-            if node_id not in self.tab.stress_data.node_ids:
+            if not self._node_exists_in_any_dataset(node_id):
                 QMessageBox.warning(
                     self.tab, "Invalid Node ID",
-                    f"Node ID {node_id} was not found in the loaded modal stress file."
+                    f"Node ID {node_id} was not found in any loaded data file."
                 )
                 return None
 
@@ -295,7 +311,8 @@ class SolverAnalysisHandler:
             self.tab.min_principal_stress_checkbox.isChecked(),
             self.tab.deformation_checkbox.isChecked(),
             self.tab.velocity_checkbox.isChecked(),
-            self.tab.acceleration_checkbox.isChecked()
+            self.tab.acceleration_checkbox.isChecked(),
+            self.tab.force_moment_output_checkbox.isChecked()
         ])
 
     def _get_fatigue_parameters(self):
@@ -400,7 +417,8 @@ class SolverAnalysisHandler:
             self.tab.modal_data,
             self.tab.stress_data,
             self.tab.deformation_data,
-            self.tab.steady_state_data
+            self.tab.steady_state_data,
+            force_moment_data=self.tab.force_moment_data
         )
 
     def _execute_analysis(self, config):
@@ -455,6 +473,7 @@ class SolverAnalysisHandler:
             is_deformation=config.calculate_deformation,
             is_velocity=config.calculate_velocity,
             is_acceleration=config.calculate_acceleration,
+            is_force_moment=config.calculate_force_moment,
             plasticity_overlay=plasticity_overlay
         )
 
@@ -550,6 +569,20 @@ class SolverAnalysisHandler:
                 'data': solver.max_over_time_acc
             })
             dataset_options.append(("Acceleration (mm/s²)", "max_acceleration.csv"))
+
+        if config.calculate_force_moment:
+            if hasattr(solver, 'max_over_time_force_mag') and solver.max_over_time_force_mag is not None:
+                max_traces.append({
+                    'name': 'Force (N)',
+                    'data': solver.max_over_time_force_mag
+                })
+                dataset_options.append(("Force (N)", "max_element_nodal_force.csv"))
+            if hasattr(solver, 'max_over_time_moment_mag') and solver.max_over_time_moment_mag is not None:
+                max_traces.append({
+                    'name': 'Moment (N·mm)',
+                    'data': solver.max_over_time_moment_mag
+                })
+                dataset_options.append(("Moment (N·mm)", "max_element_nodal_moment.csv"))
 
         # Show maximum over time tab if there are traces
         if max_traces:
@@ -663,9 +696,13 @@ class SolverAnalysisHandler:
         print("SolverTab: Received request for time point calculation.")
 
         try:
-            # Validate data is loaded
-            if not (self.tab.coord_loaded and self.tab.stress_loaded):
-                QMessageBox.warning(self.tab, "Missing Data", "Core data files are not loaded.")
+            # Validate data is loaded -- at minimum, modal coordinates must be loaded,
+            # plus at least one data source (stress, force, or moment)
+            if not self.tab.coord_loaded:
+                QMessageBox.warning(self.tab, "Missing Data", "Modal coordinate file is not loaded.")
+                return
+            if not (self.tab.stress_loaded or self.tab.force_moment_loaded):
+                QMessageBox.warning(self.tab, "Missing Data", "No data files loaded (stress or force/moment).")
                 return
 
             # Validate single output selection
@@ -675,7 +712,8 @@ class SolverAnalysisHandler:
                 options.get('compute_min_principal', False),
                 options.get('compute_deformation_contour', False),
                 options.get('compute_velocity', False),
-                options.get('compute_acceleration', False)
+                options.get('compute_acceleration', False),
+                options.get('compute_force_moment', False)
             ])
 
             if num_outputs > 1:
@@ -739,27 +777,47 @@ class SolverAnalysisHandler:
                     'steady_node_ids': self.tab.steady_state_data.node_ids
                 }
 
+            # Prepare force/moment data for temp solver
+            modal_fm_filtered = None
+            fm_node_ids = None
+            fm_node_coords = None
+            if options.get('compute_force_moment', False) and self.tab.force_moment_data:
+                fmd = self.tab.force_moment_data
+                modal_fm_filtered = (
+                    fmd.modal_fx[:, mode_slice], fmd.modal_fy[:, mode_slice], fmd.modal_fz[:, mode_slice],
+                    fmd.modal_mx[:, mode_slice], fmd.modal_my[:, mode_slice], fmd.modal_mz[:, mode_slice]
+                )
+                fm_node_ids = fmd.node_ids
+                fm_node_coords = fmd.node_coords
+
+            # Prepare stress arrays for temp solver (optional)
+            stress_sx = self.tab.stress_data.modal_sx[:, mode_slice] if self.tab.stress_data else None
+            stress_sy = self.tab.stress_data.modal_sy[:, mode_slice] if self.tab.stress_data else None
+            stress_sz = self.tab.stress_data.modal_sz[:, mode_slice] if self.tab.stress_data else None
+            stress_sxy = self.tab.stress_data.modal_sxy[:, mode_slice] if self.tab.stress_data else None
+            stress_syz = self.tab.stress_data.modal_syz[:, mode_slice] if self.tab.stress_data else None
+            stress_sxz = self.tab.stress_data.modal_sxz[:, mode_slice] if self.tab.stress_data else None
+
             # Create temporary solver for this time point
             temp_solver = solver_engine.MSUPSmartSolverTransient(
-                self.tab.stress_data.modal_sx[:, mode_slice],
-                self.tab.stress_data.modal_sy[:, mode_slice],
-                self.tab.stress_data.modal_sz[:, mode_slice],
-                self.tab.stress_data.modal_sxy[:, mode_slice],
-                self.tab.stress_data.modal_syz[:, mode_slice],
-                self.tab.stress_data.modal_sxz[:, mode_slice],
-                selected_modal_coord,
-                dt_window,
-                modal_node_ids=self.tab.stress_data.node_ids,
+                modal_sx=stress_sx, modal_sy=stress_sy, modal_sz=stress_sz,
+                modal_sxy=stress_sxy, modal_syz=stress_syz, modal_sxz=stress_sxz,
+                modal_coord=selected_modal_coord,
+                time_values=dt_window,
+                modal_node_ids=self.tab.stress_data.node_ids if self.tab.stress_data else None,
                 modal_deformations=modal_deformations_filtered,
+                modal_force_moment=modal_fm_filtered,
+                force_moment_node_ids=fm_node_ids,
+                force_moment_node_coords=fm_node_coords,
                 **steady_kwargs
             )
 
-            num_nodes = self.tab.stress_data.num_nodes
-            display_coords = self.tab.stress_data.node_coords
+            num_nodes = self.tab.stress_data.num_nodes if self.tab.stress_data else 0
+            display_coords = self.tab.stress_data.node_coords if self.tab.stress_data else None
             ux_tp, uy_tp, uz_tp = None, None, None
 
             # Apply deformation to coordinates if requested
-            if options.get('display_deformed_shape', False) and self.tab.deformation_data:
+            if options.get('display_deformed_shape', False) and self.tab.deformation_data and num_nodes > 0:
                 ux_tp, uy_tp, uz_tp = temp_solver.compute_deformations(0, num_nodes)
                 if is_vel_or_accel:
                     ux_tp = ux_tp[:, [centre_offset]]
@@ -770,14 +828,23 @@ class SolverAnalysisHandler:
                         displacement_vector * options.get('scale_factor', 1.0)
                 )
 
-            # Compute stresses
-            actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz = \
-                temp_solver.compute_normal_stresses(0, num_nodes)
+            # Compute stresses only when stress data is available and stress outputs selected
+            actual_sx = actual_sy = actual_sz = actual_sxy = actual_syz = actual_sxz = None
+            is_stress_output = any([
+                options.get('compute_von_mises', False),
+                options.get('compute_max_principal', False),
+                options.get('compute_min_principal', False),
+            ])
+            if is_stress_output and num_nodes > 0:
+                actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz = \
+                    temp_solver.compute_normal_stresses(0, num_nodes)
 
-            # Create mesh
-            mesh = pv.PolyData(display_coords)
-            if self.tab.stress_data.node_ids is not None:
-                mesh["NodeID"] = self.tab.stress_data.node_ids.astype(int)
+            # Create mesh (will be overridden for force/moment which have their own coords)
+            mesh = None
+            if display_coords is not None:
+                mesh = pv.PolyData(display_coords)
+                if self.tab.stress_data and self.tab.stress_data.node_ids is not None:
+                    mesh["NodeID"] = self.tab.stress_data.node_ids.astype(int)
 
             # Compute requested scalar field
             scalar_field, display_name = None, "Result"
@@ -836,6 +903,25 @@ class SolverAnalysisHandler:
                     scalar_field = acc_mag[:, [centre_offset]]
                     display_name = "Acceleration (mm/s²)"
 
+            elif options.get('compute_force_moment', False):
+                if not self.tab.force_moment_data:
+                    QMessageBox.warning(
+                        self.tab, "Missing Data",
+                        "Element nodal forces & moments must be loaded for this calculation."
+                    )
+                    return
+                fm_result = temp_solver.compute_forces_moments(0, temp_solver.modal_forces_fx.shape[0])
+                if fm_result is not None:
+                    fx_tp, fy_tp, fz_tp, mx_tp, my_tp, mz_tp = fm_result
+                    scalar_field = np.sqrt(fx_tp ** 2 + fy_tp ** 2 + fz_tp ** 2)
+                    display_name = "Force (N)"
+                    # Use force/moment node coords for mesh
+                    mesh = pv.PolyData(self.tab.force_moment_data.node_coords)
+                    if self.tab.force_moment_data.node_ids is not None:
+                        mesh["NodeID"] = self.tab.force_moment_data.node_ids.astype(int)
+                    # Also add moment magnitude as secondary scalar
+                    mesh["Moment (N·mm)"] = np.sqrt(mx_tp ** 2 + my_tp ** 2 + mz_tp ** 2)
+
             if scalar_field is None:
                 print("No valid output was calculated.")
                 return
@@ -862,8 +948,10 @@ class SolverAnalysisHandler:
             (bool, str): Tuple of ok flag and error message (if not ok).
         """
         # Core data requirements
-        if not (self.tab.coord_loaded and self.tab.stress_loaded):
-            return False, "Core data files are not loaded."
+        if not self.tab.coord_loaded:
+            return False, "Modal coordinate file is not loaded."
+        if not (self.tab.stress_loaded or self.tab.force_moment_loaded):
+            return False, "No data files loaded (stress or force/moment)."
 
         # Frames to compute
         anim_indices = params.get('anim_indices', [])
@@ -877,7 +965,8 @@ class SolverAnalysisHandler:
             params.get('compute_min_principal', False),
             params.get('compute_deformation_contour', False),
             params.get('compute_velocity', False),
-            params.get('compute_acceleration', False)
+            params.get('compute_acceleration', False),
+            params.get('compute_force_moment', False)
         ]):
             return False, "No valid output selected for animation."
 
@@ -945,8 +1034,10 @@ class SolverAnalysisHandler:
             # Deformation usage for RAM estimate
             compute_deformation_anim = params.get('compute_deformation_anim', False)
 
-            # RAM check
-            num_nodes = self.tab.stress_data.num_nodes
+            # RAM check - use the largest node set that will be processed
+            num_nodes = self.tab.stress_data.num_nodes if self.tab.stress_data else 0
+            if params.get('compute_force_moment', False) and self.tab.force_moment_data:
+                num_nodes = max(num_nodes, self.tab.force_moment_data.num_nodes)
             estimated_gb = display_tab._estimate_animation_ram(
                 num_nodes, num_anim_steps, compute_deformation_anim
             )
@@ -991,23 +1082,55 @@ class SolverAnalysisHandler:
                     self.tab.deformation_data.modal_uz[:, mode_slice]
                 )
 
+            # Prepare force/moment data for animation solver
+            modal_fm_anim = None
+            fm_node_ids_anim = None
+            fm_node_coords_anim = None
+            if params.get('compute_force_moment', False) and self.tab.force_moment_data:
+                fmd = self.tab.force_moment_data
+                modal_fm_anim = (
+                    fmd.modal_fx[:, mode_slice], fmd.modal_fy[:, mode_slice], fmd.modal_fz[:, mode_slice],
+                    fmd.modal_mx[:, mode_slice], fmd.modal_my[:, mode_slice], fmd.modal_mz[:, mode_slice]
+                )
+                fm_node_ids_anim = fmd.node_ids
+                fm_node_coords_anim = fmd.node_coords
+
+            # Prepare stress arrays (optional)
+            anim_stress_sx = self.tab.stress_data.modal_sx[:, mode_slice] if self.tab.stress_data else None
+            anim_stress_sy = self.tab.stress_data.modal_sy[:, mode_slice] if self.tab.stress_data else None
+            anim_stress_sz = self.tab.stress_data.modal_sz[:, mode_slice] if self.tab.stress_data else None
+            anim_stress_sxy = self.tab.stress_data.modal_sxy[:, mode_slice] if self.tab.stress_data else None
+            anim_stress_syz = self.tab.stress_data.modal_syz[:, mode_slice] if self.tab.stress_data else None
+            anim_stress_sxz = self.tab.stress_data.modal_sxz[:, mode_slice] if self.tab.stress_data else None
+
             temp_solver = solver_engine.MSUPSmartSolverTransient(
-                self.tab.stress_data.modal_sx[:, mode_slice],
-                self.tab.stress_data.modal_sy[:, mode_slice],
-                self.tab.stress_data.modal_sz[:, mode_slice],
-                self.tab.stress_data.modal_sxy[:, mode_slice],
-                self.tab.stress_data.modal_syz[:, mode_slice],
-                self.tab.stress_data.modal_sxz[:, mode_slice],
-                selected_modal_coord,
-                anim_times,
-                modal_node_ids=self.tab.stress_data.node_ids,
+                modal_sx=anim_stress_sx, modal_sy=anim_stress_sy, modal_sz=anim_stress_sz,
+                modal_sxy=anim_stress_sxy, modal_syz=anim_stress_syz, modal_sxz=anim_stress_sxz,
+                modal_coord=selected_modal_coord,
+                time_values=anim_times,
+                modal_node_ids=self.tab.stress_data.node_ids if self.tab.stress_data else None,
                 modal_deformations=modal_deformations_filtered,
+                modal_force_moment=modal_fm_anim,
+                force_moment_node_ids=fm_node_ids_anim,
+                force_moment_node_coords=fm_node_coords_anim,
                 **steady_kwargs
             )
 
-            print("Computing normal stresses for animation...")
-            actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz = \
-                temp_solver.compute_normal_stresses(0, num_nodes)
+            # Only compute stresses if stress-based outputs are selected and data is available
+            is_stress_anim = any([
+                params.get('compute_von_mises', False),
+                params.get('compute_max_principal', False),
+                params.get('compute_min_principal', False),
+            ])
+            actual_sx = actual_sy = actual_sz = actual_sxy = actual_syz = actual_sxz = None
+            if self.tab.stress_data and (is_stress_anim or any([
+                params.get('compute_deformation_contour', False),
+                params.get('compute_velocity', False),
+                params.get('compute_acceleration', False),
+            ])):
+                print("Computing normal stresses for animation...")
+                actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz = \
+                    temp_solver.compute_normal_stresses(0, num_nodes)
 
             print("Computing scalar field for animation...")
             precomputed_scalars = None
@@ -1055,9 +1178,17 @@ class SolverAnalysisHandler:
                         precomputed_scalars = acc_mag
                         data_column_name = "Acceleration (mm/s²)"
 
+            if params.get('compute_force_moment', False):
+                if not self.tab.force_moment_data:
+                    raise ValueError("Force/moment data not loaded.")
+                n_fm = temp_solver.modal_forces_fx.shape[0]
+                fx_a, fy_a, fz_a, mx_a, my_a, mz_a = temp_solver.compute_forces_moments(0, n_fm)
+                precomputed_scalars = np.sqrt(fx_a ** 2 + fy_a ** 2 + fz_a ** 2)
+                data_column_name = "Force (N)"
+
             # Compute deformed coordinates if requested
             precomputed_coords = None
-            if compute_deformation_anim and self.tab.deformation_data:
+            if compute_deformation_anim and self.tab.deformation_data and self.tab.stress_data and num_nodes > 0:
                 print("Computing deformations for animation...")
                 deformations = temp_solver.compute_deformations(0, num_nodes)
                 if deformations is not None:

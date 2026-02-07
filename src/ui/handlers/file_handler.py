@@ -12,8 +12,8 @@ from PyQt5.QtCore import QThread, pyqtSignal, QObject
 # Import your existing loaders
 from file_io.loaders import (
     load_modal_coordinates, load_modal_stress,
-    load_modal_deformations, load_steady_state_stress,
-    load_temperature_field
+    load_modal_deformations, load_element_nodal_forces_moments,
+    load_steady_state_stress, load_temperature_field
 )
 
 
@@ -211,6 +211,50 @@ class SolverFileHandler:
         QMessageBox.warning(
             self.tab, "Invalid File",
             f"The selected Modal Deformations File is not valid.\n\nError: {error}"
+        )
+
+    # --- Element Nodal Forces & Moments File ---
+
+    def select_force_moment_file(self, checked=False):
+        """Open file dialog for element nodal forces & moments file."""
+        file_name, _ = QFileDialog.getOpenFileName(
+            self.tab, 'Open Element Nodal Forces & Moments File', '', 'CSV Files (*.csv)'
+        )
+        if file_name:
+            self._load_force_moment_file(file_name)
+
+    def _load_force_moment_file(self, filename):
+        """Load element nodal forces & moments file using background thread."""
+        self.tab.setEnabled(False)
+        self.tab.console_textbox.append("⏳ Loading element nodal forces & moments file in background...\n")
+
+        self.fm_loader_thread = FileLoaderThread(load_element_nodal_forces_moments, filename)
+        self.fm_loader_thread.finished.connect(
+            lambda data: self._on_force_moment_loaded(data, filename)
+        )
+        self.fm_loader_thread.error.connect(
+            lambda error: self._on_force_moment_load_error(error)
+        )
+        self.fm_loader_thread.start()
+
+    def _on_force_moment_loaded(self, fm_data, filename):
+        """Handle successful force/moment file load."""
+        self.tab.setEnabled(True)
+        self.tab.force_moment_data = None
+        self.tab.force_moment_data = fm_data
+        self.tab.force_moment_file_path.setText(filename)
+        self.tab.force_moment_loaded = True
+        self.tab.on_force_moment_file_loaded(fm_data, filename)
+
+    def _on_force_moment_load_error(self, error):
+        """Handle force/moment file load error."""
+        self.tab.setEnabled(True)
+        self.tab.force_moment_loaded = False
+        self.tab.force_moment_file_path.clear()
+        self.tab.on_force_moment_file_failed()
+        QMessageBox.warning(
+            self.tab, "Invalid File",
+            f"The selected Element Nodal Forces & Moments File is not valid.\n\nError: {error}"
         )
 
     # --- Steady-State Stress File ---

@@ -102,6 +102,41 @@ class DeformationData:
 
 
 @dataclass
+class ElementNodalForceMomentData:
+    """
+    Container for modal element nodal force and moment components (combined).
+
+    Attributes:
+        node_ids: Array of node IDs.
+        modal_fx: Modal force in X direction, shape (num_nodes, num_modes).
+        modal_fy: Modal force in Y direction, shape (num_nodes, num_modes).
+        modal_fz: Modal force in Z direction, shape (num_nodes, num_modes).
+        modal_mx: Modal moment about X axis, shape (num_nodes, num_modes).
+        modal_my: Modal moment about Y axis, shape (num_nodes, num_modes).
+        modal_mz: Modal moment about Z axis, shape (num_nodes, num_modes).
+        node_coords: Optional node coordinates, shape (num_nodes, 3).
+    """
+    node_ids: np.ndarray
+    modal_fx: np.ndarray
+    modal_fy: np.ndarray
+    modal_fz: np.ndarray
+    modal_mx: np.ndarray
+    modal_my: np.ndarray
+    modal_mz: np.ndarray
+    node_coords: Optional[np.ndarray] = None
+
+    @property
+    def num_nodes(self) -> int:
+        """Number of nodes."""
+        return len(self.node_ids)
+
+    @property
+    def num_modes(self) -> int:
+        """Number of modes."""
+        return self.modal_fx.shape[1]
+
+
+@dataclass
 class SteadyStateData:
     """
     Container for steady-state stress data.
@@ -216,6 +251,7 @@ class SolverConfig:
     calculate_deformation: bool = False
     calculate_velocity: bool = False
     calculate_acceleration: bool = False
+    calculate_force_moment: bool = False
     calculate_damage: bool = False
     fatigue_A: Optional[float] = None
     fatigue_m: Optional[float] = None

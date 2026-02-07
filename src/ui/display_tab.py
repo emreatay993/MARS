@@ -363,6 +363,7 @@ class DisplayTab(QWidget):
             'compute_deformation_contour': main_tab.deformation_checkbox.isChecked(),
             'compute_velocity': main_tab.velocity_checkbox.isChecked(),
             'compute_acceleration': main_tab.acceleration_checkbox.isChecked(),
+            'compute_force_moment': main_tab.force_moment_output_checkbox.isChecked(),
             'display_deformed_shape': main_tab.deformations_checkbox.isChecked(),
             'include_steady': main_tab.steady_state_checkbox.isChecked(),
             'skip_n_modes': int(main_tab.skip_modes_combo.currentText()) if main_tab.skip_modes_combo.currentText() else 0,

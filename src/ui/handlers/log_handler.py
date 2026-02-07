@@ -67,6 +67,21 @@ class SolverLogHandler:
             f"   Modes: {deform_data.num_modes}\n"
         )
 
+    def _log_force_moment_load(self, filename, fm_data):
+        """Log successful element nodal forces & moments file load."""
+        self.tab.console_textbox.append(
+            f"Successfully validated and loaded element nodal forces & moments file: "
+            f"{os.path.basename(filename)}\n"
+        )
+        self.tab.console_textbox.append(
+            f"📐 Components: 6 (FX, FY, FZ, MX, MY, MZ)\n"
+            f"   Nodes: {fm_data.num_nodes:,}\n"
+            f"   Modes: {fm_data.num_modes}\n"
+        )
+        self.tab.console_textbox.verticalScrollBar().setValue(
+            self.tab.console_textbox.verticalScrollBar().maximum()
+        )
+
     def _log_steady_state_load(self, filename, steady_data):
         """Log successful steady-state file load."""
         self.tab.console_textbox.append(
