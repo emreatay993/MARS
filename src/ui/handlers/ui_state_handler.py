@@ -23,24 +23,6 @@ class SolverUIHandler:
 
     def update_output_checkboxes_state(self):
         """Enable/disable output checkboxes based on loaded files."""
-        # Stress-related outputs (require coord + stress)
-        stress_enabled = self.tab.coord_loaded and self.tab.stress_loaded
-        for cb in self.tab._coord_stress_outputs:
-            cb.setEnabled(stress_enabled)
-            if not stress_enabled:
-                cb.setChecked(False)
-
-        # Deformation-related outputs (require coord + deformation)
-        deformations_enabled = (
-                self.tab.coord_loaded and
-                self.tab.deformations_checkbox.isChecked() and
-                self.tab.deformation_loaded
-        )
-        for cb in self.tab._deformation_outputs:
-            cb.setEnabled(deformations_enabled)
-            if not deformations_enabled:
-                cb.setChecked(False)
-
         # Force/moment-related outputs (require coord + force_moment -- no stress needed)
         force_moment_enabled = (
                 self.tab.coord_loaded and
@@ -52,6 +34,29 @@ class SolverUIHandler:
             if not force_moment_enabled:
                 cb.setChecked(False)
 
+        # When force/moment output is selected, keep it exclusive from other outputs.
+        force_moment_selected = self.tab.force_moment_output_checkbox.isChecked()
+
+        # Stress-related outputs (require coord + stress)
+        stress_enabled = self.tab.coord_loaded and self.tab.stress_loaded
+        for cb in self.tab._coord_stress_outputs:
+            should_enable = stress_enabled and not force_moment_selected
+            cb.setEnabled(should_enable)
+            if not should_enable:
+                cb.setChecked(False)
+
+        # Deformation-related outputs (require coord + deformation)
+        deformations_enabled = (
+                self.tab.coord_loaded and
+                self.tab.deformations_checkbox.isChecked() and
+                self.tab.deformation_loaded
+        )
+        for cb in self.tab._deformation_outputs:
+            should_enable = deformations_enabled and not force_moment_selected
+            cb.setEnabled(should_enable)
+            if not should_enable:
+                cb.setChecked(False)
+
         # Time history mode: enabled if any data source can produce output
         any_output_possible = stress_enabled or deformations_enabled or force_moment_enabled
         self.tab.time_history_checkbox.setEnabled(any_output_possible)
@@ -61,6 +66,17 @@ class SolverUIHandler:
         # Ensure dependent controls track Von Mises selection state
         self._update_plasticity_state()
         self._update_damage_index_state()
+
+    def on_force_moment_output_toggled(self, is_checked):
+        """Keep force/moment output mutually exclusive from other output selections."""
+        if is_checked:
+            for checkbox in self.tab._coord_stress_outputs + self.tab._deformation_outputs:
+                checkbox.blockSignals(True)
+                checkbox.setChecked(False)
+                checkbox.blockSignals(False)
+
+        self.update_output_checkboxes_state()
+        self._update_solve_button_state()
 
     def toggle_steady_state_stress_inputs(self, is_checked):
         """Show/hide steady-state stress file controls."""
@@ -229,6 +245,7 @@ class SolverUIHandler:
 
         # Build max traces based on current checkbox states AND available data
         max_traces = []
+        min_traces = []
 
         if (self.tab.von_mises_checkbox.isChecked() and
                 hasattr(solver, 'max_over_time_svm') and solver.max_over_time_svm is not None):
@@ -268,14 +285,43 @@ class SolverUIHandler:
         if self.tab.force_moment_output_checkbox.isChecked():
             if hasattr(solver, 'max_over_time_force_mag') and solver.max_over_time_force_mag is not None:
                 max_traces.append({
-                    'name': 'Force (N)',
+                    'name': '|F| (N)',
                     'data': solver.max_over_time_force_mag
                 })
+            if hasattr(solver, 'max_over_time_force_fx') and solver.max_over_time_force_fx is not None:
+                max_traces.append({'name': 'Fx (N)', 'data': solver.max_over_time_force_fx})
+            if hasattr(solver, 'max_over_time_force_fy') and solver.max_over_time_force_fy is not None:
+                max_traces.append({'name': 'Fy (N)', 'data': solver.max_over_time_force_fy})
+            if hasattr(solver, 'max_over_time_force_fz') and solver.max_over_time_force_fz is not None:
+                max_traces.append({'name': 'Fz (N)', 'data': solver.max_over_time_force_fz})
             if hasattr(solver, 'max_over_time_moment_mag') and solver.max_over_time_moment_mag is not None:
                 max_traces.append({
-                    'name': 'Moment (N·mm)',
+                    'name': '|M| (N·mm)',
                     'data': solver.max_over_time_moment_mag
                 })
+            if hasattr(solver, 'max_over_time_moment_mx') and solver.max_over_time_moment_mx is not None:
+                max_traces.append({'name': 'Mx (N·mm)', 'data': solver.max_over_time_moment_mx})
+            if hasattr(solver, 'max_over_time_moment_my') and solver.max_over_time_moment_my is not None:
+                max_traces.append({'name': 'My (N·mm)', 'data': solver.max_over_time_moment_my})
+            if hasattr(solver, 'max_over_time_moment_mz') and solver.max_over_time_moment_mz is not None:
+                max_traces.append({'name': 'Mz (N·mm)', 'data': solver.max_over_time_moment_mz})
+
+            if hasattr(solver, 'min_over_time_force_mag') and solver.min_over_time_force_mag is not None:
+                min_traces.append({'name': '|F| (N)', 'data': solver.min_over_time_force_mag})
+            if hasattr(solver, 'min_over_time_force_fx') and solver.min_over_time_force_fx is not None:
+                min_traces.append({'name': 'Fx (N)', 'data': solver.min_over_time_force_fx})
+            if hasattr(solver, 'min_over_time_force_fy') and solver.min_over_time_force_fy is not None:
+                min_traces.append({'name': 'Fy (N)', 'data': solver.min_over_time_force_fy})
+            if hasattr(solver, 'min_over_time_force_fz') and solver.min_over_time_force_fz is not None:
+                min_traces.append({'name': 'Fz (N)', 'data': solver.min_over_time_force_fz})
+            if hasattr(solver, 'min_over_time_moment_mag') and solver.min_over_time_moment_mag is not None:
+                min_traces.append({'name': '|M| (N·mm)', 'data': solver.min_over_time_moment_mag})
+            if hasattr(solver, 'min_over_time_moment_mx') and solver.min_over_time_moment_mx is not None:
+                min_traces.append({'name': 'Mx (N·mm)', 'data': solver.min_over_time_moment_mx})
+            if hasattr(solver, 'min_over_time_moment_my') and solver.min_over_time_moment_my is not None:
+                min_traces.append({'name': 'My (N·mm)', 'data': solver.min_over_time_moment_my})
+            if hasattr(solver, 'min_over_time_moment_mz') and solver.min_over_time_moment_mz is not None:
+                min_traces.append({'name': 'Mz (N·mm)', 'data': solver.min_over_time_moment_mz})
 
         # Update or hide max tab
         if max_traces and self.tab.plot_max_over_time_tab is not None:
@@ -294,15 +340,16 @@ class SolverUIHandler:
                 False
             )
 
-        # Update or hide min tab
         if (self.tab.min_principal_stress_checkbox.isChecked() and
                 hasattr(solver, 'min_over_time_s3') and
-                solver.min_over_time_s3 is not None and
-                self.tab.plot_min_over_time_tab is not None):
-            min_traces = [{
+                solver.min_over_time_s3 is not None):
+            min_traces.insert(0, {
                 'name': 'S3 (MPa)',
                 'data': solver.min_over_time_s3
-            }]
+            })
+
+        # Update or hide min tab
+        if min_traces and self.tab.plot_min_over_time_tab is not None:
             self.tab.plot_min_over_time_tab.update_plot(
                 self.tab.modal_data.time_values,
                 traces=min_traces

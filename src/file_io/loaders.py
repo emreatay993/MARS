@@ -58,6 +58,30 @@ _performance_history = {
 _history_loaded = False  # Flag to ensure we only load once
 
 
+def _extract_node_ids(df: pd.DataFrame, column: str = 'NodeID') -> np.ndarray:
+    """
+    Extract and normalize node IDs as integer values.
+
+    Accepts integer-like text/float representations (e.g. ``"11175"``, ``11175.0``,
+    ``"1.1175e4"``) and raises an error for non-numeric or non-integer-like values.
+    """
+    raw_ids = df[column]
+    numeric_ids = pd.to_numeric(raw_ids, errors='coerce')
+    invalid_numeric = numeric_ids.isna()
+    if invalid_numeric.any():
+        bad_samples = raw_ids[invalid_numeric].astype(str).head(5).tolist()
+        raise ValueError(f"Invalid NodeID values encountered: {bad_samples}")
+
+    numeric_values = numeric_ids.to_numpy(dtype=np.float64)
+    rounded_values = np.rint(numeric_values)
+    integer_like_mask = np.isclose(numeric_values, rounded_values, atol=1e-9, rtol=0.0)
+    if not np.all(integer_like_mask):
+        bad_samples = raw_ids[~integer_like_mask].astype(str).head(5).tolist()
+        raise ValueError(f"Non-integer NodeID values encountered: {bad_samples}")
+
+    return rounded_values.astype(np.int64)
+
+
 def _load_performance_history():
     """Load performance history from cache file."""
     global _performance_history, _history_loaded
@@ -536,7 +560,7 @@ def load_modal_stress(filename: str) -> ModalStressData:
     df.drop_duplicates(subset=['NodeID'], keep='last', inplace=True)
     
     # Extract node IDs
-    node_ids = df['NodeID'].to_numpy().flatten()
+    node_ids = _extract_node_ids(df, 'NodeID')
     
     # Extract coordinates if present
     node_coords = None
@@ -623,7 +647,7 @@ def load_modal_deformations(filename: str) -> DeformationData:
     df.drop_duplicates(subset=['NodeID'], keep='last', inplace=True)
 
     # Extract node IDs
-    node_ids = df['NodeID'].to_numpy().flatten()
+    node_ids = _extract_node_ids(df, 'NodeID')
     
     # Extract deformation components
     modal_ux = df.filter(regex='(?i)^ux_').to_numpy().astype(NP_DTYPE)
@@ -688,7 +712,7 @@ def load_element_nodal_forces_moments(filename: str) -> ElementNodalForceMomentD
 
     df.drop_duplicates(subset=['NodeID'], keep='last', inplace=True)
 
-    node_ids = df['NodeID'].to_numpy().flatten()
+    node_ids = _extract_node_ids(df, 'NodeID')
 
     node_coords = None
     if {'X', 'Y', 'Z'}.issubset(df.columns):

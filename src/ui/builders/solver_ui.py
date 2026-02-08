@@ -190,6 +190,7 @@ class SolverTabUIBuilder:
         acceleration_checkbox.setStyleSheet(CHECKBOX_STYLE)
         force_moment_output_checkbox = QCheckBox('Element Nodal Forces && Moments')
         force_moment_output_checkbox.setStyleSheet(CHECKBOX_STYLE)
+        force_moment_output_checkbox.setToolTip(tooltips.FORCE_MOMENT_OUTPUT_CHECKBOX)
         damage_index_checkbox = QCheckBox('Damage Index / Potential Damage')
         damage_index_checkbox.setStyleSheet(CHECKBOX_STYLE)
         damage_index_checkbox.setVisible(False)  # TODO: Show once damage index workflow is benchmarked
@@ -537,4 +538,3 @@ class SolverTabUIBuilder:
         main_layout.addWidget(progress_bar)
         
         return main_layout, self.components
-

@@ -137,6 +137,15 @@ FORCE_MOMENT_FILE_PATH = (
     "Path to the currently loaded element nodal forces &amp; moments file."
 )
 
+FORCE_MOMENT_OUTPUT_CHECKBOX = (
+    "<b>Element Nodal Forces &amp; Moments (Output)</b><br>"
+    "<hr>"
+    "Computes element nodal force and moment outputs for the selected solve.<br><br>"
+    "<b>Important:</b> This output is exclusive.<br>"
+    "When selected, other output types are automatically disabled to prevent mixed visualization states.<br><br>"
+    "Time History Mode can still be enabled; only output type mixing is restricted."
+)
+
 SKIP_MODES_LABEL = (
     "<b>Skip First N Modes</b><br>"
     "<hr>"

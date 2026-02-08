@@ -30,6 +30,7 @@ from core.data_models import (
     SteadyStateData, TemperatureFieldData, MaterialProfileData,
     SolverConfig
 )
+from utils.node_utils import get_node_index_from_id
 
 
 class SolverTab(QWidget):
@@ -226,6 +227,7 @@ class SolverTab(QWidget):
         self.von_mises_checkbox.toggled.connect(self.ui_handler.toggle_damage_index_checkbox_visibility)
         self.von_mises_checkbox.toggled.connect(self.ui_handler._update_damage_index_state)
         self.von_mises_checkbox.toggled.connect(self.ui_handler._update_plasticity_state)
+        self.force_moment_output_checkbox.toggled.connect(self.ui_handler.on_force_moment_output_toggled)
         self.time_history_checkbox.toggled.connect(self.ui_handler._update_damage_index_state)
         self.time_history_checkbox.toggled.connect(self.ui_handler._update_plasticity_state)
         self.damage_index_checkbox.toggled.connect(self.ui_handler.toggle_fatigue_params_visibility)
@@ -466,8 +468,14 @@ class SolverTab(QWidget):
     def _compute_time_history_for_node(self, node_id, require_single_output=True):
         """Validate selection and run time-history analysis."""
         # Determine if node exists in any loaded dataset
-        node_in_stress = self.stress_data and node_id in self.stress_data.node_ids
-        node_in_force_moment = self.force_moment_data and node_id in self.force_moment_data.node_ids
+        node_in_stress = bool(
+            self.stress_data is not None and
+            get_node_index_from_id(node_id, self.stress_data.node_ids, log_missing=False) is not None
+        )
+        node_in_force_moment = bool(
+            self.force_moment_data is not None and
+            get_node_index_from_id(node_id, self.force_moment_data.node_ids, log_missing=False) is not None
+        )
 
         outputs = {
             'Von-Mises Stress': self.von_mises_checkbox.isChecked(),
