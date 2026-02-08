@@ -6,15 +6,15 @@ DESCRIPTION: Validates loading of all required input files and proper project di
 
 INPUTS:
 
-- Application launched with MARS v0.97
-- Test files available: valid .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
+- Application launched with MARS v0.98
+- Test files available: valid .mcf/.pch, modal stress .csv, deformations .csv, steady-state .txt, temperature field .txt
 - Project directory contains mixed file types for filtering validation
 
 TEST STEPS:
 
 1. Set project directory via File > Select Project Directory and verify Navigator updates with folder contents
 2. Verify Navigator displays only .mcf, .csv, and .txt files (automatic filtering behavior)
-3. Load modal coordinate file by clicking Read Modal Coordinate File button and selecting valid .mcf
+3. Load modal coordinate file by clicking Read Modal Coordinate File button and selecting valid .mcf or .pch
 4. Load modal stress file by clicking Read Modal Stress File button and selecting valid .csv
 5. Enable Include Deformations checkbox and verify deformations file controls become visible
 6. Load deformations .csv file using the now-visible button
@@ -28,6 +28,7 @@ EXPECTED RESULTS:
 - Navigator shows only filtered files (.mcf, .csv, .txt) matching project directory
 - Console displays success messages for each loaded file
 - File path fields populate with correct absolute paths
+- Read Modal Coordinate File accepts both .mcf and .pch
 - Stress output checkboxes (Von-Mises, Max Principal, Min Principal) become enabled after stress file loads
 - Deformation output checkboxes (Deformation, Velocity, Acceleration) become enabled after deformations file loads
 - All file input fields remain read-only and reject keyboard input
@@ -47,28 +48,26 @@ INPUTS:
 
 - Modal coordinate and stress files loaded successfully
 - Skip modes: 6 (for free-free structure with 6 rigid-body modes)
-- Fatigue parameters: σ'f = 1000 MPa, b = -0.12
 - Node ID for time history: 1001
 - Deformations file loaded for full output testing
 
 TEST STEPS:
 
 1. Select multiple output options: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
-2. Enable Damage Index checkbox and verify fatigue parameters fields appear
-3. Enter fatigue parameters: σ'f = 1000 MPa and b = -0.12
-4. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
-5. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
-6. Enter Node ID 1001 in Scoping field
-7. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
-8. Click SOLVE button to execute solver
-9. Monitor Console tab for processing messages and validation steps
-10. Observe progress bar advancement from 0% to 100%
-11. Wait for solver completion and verify success message appears in Console
+2. Verify Damage Index / Potential Damage checkbox is hidden and fatigue parameter controls are not shown
+3. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
+4. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
+5. Enter Node ID 1001 in Scoping field
+6. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
+7. Click SOLVE button to execute solver
+8. Monitor Console tab for processing messages and validation steps
+9. Observe progress bar advancement from 0% to 100%
+10. Wait for solver completion and verify completion banner appears in Console
 
 EXPECTED RESULTS:
 
 - All selected output checkboxes are checked and remain enabled
-- Fatigue parameters section appears when Damage Index selected
+- Damage Index / Potential Damage checkbox remains hidden (workflow is benchmark-gated)
 - Skip modes dropdown shows values from 0 to maximum mode count from .mcf file
 - Time History Mode scoping controls appear when checkbox enabled
 - SOLVE button becomes enabled when minimum requirements met (coordinate file, stress file, at least one output)
@@ -91,7 +90,7 @@ DESCRIPTION: Validates complete plasticity correction workflow including materia
 INPUTS:
 
 - Von-Mises Stress output selected (required for plasticity correction)
-- Temperature field CSV file with NodeID and Temperature columns available
+- Temperature field TXT file with a Node Number column and at least one temperature column available
 - Material profile data: 3 temperatures (25°C, 200°C, 400°C) with 8 stress-strain points each
 - Plasticity method: Glinka (energy-based correction)
 - Max Iterations: 80 (increased from default 60)
@@ -104,14 +103,16 @@ TEST STEPS:
 3. Click Enter Material Profile button to open material definition dialog
 4. Input temperature-dependent stress-strain curves: enter 3 temperatures with 8 points each
 5. Select Extrapolation mode as Linear from dropdown in plasticity options
-6. Click Read Temperature Field File button and select temperature CSV file
+6. Click Read Temperature Field File button and select temperature TXT file
 7. Verify temperature field file path displays in text field
 8. Modify Max Iterations field to 80 (clearing default and entering new value)
 9. Modify Tolerance field to 1e-9
 10. Verify warning label appears stating "Warning: Relaxed iteration settings may impact accuracy"
-11. Enable Show plasticity diagnostics checkbox for time history overlay
-12. Execute solver and monitor Console for plasticity-specific messages
-13. Verify corrected results are generated in output directory
+11. Execute solver in batch mode and monitor Console for plasticity-specific messages
+12. Verify corrected batch results are generated in output directory
+13. Enable Time History Mode and enter Node ID 1001
+14. Enable Show plasticity diagnostics checkbox and execute solver again
+15. Verify diagnostics overlays appear on the time history plot
 
 EXPECTED RESULTS:
 
@@ -123,8 +124,8 @@ EXPECTED RESULTS:
 - Solver generates corrected_von_mises.csv file with reduced stress values
 - Solver generates plastic_strain.csv file with equivalent plastic strain at each node
 - Solver generates time_of_max_corrected_von_mises.csv file
-- Time history plot shows Δεp (incremental plastic strain) and εp (cumulative plastic strain) overlays on secondary axis when diagnostics enabled
-- Console displays plasticity convergence information for each node
+- Time history plot includes corrected trace for Neuber/Glinka; diagnostics checkbox adds Δεp and εp overlays
+- Console displays plasticity correction messages for the executed run
 - Corrected stress values are lower than elastic stress at notches
 
 REQUIREMENT NO: N/A
@@ -261,7 +262,7 @@ EXPECTED RESULTS:
 - CSV includes columns: NodeID, X, Y, Z, and active scalar result (e.g., Von_Mises_Stress)
 - All node entries present in CSV with correct values
 - Export Velocity IC button is visible only when velocity data available
-- APDL IC file generates with proper command syntax: IC, NodeID, VX, vel_x, VY, vel_y, VZ, vel_z
+- APDL IC file generates with proper command syntax using VELX/VELY/VELZ for each node
 - IC file contains velocity components for each node at specified time
 - Changing time value and clicking Update shows different results confirming dynamic query
 
@@ -273,7 +274,7 @@ TEST NO: 7
 
 TITLE: Animation Playback and Export
 
-DESCRIPTION: Validates animation playback with multiple time step modes, frame throttling via Every nth, and animation export to video/GIF formats
+DESCRIPTION: Validates animation playback with multiple time step modes, frame throttling via Every nth, and animation export to MP4/GIF formats
 
 INPUTS:
 
@@ -282,7 +283,7 @@ INPUTS:
 - Every nth: 10 (to reduce frame count for smoother playback)
 - Animation interval: 100 ms (10 fps playback)
 - Time range: 0.0 to 5.0 seconds
-- FFmpeg installed for MP4 export (or GIF as fallback)
+- imageio installed; FFmpeg available for MP4 export
 
 TEST STEPS:
 
@@ -324,7 +325,7 @@ EXPECTED RESULTS:
 - Custom Time Step mode generates uniform time intervals regardless of data spacing
 - Save as Video/GIF dialog opens with format dropdown offering MP4 and GIF
 - MP4 video file created successfully with all frames (requires ffmpeg)
-- GIF animation created successfully as fallback if ffmpeg not available
+- GIF animation is created successfully when GIF format is selected
 - Exported animation includes time text overlay and matches playback behavior
 
 REQUIREMENT NO: N/A
@@ -488,7 +489,7 @@ DESCRIPTION: Validates all data export features including time point CSV, veloci
 
 INPUTS:
 
-- Solver completed with all outputs generated (Von-Mises, Principal stresses, Deformation, Damage Index if enabled)
+- Solver completed with all selected outputs generated (Von-Mises, Principal stresses, Deformation)
 - Time point computed at 0.5 seconds for export testing
 - Velocity data available from deformations analysis
 - Animation frames precomputed by playing animation once
@@ -502,9 +503,9 @@ TEST STEPS:
 4. Navigate to export location and open CSV file
 5. Verify CSV contains NodeID, X, Y, Z coordinates, and active scalar value columns
 6. Click "Export Velocity as Initial Condition in APDL" button
-7. Specify export location and filename (e.g., velocity_ic.txt), click Save
+7. Specify export location and filename (e.g., velocity_ic.inp), click Save
 8. Navigate to export location and open APDL command file
-9. Verify file contains IC command syntax with velocity components (VX, VY, VZ) for each node
+9. Verify file contains IC command syntax with velocity components (VELX, VELY, VELZ) for each node
 10. Precompute animation by setting time range and clicking Play until completion
 11. Click "Save as Video/GIF" button
 12. Select MP4 format in dropdown
@@ -514,8 +515,7 @@ TEST STEPS:
 16. Verify presence of automatically generated result files
 17. Check for max_von_mises_stress.csv and min_s3_stress.csv
 18. Check for time_of_max_von_mises_stress.csv and time_of_min_s3_stress.csv
-19. If Damage Index enabled, check for potential_damage_results.csv
-20. If Plasticity Correction enabled, check for corrected_von_mises.csv and plastic_strain.csv
+19. If Plasticity Correction enabled, check for corrected_von_mises.csv and plastic_strain.csv
 
 EXPECTED RESULTS:
 
@@ -523,18 +523,17 @@ EXPECTED RESULTS:
 - CSV includes columns: NodeID, X, Y, Z, Von_Mises_Stress (or active scalar)
 - All nodes present in CSV with values matching 3D visualization at t=0.5s
 - APDL IC file generates with proper ANSYS command syntax
-- IC file contains lines like: IC, 1001, VX, 0.5234, VY, -0.1234, VZ, 0.8765
+- IC file contains lines like: IC,1001,VELX,5.234000E-01 / IC,1001,VELY,-1.234000E-01 / IC,1001,VELZ,8.765000E-01
 - Velocity components match solver-computed values at specified time
 - Animation export dialog offers format selection: MP4 and GIF
 - MP4 video file created successfully with all animation frames (requires ffmpeg)
-- GIF animation created as fallback if MP4 export fails
+- GIF animation export succeeds when GIF format is selected
 - Exported video includes time text overlay matching playback
 - Solver output directory automatically contains following CSV files:
   * max_von_mises_stress.csv (peak stress per node)
   * min_s3_stress.csv (minimum principal stress per node)
   * time_of_max_von_mises_stress.csv (time instant of peak per node)
   * time_of_min_s3_stress.csv (time instant of minimum per node)
-  * potential_damage_results.csv (if damage calculation enabled)
   * corrected_von_mises.csv (if plasticity correction enabled)
   * plastic_strain.csv (if plasticity correction enabled)
   * time_of_max_corrected_von_mises.csv (if plasticity correction enabled)
@@ -563,7 +562,7 @@ TEST STEPS:
 2. Verify all output checkboxes are disabled and appear grayed out
 3. Verify Plasticity Correction Options group is not visible
 4. Load modal coordinate file only
-5. Verify Skip first n modes dropdown populates with values 0 through (number of modes - 1)
+5. Verify Skip first n modes dropdown populates with values 0 through (number of modes)
 6. Load modal stress file
 7. Verify stress-related output checkboxes become enabled (Von-Mises, Max Principal, Min Principal)
 8. Verify deformation-related checkboxes remain disabled
@@ -575,7 +574,7 @@ TEST STEPS:
 14. Verify Plasticity Correction Options group becomes visible with all controls
 15. Disable Plasticity Correction checkbox
 16. Verify options group becomes hidden again
-17. Verify window title bar displays: "MARS: Modal Analysis Response Solver - v0.97"
+17. Verify window title bar displays: "MARS: Modal Analysis Response Solver - v0.98"
 18. Test Navigator dock mobility by dragging title bar to right side of window
 19. Verify Navigator docks successfully to right side
 20. Switch between Main Window and Display tabs multiple times
@@ -585,10 +584,11 @@ EXPECTED RESULTS:
 
 - All output checkboxes appear disabled (grayed) before files loaded
 - Skip first n modes dropdown is hidden until coordinate file loaded
-- After coordinate file load, skip modes dropdown appears with values 0 to N-1
+- After coordinate file load, skip modes dropdown appears with values 0 to N
 - Stress output checkboxes enable only after stress file loaded
 - Deformation output checkboxes enable only after deformations file loaded
 - File path text fields are read-only and reject all keyboard input attempts
+- Damage Index / Potential Damage remains hidden and unavailable
 - Plasticity Correction Options group visibility tied to checkbox state
 - When plasticity enabled, all sub-options become accessible (method, material profile, temperature field, iterations, tolerance, diagnostics)
 - Window title correctly shows application name and version number
@@ -607,52 +607,48 @@ TEST NO: 13
 
 TITLE: Console Logging and Progress Monitoring
 
-DESCRIPTION: Validates console message display, progress bar behavior during solver execution, and error reporting for invalid configurations
+DESCRIPTION: Validates console message display, solve-button gating, and progress behavior during solver execution
 
 INPUTS:
 
-- Application in various states: no files loaded, files loaded, solver running
-- Invalid configuration test: attempt to solve with no files loaded
-- Valid configuration test: complete workflow with all files
+- Application in various states: no files loaded, partially loaded, fully configured
+- Invalid configuration test: verify SOLVE remains disabled until prerequisites are satisfied
+- Valid configuration test: complete workflow with all required files and output selection
 
 TEST STEPS:
 
-1. With no files loaded, click SOLVE button
-2. Verify Console displays error messages about missing required files
-3. Load modal coordinate file only and click SOLVE again
-4. Verify Console displays error about missing modal stress file
-5. Load all required files (coordinate and stress)
-6. Select at least one output (Von-Mises)
-7. Click SOLVE button with valid configuration
-8. Switch to Console tab immediately
-9. Observe Console displays validation messages confirming loaded files
-10. Verify Console shows preprocessing messages (e.g., "Loading modal coordinates...")
-11. Observe progress bar below SOLVE button
-12. Verify progress bar advances from 0% showing current stage
-13. Verify Console displays processing step messages during execution (e.g., "Computing stress reconstruction...")
-14. Monitor progress bar advancing through stages: 10%, 25%, 50%, 75%, 100%
-15. Wait for completion
-16. Verify Console displays success message (e.g., "Solver completed successfully")
-17. Verify Console shows total execution time
-18. Enable Time History Mode for a specific node and run solver again
-19. Verify Time History plot tab appears in Main Window tab widget after completion
-20. Click Plot (Time History) tab
-21. Verify plot displays with time on x-axis (seconds) and selected metric on y-axis (e.g., Von-Mises stress in MPa)
-22. Verify plot title or legend indicates which node is displayed
+1. With no files loaded, verify SOLVE button is disabled
+2. Load modal coordinate file only and verify SOLVE remains disabled
+3. Load modal stress file and verify SOLVE remains disabled until an output is selected
+4. Select at least one output (Von-Mises) and verify SOLVE becomes enabled
+5. Click SOLVE button with valid configuration
+6. Switch to Console tab immediately
+7. Observe Console displays validation messages confirming loaded files
+8. Verify Console shows preprocessing/processing messages while running
+9. Observe progress bar below SOLVE button
+10. Verify progress bar advances from 0% to 100%
+11. Wait for completion
+12. Verify Console displays SOLVE COMPLETE banner
+13. Verify Console shows elapsed execution time
+14. Enable Time History Mode for a specific node and run solver again
+15. Verify Time History plot tab appears in Main Window tab widget after completion
+16. Click Plot (Time History) tab
+17. Verify plot displays with time on x-axis (seconds) and selected metric on y-axis (e.g., Von-Mises stress in MPa)
+18. Verify plot title or legend indicates which node is displayed
 
 EXPECTED RESULTS:
 
-- Console displays clear error message when SOLVE clicked without modal coordinate file
-- Error message specifies which required file is missing
-- Console displays error when only coordinate file loaded (needs stress file too)
+- SOLVE button is disabled when modal coordinate file is not loaded
+- SOLVE button remains disabled when only modal coordinate file is loaded
+- SOLVE button remains disabled until at least one output checkbox is selected
 - After loading required files, Console shows validation success messages
 - Validation messages list each loaded file with path and basic info (e.g., number of nodes, time steps)
 - Progress bar appears and remains visible below SOLVE button during execution
 - Progress bar advances smoothly from 0% to 100% without jumping or freezing
 - Progress percentage updates correlate with Console processing messages
 - Console displays algorithm-specific messages (e.g., "Mode 15/50 processed")
-- Completion message clearly states "Solver completed successfully" or similar
-- Total execution time displayed in Console (e.g., "Total time: 12.5 seconds")
+- Completion banner clearly indicates solve completion
+- Elapsed execution time displayed in Console
 - When Time History Mode used, Plot (Time History) tab becomes visible in Main Window
 - Plot displays properly formatted graph with labeled axes
 - X-axis shows time in seconds with appropriate scale

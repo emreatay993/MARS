@@ -1,5 +1,8 @@
 # DETAILED THEORY MANUAL · MARS: Modal Analysis Response Solver
 
+**Version**: v0.98  
+**Last updated**: February 8, 2026
+
 > **Audience**  
 > Practicing mechanical and structural engineers using MARS to post-process modal analysis data.
 >
@@ -77,10 +80,14 @@ MARS consumes several complementary datasets:
 
 | Dataset | Physical Meaning | Typical Source |
 | --- | --- | --- |
-| Modal coordinates (`.mcf`) | `q_i(t)` – participation amplitude of each retained mode over time | Transient modal superposition run |
+| Modal coordinates (`.mcf` / `.pch`) | `q_i(t)` – participation amplitude of each retained mode over time | Transient modal superposition run |
 | Modal stresses (`.csv`) | `Φσ` – stress “shapes” per mode at each node | Modal post-processing, e.g. ANSYS “modal stress” export |
 | Modal deformations (`.csv`, optional) | `Φu` – displacement shapes per mode | Same as above or neutral file |
+| Element nodal forces/moments (`.csv`, optional) | `ΦF, ΦM` – nodal force/moment mode shapes per node | FEA post-processing export |
 | Steady-state stress (`.txt`, optional) | Static bias stresses (therm, preload, etc.) | Static analysis or service load case |
+| Temperature field (`.txt`, optional for plasticity) | Nodal temperatures for `E(T)` and hardening interpolation | Thermal or coupled thermo-mechanical run |
+
+For `.pch` modal coordinate imports, MARS expects NASTRAN SOL 112-style `(SOLUTION SET)` displacement blocks and consistent time grids across modes.
 
 **Key assumption**: Node ordering is consistent across all files. The solver aligns data by node ID.
 
@@ -108,16 +115,18 @@ u_i(t) = Σ_{k=1}^{n_modes} φ_{i,k} q_k(t)
 
 ### 4.2 Velocity and Acceleration
 
-Time derivatives are obtained numerically. Central differences (fourth-order in the interior) approximate:
+Time derivatives are obtained numerically. MARS uses high-order finite differences on (near-)uniform time grids.
+For interior points, sixth-order central differences are used:
 
 ```
-u̇_i(t_k) ≈ (-u_{i,k+2} + 8u_{i,k+1} - 8u_{i,k-1} + u_{i,k-2}) / (12 Δt)
+u̇_i(t_k) ≈ (-u_{i,k+3} + 9u_{i,k+2} - 45u_{i,k+1} + 45u_{i,k-1} - 9u_{i,k-2} + u_{i,k-3}) / (60 Δt)
 ```
 
 ```
-ü_i(t_k) ≈ (-u_{i,k+2} + 16u_{i,k+1} - 30u_{i,k} + 16u_{i,k-1} - u_{i,k-2}) / (12 Δt²)
+ü_i(t_k) ≈ (2u_{i,k+3} - 27u_{i,k+2} + 270u_{i,k+1} - 490u_{i,k} + 270u_{i,k-1} - 27u_{i,k-2} + 2u_{i,k-3}) / (180 Δt²)
 ```
 
+At boundaries, lower-order forward/backward approximations are used for stability.
 Magnitude outputs (`||u||`, `||u̇||`, `||ü||`) provide an envelope for each node.
 
 ### 4.3 Engineering Use
@@ -185,11 +194,33 @@ In strain energy terms, yielding begins when `σ_vm` equals the material’s yie
 - Plot `s₁` and `s₃` to locate tensile/compressive hot spots.  
 - Inspect `σ_total` at critical timestamps (e.g., peaks reported by MARS).
 
+### 5.6 Element Nodal Forces and Moments
+
+If element nodal force/moment modal shapes are provided, MARS reconstructs nodal force and moment histories analogously to stress recovery:
+
+```
+F_component(t) = ΦF_component q(t),   M_component(t) = ΦM_component q(t)
+```
+
+with components:
+- Force: `FX`, `FY`, `FZ`
+- Moment: `MX`, `MY`, `MZ`
+
+Magnitudes are then computed as:
+
+```
+|F|(t) = √(FX² + FY² + FZ²)
+|M|(t) = √(MX² + MY² + MZ²)
+```
+
+MARS exports max/min envelopes and time-of-max/min for both magnitudes and each component.
+
 ### Checklist
 
 - [ ] Units of modal stress data match design units (MPa, psi).  
 - [ ] Steady-state file (if used) corresponds to the same node ordering.  
 - [ ] Principal stresses used for brittle materials or plane-stress fracture checks.
+- [ ] Force/moment units and sign conventions (especially moments) are verified against the source FEA convention.
 
 ---
 
@@ -232,6 +263,9 @@ Only a finite number of modes are kept. Dropping higher modes reduces accuracy a
 ---
 
 ## 7. Fatigue and Damage Assessment
+
+This section documents the fatigue theory used in MARS development.
+In v0.98, the dedicated Damage Index output remains hidden in the UI while stress/plasticity workflows are prioritized.
 
 ### 7.1 Rainflow Counting
 
@@ -279,7 +313,7 @@ MARS implements three correction methods:
 
 1. **Neuber's Rule** (peak-value, scalar)  
 2. **Glinka's Energy-Density Method** (peak-value, scalar)  
-3. **Incremental Buczynski–Glinka (IBG)** (time-history, tensor) — *currently experimental*
+3. **Incremental Buczynski–Glinka (IBG)** (time-history, tensor) — *implemented in code, disabled in the v0.98 UI*
 
 All three incorporate **temperature-dependent material hardening curves** to handle spatially varying thermal fields typical of aerospace and power-generation components.
 
@@ -526,19 +560,23 @@ A warning label appears in the UI if either parameter is changed from default, r
 
 On the **Main Window (Solver) tab**:
 
-1. Tick **Plasticity Correction**.  
+1. Tick **Enable Plasticity Correction**.  
 2. Select a method: **Neuber**, **Glinka**, or ~~Incremental Buczynski-Glinka (IBG)~~ (greyed out).  
-3. Click **Enter Material Profile** to define hardening curves at multiple temperatures.  
-4. Load a **Temperature Field File** (CSV with NodeID and Temperature columns) to assign \(T\) to each node.  
+3. Click **Enter Material Profile** to define temperature-dependent properties.  
+4. Load a **Temperature Field File (.txt)** to assign \(T\) to each node.  
 5. (Optional) Adjust **Max Iterations** and **Tolerance** for solver tuning.  
 6. Ensure **Von Mises Stress** output is selected (plasticity correction operates on von Mises equivalent stress).
 
 #### 8.6.2 Material Profile Dialog
 
-- Enter temperature values (in consistent units, e.g., °C).  
-- For each temperature, specify pairs of **(True Stress, Plastic Strain)**.  
-- First point defines approximate yield; subsequent points trace the hardening curve.  
-- Choose **Extrapolation Mode** based on material behavior beyond the curve.
+The dialog organizes data in three tabs:
+- **Young's Modulus**: \((T, E)\) pairs  
+- **Poisson's Ratio**: \((T, \nu)\) pairs  
+- **Plastic Strain Curves**: per-temperature \((\varepsilon_p, \sigma_{\text{true}})\) tables
+
+Use import/export for:
+- Individual CSV tables  
+- Full material profile JSON
 
 **Data Entry Tips:**
 - Use data from **cyclic stress-strain tests** (not monotonic tensile), as plasticity correction applies to fatigue scenarios
@@ -551,24 +589,25 @@ On the **Main Window (Solver) tab**:
 The temperature field file assigns a nodal temperature for material property interpolation:
 
 **Format Requirements:**
-- **File type**: CSV (comma-separated values), not tab-delimited .txt despite the button label
-- **Required columns**: `NodeID`, `Temperature`
-- **Optional columns**: Ignored (e.g., X, Y, Z coordinates are allowed but unused)
+- **File type**: `.txt`, tab-delimited or whitespace-delimited
+- **Required node column**: `Node Number` (preferred), also supports `Node`, `NodeID`, `Node Id`
+- **Temperature column**: any non-node column (names containing `temp` are preferred automatically)
+- **Optional columns**: additional columns are ignored unless selected as the temperature source
 - **Node coverage**: Every node in the modal stress file must have a temperature entry; missing nodes trigger an error
 - **Units**: Must match temperature units in Material Profile (typically °C or K)
 
 **Example File:**
-```csv
-NodeID,Temperature
-1001,25.0
-1002,150.5
-1003,300.0
-1004,300.0
-1005,275.2
+```text
+Node Number	Temperature
+1001	25.0
+1002	150.5
+1003	300.0
+1004	300.0
+1005	275.2
 ```
 
 **Common Mistakes:**
-- Using tab-delimited format (will fail parsing)
+- Using a node column name that cannot be recognized
 - Temperature in °F when Material Profile is in °C
 - Missing Node IDs (solver will halt)
 - Exporting from FEA with 1-based indexing when modal stress uses 0-based (or vice versa)
@@ -580,11 +619,12 @@ NodeID,Temperature
 - A yellow warning label reminds you that relaxed settings may impact accuracy
 
 **Plasticity Diagnostics Checkbox**:
-- When enabled in Time History Mode, MARS overlays two additional curves on a secondary Y-axis:
+- In Time History mode, when corrected traces are available, MARS can overlay two additional curves on a secondary Y-axis:
   - **Δεₚ(t)**: Incremental plastic strain per time step (useful for identifying when yielding occurs)
   - **εₚ(t)**: Cumulative plastic strain (tracks total inelastic deformation)
 - Useful for validating that plasticity correction activates at expected stress levels
 - Helps debug non-convergence: if Δεₚ oscillates wildly, tighten tolerance or check material data
+- IBG remains disabled in v0.98, but Neuber/Glinka corrected traces are available.
 
 #### 8.6.5 Output Files
 
@@ -594,7 +634,7 @@ After solving with plasticity enabled, MARS exports:
 - `plastic_strain.csv` — Equivalent plastic strain at peak  
 - `time_of_max_corrected_von_mises.csv` — Time instant of corrected peak
 
-In **Time History Mode**, the corrected history replaces the elastic history for plotting and export.
+In **Time History Mode**, MARS plots elastic and corrected von Mises traces side-by-side and can include plastic strain diagnostics.
 
 ---
 
@@ -636,7 +676,7 @@ Use side-by-side visualizations in the Display tab to assess impact.
 3. **Isotropic J₂ plasticity**: Anisotropy, kinematic hardening details, and Bauschinger effects are not captured.  
 4. **No creep or rate effects**: Corrections are quasi-static. High-rate or creep-dominated scenarios need specialized models.  
 5. **Temperature is instantaneous**: Each correction uses the *current* temperature; thermal history effects (microstructural changes) are ignored.  
-6. **IBG experimental status**: Incremental method requires careful benchmarking—use Neuber/Glinka for production work until IBG is validated.
+6. **IBG UI status**: Incremental method is available in code but disabled in the v0.98 interface pending additional validation.
 
 ---
 
@@ -676,11 +716,13 @@ Use side-by-side visualizations in the Display tab to assess impact.
 
 ### 9.1 Peak Values and Time Stamps
 
-For each node, MARS reports the **maximum** value of a metric (e.g., `σ_vm,max`) and the **time of occurrence**. Use these to:
+For each node, MARS reports **max**, **min**, and corresponding **time-of-max/min** values for supported outputs.
+In the Display tab, these are exposed through Result Group/Component/Mode selectors (Max over Time, Min over Time, Time of Max, Time of Min, Selected Time). Use these to:
 
 - Capture snapshots for visualization.  
 - Cross-check against known loading events.  
 - Compare with instrumentation data if available.
+- Separate interpretation of stress/kinematic outputs from force/moment outputs (configured as mutually exclusive output families in the solver UI).
 
 ### 9.2 Time-History Plots
 
@@ -688,11 +730,15 @@ Time history mode lets you inspect nodal response vs. time:
 
 - Identify resonance by locating sustained large amplitudes.  
 - Evaluate damping by observing decay after excitation.  
-- Export CSV to perform Fourier analysis or combine with fatigue tools.
+- Compare elastic vs corrected von Mises traces when plasticity is enabled.
+- Review force/moment component histories (`|F|`, `FX/FY/FZ`, `|M|`, `MX/MY/MZ`) for nodal load transfer analysis.
 
 ### 9.3 Animation
 
-Animations blend deformation with color-mapped stress. They help communicate mode participation and the spatial march of peak values. Keep deformation scaling reasonable (<5) to avoid misinterpretation.
+Animations blend deformation with color-mapped scalar data. They help communicate mode participation and the spatial march of peak values.
+
+- MARS animates one output type at a time (to avoid mixed-field ambiguity).
+- Keep deformation scaling reasonable (<5) to avoid misinterpretation.
 
 ---
 
@@ -787,10 +833,11 @@ MARS dynamically allocates memory for matrix operations based on the **RAM Alloc
 | Plasticity correction | Notch-root approximation methods that reduce elastic stress to account for local yielding. |
 | Neuber's Rule | Plasticity correction equating stress×strain product to elastic equivalent. |
 | Glinka's Method | Energy-density-based plasticity correction; more conservative than Neuber. |
-| IBG | Incremental Buczynski–Glinka method; tensor time-history plasticity correction (experimental). |
+| IBG | Incremental Buczynski–Glinka method; tensor time-history plasticity correction (implemented, UI-disabled in v0.98). |
 | Plastic strain `εₚ` | Permanent inelastic strain accumulated after yielding. |
 | Hardening curve | Stress-strain relationship beyond yield; defines flow stress vs. plastic strain. |
 | Equivalent stress | Scalar measure combining tensor components; von Mises is standard for ductile J₂ plasticity. |
+| Element nodal force/moment | Reconstructed nodal load-resultants (`FX/FY/FZ`, `MX/MY/MZ`) derived from modal force/moment shapes. |
 | Temperature field | Spatial distribution of temperature used to adjust material properties node-by-node. |
 | Single precision | Floating-point format with ~7 significant digits; faster but less accurate. |
 | Double precision | Floating-point format with ~15 significant digits; slower but more accurate. |

@@ -1,8 +1,10 @@
 # MARS: Modal Analysis Response Solver
 ## Complete User Manual
+**Version**: v0.98  
+**Last updated**: February 8, 2026
 
 > **Audience**: Mechanical and structural engineers using MARS via the desktop GUI  
-> **Format**: Designed for Microsoft Word with font size 10 and mockup images for each section
+> **Format**: Designed for Microsoft Word (10 pt) with image placeholders for each section
 
 ---
 
@@ -21,13 +23,16 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 | **Stress Reconstruction** | Combine modal coordinates with modal stress to reconstruct full stress tensor fields at any time instant |
 | **Principal Stress Analysis** | Calculate maximum and minimum principal stresses (σ₁ and σ₃) across all nodes |
 | **Von Mises Stress** | Compute equivalent von Mises stress for ductile material failure analysis |
+| **NASTRAN Punch (.pch) Support** | Import modal coordinates directly from SOL 112 punch files with SDISPLACEMENT (SOLUTION SET) output |
+| **Element Nodal Forces & Moments** | Compute nodal force/moment magnitudes and components (|F|, FX, FY, FZ, |M|, MX, MY, MZ) |
 | **Kinematic Analysis** | Extract deformation, velocity, and acceleration from modal displacement data |
-| **Time History Plots** | Generate time series plots for any selected node |
+| **Time History Plots** | Generate time series plots for any selected node or force/moment component |
 | **3D Visualization** | Interactive PyVista-based 3D viewing with scalar field color mapping |
-| **Animations** | Create animated visualizations showing stress or deformation evolution over time |
+| **Result Catalogs** | Switch between groups, components, and modes (Max/Min/Time-of/Selected Time) in the Display tab |
+| **Animations** | Create animated visualizations showing stress, deformation, or force evolution over time |
 | **Hotspot Detection** | Automatically identify nodes with critical stress values |
-| **Data Export** | Save results to CSV and export velocity initial conditions in APDL format |
-| **Plasticity Correction** | Apply Neuber or Glinka correction for localized yielding at stress concentrations |
+| **Data Export** | Save max/min/time-of CSVs and export velocity initial conditions in APDL format |
+| **Plasticity Correction** | Temperature-dependent Neuber/Glinka correction (IBG method currently disabled) |
 
 [**Image Placeholder**: MARS main window screenshot showing the complete interface with tabs, navigator, and console]
 
@@ -40,6 +45,7 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 - **Python**: Version 3.10 or higher
 - **Operating System**: Windows 10/11 (primary), Linux/macOS (compatible)
 - **RAM**: Minimum 8 GB; 16+ GB recommended for large models
+- **Optional (MP4 export)**: `ffmpeg` available on PATH
 
 ### Installation Steps
 
@@ -59,6 +65,10 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 
 4. **Launch MARS**:
    ```bash
+   python src/main.py
+   ```
+   Or:
+   ```bash
    python -m src.main
    ```
 
@@ -76,14 +86,14 @@ The MARS interface consists of several key components that work together to prov
 |-----------|----------|---------|
 | **Menu Bar** | Top | Access File, View, and Settings menus |
 | **Navigator Panel** | Left side | Browse and select project files |
-| **Main Window Tab** | Center (Tab 1) | Load files, configure analysis, run solver |
-| **Display Tab** | Center (Tab 2) | 3D visualization, animation, exports |
-| **Console** | Bottom of Main Window | View status messages and processing logs |
+| **Main Window Tab** | Center (Tab 1) | Load files, configure analysis outputs, run solver |
+| **Display Tab** | Center (Tab 2) | 3D visualization, result selection, animation, exports |
+| **Console & Plot Tabs** | Bottom of Main Window | Console log plus Plot (Time History), Plot (Modal Coordinates), Plot (Max/Min Over Time) |
 
 ### Tab Navigation
 
-- **Main Window Tab**: This is your primary workspace for setting up and running analyses
-- **Display Tab**: Switch here after running the solver to visualize and export results
+- **Main Window Tab**: Primary workspace for input files, output selection, and solver execution
+- **Display Tab**: Visualize results in 3D, switch result groups/components/modes, and export snapshots/animations
 
 [**Image Placeholder**: Annotated interface image with numbered callouts:
 1. Menu Bar
@@ -120,12 +130,13 @@ The Navigator displays only these file types:
 | Extension | Description |
 |-----------|-------------|
 | `.mcf` | Modal Coordinate Files |
-| `.csv` | Modal Stress Files, Deformation Files |
-| `.txt` | Steady-State Stress Files |
+| `.pch` | NASTRAN punch modal coordinates (supported via file dialog; not shown in Navigator) |
+| `.csv` | Modal Stress, Deformation, Element Nodal Forces & Moments |
+| `.txt` | Steady-State Stress, Temperature Field |
 
 ### Navigator Features
 
-- **Double-click** any file to load it into the appropriate input field
+- **Double-click** any file to open it in your default application (does not load into input fields)
 - **Sort** by name or type by clicking column headers
 - **Resize** columns by dragging the header borders
 - Toggle visibility via **View → Navigator**
@@ -134,35 +145,44 @@ The Navigator displays only these file types:
 
 ---
 
-## Chapter 5 – Loading Modal Coordinate Files (.mcf)
+## Chapter 5 – Loading Modal Coordinate Files (.mcf / .pch)
 
 The modal coordinate file contains the time-varying amplitudes of each mode shape from your transient analysis.
 
 ### Loading Procedure
 
-1. In the **File Inputs** section, click **Read Modal Coordinate File (.mcf)**
-2. Select your `.mcf` file from the file dialog
+1. In the **File Inputs** section, click **Read Modal Coordinate File (.mcf / .pch)**
+2. Select your `.mcf` or `.pch` file from the file dialog
 3. The file path appears in the text field next to the button
 4. Check the Console for validation messages
 
-### File Format Requirements
+### Supported Formats
 
-- Must contain a `Time` column (in seconds)
-- Additional columns represent modal coordinates (one per mode)
-- First row contains headers
+**MCF (wrapped text format)**  
+- Must include a header line containing **Time** (seconds)  
+- Modal coordinate columns follow the time column (one per mode)  
+- Lines may be wrapped in the source file; MARS unwraps automatically
 
-**Example Format**:
+**Simplified example**:
 ```
-Time,Mode1,Mode2,Mode3,...
-0.0000,1.23e-4,2.45e-5,3.67e-6,...
-0.0001,1.25e-4,2.42e-5,3.70e-6,...
+Time  Mode1     Mode2     Mode3
+0.0000 1.23e-4  2.45e-5   3.67e-6
+0.0001 1.25e-4  2.42e-5   3.70e-6
 ```
+
+**PCH (NASTRAN punch file)**  
+- Generated from **SOL 112** with SDISPLACEMENT **(SOLUTION SET)** output  
+- Contains `$POINT ID` markers and modal point lines with an **M** marker  
+- All modes must share the same time vector
+
+**Note**: `.pch` files are not shown in the Navigator filter; load them via the button.
 
 ### What Happens After Loading
 
 - The **Skip first n modes** dropdown becomes available
 - Stress-related output checkboxes become enabled (if stress file is also loaded)
 - The number of modes and time steps is recorded
+- The **Plot (Modal Coordinates)** tab becomes available in the Main Window
 
 [**Image Placeholder**: File Input section with modal coordinate file loaded, showing the file path and success message in console]
 
@@ -194,6 +214,8 @@ The modal stress file contains stress tensors for each mode at every node in you
 **Optional Columns**:
 - `X, Y, Z` – Node coordinates for 3D visualization
 
+**Note**: The solver can still run without coordinates, but the Display tab requires `X, Y, Z` to show a 3D mesh.
+
 ### Understanding Mode Indexing
 
 The suffix number (e.g., `sx_1`, `sx_2`) corresponds to mode numbers. These must align with the modal coordinate file columns.
@@ -215,13 +237,15 @@ If your structure has a static pre-stress condition (thermal stress, bolt preloa
 
 ### File Format Requirements
 
-The file should be tab-delimited with the following columns:
+The file should be **tab-delimited** with the following columns (header names must match):
 ```
-NodeID	SX	SY	SZ	SXY	SYZ	SXZ
+Node Number	SX (MPa)	SY (MPa)	SZ (MPa)	SXY (MPa)	SYZ (MPa)	SXZ (MPa)
 1001	100.5	200.3	150.2	25.1	30.5	15.2
 1002	98.7	195.4	148.9	24.8	29.9	14.8
 ...
 ```
+
+**Note**: `Node Number` must correspond to the same node set used in the modal stress file.
 
 ### Effect on Results
 
@@ -265,9 +289,46 @@ After loading deformations, these outputs become available:
 
 ---
 
-## Chapter 9 – Selecting Analysis Outputs
+## Chapter 9 – Optional: Including Element Nodal Forces & Moments
 
-The Output Options section allows you to specify which results to compute. Multiple outputs can be selected simultaneously.
+Element nodal force/moment data allows MARS to compute time-varying nodal forces (FX/FY/FZ) and moments (MX/MY/MZ) and their magnitudes.
+
+### Enabling Element Nodal Forces & Moments
+
+1. Check the box **Include Element Nodal Forces & Moments (Optional)**
+2. The force/moment file input section appears
+3. Click **Read Element Nodal Forces & Moments File (.csv)**
+4. Select your force/moment CSV file
+
+### File Format Requirements
+
+**Required Columns**:
+- `NodeID` – Unique node identifier
+- Force component columns per mode: `enfox_1, enfoy_1, enfoz_1, ...`
+- Moment component columns per mode: `enmox_1, enmoy_1, enmoz_1, ...`
+
+**Optional Columns**:
+- `X, Y, Z` – Node coordinates (required for 3D visualization)
+
+**Example header**:
+```
+NodeID,X,Y,Z,enfox_1,enfoy_1,enfoz_1,enmox_1,enmoy_1,enmoz_1,...
+```
+
+### Output Behavior
+
+- Enables the **Element Nodal Forces & Moments** output checkbox
+- This output is **mutually exclusive** with stress/deformation outputs
+- In Time History Mode, the plot shows |F|, FX, FY, FZ, |M|, MX, MY, MZ for the selected node
+- In the Display tab, select **Result Group → Force/Moment** to switch components and modes
+
+[**Image Placeholder**: Force/Moment input checkbox and file selector showing a loaded file path]
+
+---
+
+## Chapter 10 – Selecting Analysis Outputs
+
+The Output Options section allows you to specify which results to compute. Some outputs are mutually exclusive.
 
 ### Available Outputs
 
@@ -279,28 +340,38 @@ The Output Options section allows you to specify which results to compute. Multi
 | **Deformation** | Displacement magnitude | Deformation file |
 | **Velocity** | Velocity magnitude | Deformation file |
 | **Acceleration** | Acceleration magnitude | Deformation file |
-| **Enable Time History Mode** | Plot time series for a single node | Any output |
-| **Enable Plasticity Correction** | Apply notch plasticity methods | Von-Mises selected |
+| **Element Nodal Forces & Moments** | |F|, FX/FY/FZ, |M|, MX/MY/MZ envelopes | Force/moment file |
+| **Enable Time History Mode** | Plot time series for a single node | One output type selected |
+| **Enable Plasticity Correction** | Apply Neuber/Glinka correction | Von-Mises + material profile + temperature file |
 
-### Selecting Multiple Outputs
+### Selection Rules
 
-You may select any combination of outputs:
-- All stress outputs can be computed together
+- Stress outputs (Max/Min/Von Mises) can be computed together
 - Kinematic outputs (Deformation, Velocity, Acceleration) require the deformation file
-- Time History Mode can be combined with any output type
+- **Element Nodal Forces & Moments** is mutually exclusive with stress/kinematic outputs
+- When **Time History Mode** is enabled, select **exactly one** output type
 
-### Output File Generation
+### Output File Generation (Batch Mode)
 
-Each selected output produces a CSV file in the project directory containing:
-- `NodeID`
-- Maximum value over time
-- Time instant of maximum value
+For each selected output, MARS writes **max**, **min**, and **time-of-max/min** CSVs in the project directory:
+
+- **Scalar stress outputs**: `max_von_mises_stress.csv`, `min_von_mises_stress.csv`, `time_of_max_von_mises_stress.csv`, `time_of_min_von_mises_stress.csv`  
+  (similar naming for `s1_stress` and `s3_stress`)
+- **Vector outputs** (Deformation/Velocity/Acceleration): magnitude plus components with `_x`, `_y`, `_z` suffixes  
+  Example: `max_deformation.csv`, `max_deformation_x.csv`, `time_of_min_velocity_z.csv`
+- **Force/Moment outputs**:  
+  `max_element_nodal_force.csv`, `min_element_nodal_force.csv`, `time_of_max_element_nodal_force.csv`,  
+  plus component files such as `max_element_nodal_force_fx.csv`, `max_element_nodal_moment_mx.csv`, etc.
+- **Plasticity (Neuber/Glinka)**:  
+  `corrected_von_mises.csv`, `time_of_max_corrected_von_mises.csv`, `plastic_strain.csv`
+
+**Time History Mode** produces a node-specific plot and table instead of full-field envelope CSVs.
 
 [**Image Placeholder**: Output Options section with checkboxes, some checked (Von-Mises, Max Principal Stress, Deformation)]
 
 ---
 
-## Chapter 10 – Skip First n Modes
+## Chapter 11 – Skip First n Modes
 
 This feature allows you to exclude the first n modes from the analysis – useful for omitting rigid-body modes or modes with erroneous data.
 
@@ -323,12 +394,13 @@ This feature allows you to exclude the first n modes from the analysis – usefu
 - Skipped modes are completely excluded from stress/displacement reconstruction
 - Verify with your FEA tool which modes are rigid-body modes
 - Over-skipping will miss significant modal contributions
+- Mode counts must align across the modal coordinate file and any stress/deformation/force-moment files
 
 [**Image Placeholder**: Skip first n modes dropdown showing options 0-6]
 
 ---
 
-## Chapter 11 – Time History Mode (Single Node Analysis)
+## Chapter 12 – Time History Mode (Single Node Analysis)
 
 Time History Mode computes and plots the time series of a selected output quantity for a specific node.
 
@@ -337,7 +409,7 @@ Time History Mode computes and plots the time series of a selected output quanti
 1. Check **Enable Time History Mode (Single Node)**
 2. The **Scoping** section becomes active
 3. Enter the desired **Node ID** in the input field
-4. Select exactly one output type (Von-Mises, Max Principal, etc.)
+4. Select **exactly one** output type (stress, kinematic, or force/moment)
 
 ### Running Time History Analysis
 
@@ -348,7 +420,8 @@ Time History Mode computes and plots the time series of a selected output quanti
 ### Plot Features
 
 - X-axis: Time (seconds)
-- Y-axis: Selected output quantity (stress in MPa, displacement in mm, etc.)
+- Y-axis: Selected output quantity (stress in MPa, displacement in mm, force in N, moment in N·mm, etc.)
+- For **Element Nodal Forces & Moments**, the plot includes |F|, FX/FY/FZ and |M|, MX/MY/MZ traces
 - Interactive pan and zoom
 - Data table showing time-value pairs
 
@@ -362,7 +435,7 @@ Time History Mode computes and plots the time series of a selected output quanti
 
 ---
 
-## Chapter 12 – Plasticity Correction (Advanced Feature)
+## Chapter 13 – Plasticity Correction (Advanced Feature)
 
 For structures with stress concentrations where elastic stress exceeds yield, plasticity correction provides more realistic stress and strain estimates.
 
@@ -372,35 +445,47 @@ For structures with stress concentrations where elastic stress exceeds yield, pl
 |--------|-------------|----------|
 | **Neuber** | Classic hyperbolic correction | General notches, faster computation |
 | **Glinka** | Energy-based ESED method | More conservative, thick sections |
+| **Incremental Buczynski-Glinka (IBG)** | Time-history correction with per-step updates | **Currently disabled in v0.98** |
 
 ### Enabling Plasticity Correction
 
 1. Select **Von-Mises Stress** as an output (required)
 2. Check **Enable Plasticity Correction**
 3. The plasticity options section appears
-4. Select a method (Neuber or Glinka)
-5. Click **Enter Material Profile** to define stress-strain curves
-6. Load a **Temperature Field File** (CSV with NodeID and Temperature)
+4. Select a method (Neuber or Glinka; IBG is shown but disabled)
+5. Click **Enter Material Profile** to define temperature-dependent properties
+6. Load a **Temperature Field File (.txt)** (required for Neuber/Glinka)
 
 ### Material Profile Dialog
 
-The material profile defines the true stress-strain curve at various temperatures:
+The material profile defines temperature-dependent properties using three tabs:
 
-1. Enter temperature values (e.g., 25°C, 200°C, 400°C)
-2. For each temperature, add (True Stress, Plastic Strain) pairs:
-   - Start at yield stress with ~0 plastic strain
-   - Add hardening curve points
-3. Select **Extrapolation Mode**:
-   - **Linear**: For strain-hardening materials
-   - **Plateau**: For limited-hardening materials
+- **Young's Modulus**: Temperature vs. E
+- **Poisson's Ratio**: Temperature vs. ν
+- **Plastic Strain Curves**: For each temperature, enter **Plastic Strain** vs **True Stress [MPa]**
+
+**Import/Export** options:
+- Import/export individual tables as CSV
+- Import/export the full material profile as a JSON file
+
+### Extrapolation Mode
+
+- **Linear**: Extends the last hardening slope beyond the final data point  
+- **Plateau**: Holds the last stress value constant beyond the final data point
 
 ### Temperature Field File Format
 
-```csv
-NodeID,Temperature
-1001,25.0
-1002,150.5
-1003,300.0
+The temperature field is a **tab- or whitespace-delimited** `.txt` file with:
+
+- A **Node Number** column
+- At least one temperature column (prefer a name containing `Temp`)
+
+Example:
+```
+Node Number	Temperature
+1001	25.0
+1002	150.5
+1003	300.0
 ```
 
 ### Iteration Controls
@@ -412,8 +497,9 @@ For convergence issues, access advanced settings:
 ### Plasticity Diagnostics
 
 For detailed validation in Time History Mode:
-- Enable **Show plasticity diagnostics (Δεp, εp)**
-- Overlays incremental and cumulative plastic strain on secondary axis
+- Enable **Show plasticity diagnostics (Δεp, εp)** to overlay incremental and cumulative plastic strain on a secondary axis
+- Diagnostics are shown when a corrected plasticity trace is available in Time History Mode
+- In v0.98, Neuber/Glinka corrected traces are available; IBG remains disabled in the method list
 
 ### Output Files
 
@@ -426,19 +512,20 @@ When plasticity is enabled, MARS produces:
 
 ---
 
-## Chapter 13 – Running the Solver
+## Chapter 14 – Running the Solver
 
 After configuring all inputs and options, the SOLVE button initiates the computation.
 
 ### Pre-Run Checklist
 
 - [ ] Modal coordinate file loaded
-- [ ] Modal stress file loaded
+- [ ] Modal stress file loaded **or** Element Nodal Forces & Moments file loaded (if using force/moment output)
 - [ ] (Optional) Steady-state stress file loaded
 - [ ] (Optional) Deformation file loaded
 - [ ] At least one output selected
 - [ ] Skip modes set appropriately
 - [ ] (If Time History) Node ID entered
+- [ ] (For 3D Display) Stress or force/moment file includes `X, Y, Z` coordinates
 
 ### Running the Analysis
 
@@ -460,13 +547,14 @@ The Console provides real-time feedback:
 - Output CSV files are written to the project directory
 - The Display tab is initialized with visualization data
 - Time controls become active
-- Animation controls become available (if deformations were included)
+- Animation controls become available; deformation controls appear only if deformations were included
+- **Plot (Max Over Time)** and **Plot (Min Over Time)** tabs appear when batch outputs are computed
 
 [**Image Placeholder**: SOLVE button with progress bar at 75%, console showing processing messages]
 
 ---
 
-## Chapter 14 – Advanced Settings (Performance Tuning)
+## Chapter 15 – Advanced Settings (Performance Tuning)
 
 Access advanced settings via **Settings → Advanced** in the menu bar.
 
@@ -506,7 +594,7 @@ Access advanced settings via **Settings → Advanced** in the menu bar.
 
 ---
 
-## Chapter 15 – Display Tab Overview
+## Chapter 16 – Display Tab Overview
 
 The Display tab provides an interactive 3D visualization environment powered by PyVista. This is where you explore, analyze, and export your results.
 
@@ -514,10 +602,10 @@ The Display tab provides an interactive 3D visualization environment powered by 
 
 | Section | Location | Purpose |
 |---------|----------|---------|
-| **Load Visualization File** | Top | Load external CSV for visualization |
-| **Visualization Controls** | Below file controls | Adjust point size, color scale, deformation |
-| **Time Point Controls** | Middle | Select time instant, update/save results |
-| **Animation Controls** | Below time controls | Configure and run animations |
+| **Load Visualization File** | Top | Load external CSV (requires `X, Y, Z`) for visualization |
+| **Visualization Controls** | Below file controls | Point size, legend range, result group/component/mode selectors |
+| **Initialization & Time Point Controls** | Middle | Select time instant, update/save results |
+| **Animation Controls** | Below time controls | Configure and run animations (one output at a time) |
 | **PyVista 3D Viewer** | Right side | Interactive 3D point cloud display |
 
 ### Initial State
@@ -525,14 +613,20 @@ The Display tab provides an interactive 3D visualization environment powered by 
 After a successful SOLVE:
 - The 3D viewer displays your node point cloud
 - Scalar values (e.g., Max Von-Mises) are color-mapped
+- Result selectors (Group/Component/Mode) become active
 - Time controls are enabled with the full time range
 - Animation controls become visible
+
+If you load an external visualization CSV:
+- `X, Y, Z` are required
+- `NodeID` is optional
+- The first non-coordinate column is used as the scalar field
 
 [**Image Placeholder**: Display tab after solver completion, showing 3D point cloud with color-mapped stress values]
 
 ---
 
-## Chapter 16 – Visualization Controls (Detailed)
+## Chapter 17 – Visualization Controls (Detailed)
 
 The Visualization Controls group provides fine-grained control over the 3D display appearance.
 
@@ -563,6 +657,19 @@ The Visualization Controls group provides fine-grained control over the 3D displ
 - Focus on a specific stress range by narrowing the bounds
 - Compare results across different analyses using fixed bounds
 - Highlight values above/below a threshold
+
+### Result Group / Component / Mode
+
+**Purpose**: Select which result dataset is shown in the 3D view.
+
+**Controls**:
+- **Result Group**: Von Mises, Max Principal, Min Principal, Deformation, Velocity, Acceleration, Force/Moment, Corrected Von Mises, Plastic Strain
+- **Component**: Depends on group (e.g., |U|/UX/UY/UZ for Deformation; |F|/FX/FY/FZ/|M|/MX/MY/MZ for Force/Moment)
+- **Mode**: Max over Time, Min over Time, Time of Max, Time of Min, Selected Time
+
+**Notes**:
+- **Selected Time** uses the most recent Time Point calculation
+- Result selectors are enabled only after a successful SOLVE or time-point update
 
 ### Deformation Scale Factor
 
@@ -598,13 +705,15 @@ The Visualization Controls group provides fine-grained control over the 3D displ
 - Preserves absolute displacement magnitudes
 - Better for engineering quantitative analysis
 
+**Note**: This setting only affects mesh position visualization; velocity/acceleration values and APDL export are unaffected.
+
 [**Image Placeholder**: Visualization Controls group showing all options: point size spinner, min/max legend spinners, deformation scale input, and absolute deformations checkbox]
 
 ---
 
-## Chapter 17 – Time Point Controls (Detailed)
+## Chapter 18 – Time Point Controls (Detailed)
 
-The Time Point Controls allow you to compute and export results at any specific time instant.
+The **Initialization & Time Point Controls** group allows you to compute and export results at any specific time instant.
 
 ### Time Selection
 
@@ -631,6 +740,7 @@ The Time Point Controls allow you to compute and export results at any specific 
 ### Save Time Point as CSV
 
 **Purpose**: Export the current 3D view data to a CSV file.
+The export uses the **current Result Group/Component/Mode** selection.
 
 **Output Format**:
 ```csv
@@ -653,10 +763,16 @@ NodeID,X,Y,Z,VonMises
 
 **Output Format (.inp)**:
 ```
-IC,1001,UX,,-0.00234
-IC,1001,UY,,0.00156
-IC,1001,UZ,,-0.00089
-IC,1002,UX,,-0.00241
+! APDL Initial Condition (Velocity) Commands
+! Generated by MARS: Modal Analysis Response Solver
+! Velocity Units: [mm/s]
+FINISH
+/SOLU
+! Applying Initial Conditions for Velocity
+IC,1001,VELX,-2.340000E-03
+IC,1001,VELY,1.560000E-03
+IC,1001,VELZ,-8.900000E-04
+IC,1002,VELX,-2.410000E-03
 ...
 ```
 
@@ -666,9 +782,11 @@ IC,1002,UX,,-0.00241
 
 ---
 
-## Chapter 18 – Animation Controls (Detailed)
+## Chapter 19 – Animation Controls (Detailed)
 
 The Animation Controls section provides comprehensive options for creating animated visualizations of your results.
+
+**Important**: Animation supports **one output at a time**. If multiple outputs are selected, MARS will prompt you to choose one before playback.
 
 ### Time Step Mode
 
@@ -752,7 +870,7 @@ The Animation Controls section provides comprehensive options for creating anima
 
 ---
 
-## Chapter 19 – PyVista 3D Viewer Interaction
+## Chapter 20 – PyVista 3D Viewer Interaction
 
 The PyVista 3D Viewer provides an interactive canvas for exploring your results. Understanding the controls is essential for effective analysis.
 
@@ -794,7 +912,7 @@ The 3D view includes an orientation widget showing X, Y, Z axes:
 
 ---
 
-## Chapter 20 – Right-Click Context Menu (Complete Reference)
+## Chapter 21 – Right-Click Context Menu (Complete Reference)
 
 Right-clicking anywhere on the 3D viewer opens a context menu with powerful analysis tools organized into four sections.
 
@@ -959,7 +1077,7 @@ These tools help you navigate and control the camera.
 
 ---
 
-## Chapter 21 – Hotspot Analysis Workflow
+## Chapter 22 – Hotspot Analysis Workflow
 
 Hotspot analysis is a powerful workflow for identifying and investigating critical locations. This chapter provides a complete step-by-step guide.
 
@@ -1017,7 +1135,7 @@ Capture your findings:
 
 ---
 
-## Chapter 22 – Animation Workflow
+## Chapter 23 – Animation Workflow
 
 Creating professional-quality animations requires a systematic approach. This chapter guides you through the complete process.
 
@@ -1026,6 +1144,7 @@ Creating professional-quality animations requires a systematic approach. This ch
 Before starting animation:
 - [ ] Solver completed with deformations loaded
 - [ ] Desired output type computed
+- [ ] Exactly one output selected for animation playback
 - [ ] Time range of interest identified
 - [ ] Display tab active
 
@@ -1099,22 +1218,22 @@ Save to file:
 
 ---
 
-## Chapter 23 – Exporting Results to CSV
+## Chapter 24 – Exporting Results to CSV
 
 MARS provides multiple ways to export computational results for further processing or documentation.
 
 ### Automatic Exports After Solving
 
-After clicking SOLVE, these files are automatically created in the project directory:
+After clicking SOLVE (batch mode), MARS writes envelope CSVs using these naming patterns:
 
-| Output Type | Filename Pattern |
-|------------|------------------|
-| Von-Mises Stress | `von_mises.csv`, `time_of_max_von_mises.csv` |
-| Max Principal | `max_principal.csv`, `time_of_max_principal.csv` |
-| Min Principal | `min_principal.csv`, `time_of_min_principal.csv` |
-| Deformation | `deformation.csv`, `time_of_max_deformation.csv` |
-| Velocity | `velocity.csv`, `time_of_max_velocity.csv` |
-| Acceleration | `acceleration.csv`, `time_of_max_acceleration.csv` |
+- **All outputs**: `max_<name>.csv`, `min_<name>.csv`, `time_of_max_<name>.csv`, `time_of_min_<name>.csv`
+- **Von Mises**: `<name>` = `von_mises_stress`
+- **Max/Min Principal**: `<name>` = `s1_stress`, `s3_stress`
+- **Deformation/Velocity/Acceleration**: magnitude plus component files with `_x`, `_y`, `_z` suffixes  
+  Example: `max_velocity.csv`, `max_velocity_x.csv`, `time_of_min_acceleration_z.csv`
+- **Force/Moment**: `element_nodal_force` and `element_nodal_moment`, plus component files such as  
+  `element_nodal_force_fx`, `element_nodal_moment_mx`, etc.
+- **Plasticity (Neuber/Glinka)**: `corrected_von_mises.csv`, `time_of_max_corrected_von_mises.csv`, `plastic_strain.csv`
 
 ### Manual Time Point Export
 
@@ -1145,7 +1264,7 @@ NodeID,X,Y,Z,[ScalarName]
 
 ---
 
-## Chapter 24 – APDL Initial Condition Export
+## Chapter 25 – APDL Initial Condition Export
 
 The APDL Initial Condition export allows you to restart ANSYS transient analyses from any time point computed in MARS.
 
@@ -1171,14 +1290,18 @@ Create velocity initial conditions at a specific time instant for use in ANSYS M
 ### Output File Format
 
 ```
-! MARS-generated Initial Conditions
-! Time: 0.05234 seconds
-IC,1001,UX,,-0.002345
-IC,1001,UY,,0.001568
-IC,1001,UZ,,-0.000892
-IC,1002,UX,,-0.002412
-IC,1002,UY,,0.001534
-IC,1002,UZ,,-0.000921
+! APDL Initial Condition (Velocity) Commands
+! Generated by MARS: Modal Analysis Response Solver
+! Velocity Units: [mm/s]
+FINISH
+/SOLU
+! Applying Initial Conditions for Velocity
+IC,1001,VELX,-2.345000E-03
+IC,1001,VELY,1.568000E-03
+IC,1001,VELZ,-8.920000E-04
+IC,1002,VELX,-2.412000E-03
+IC,1002,VELY,1.534000E-03
+IC,1002,VELZ,-9.210000E-04
 ...
 ```
 
@@ -1202,7 +1325,7 @@ IC,1002,UZ,,-0.000921
 
 ---
 
-## Chapter 25 – Troubleshooting Guide
+## Chapter 26 – Troubleshooting Guide
 
 This chapter provides solutions to common issues encountered while using MARS.
 
@@ -1214,12 +1337,13 @@ This chapter provides solutions to common issues encountered while using MARS.
 | "Required column not found" | Wrong column naming | Check stress columns match `sx_1`, `sy_1`, etc. |
 | File won't load | File encoding issue | Re-save as UTF-8 CSV |
 | NodeID mismatch | Different node sets | Ensure same nodes in all files |
+| `.pch` not visible in Navigator | File filter excludes .pch | Use **Read Modal Coordinate File (.mcf / .pch)** button |
 
 ### Solver Issues
 
 | Symptom | Cause | Solution |
 |---------|-------|----------|
-| SOLVE button disabled | Missing input files | Load both .mcf and stress .csv |
+| SOLVE button disabled | Missing input files | Load .mcf/.pch plus stress **or** force/moment file |
 | Solver stalls at 0% | Very large dataset | Wait, or reduce model size |
 | "Out of memory" error | Exceeded RAM | Increase RAM allocation in Settings |
 | Very slow performance | Using double precision | Switch to single precision if acceptable |
@@ -1230,8 +1354,10 @@ This chapter provides solutions to common issues encountered while using MARS.
 |---------|-------|----------|
 | Blank 3D view | No data loaded | Run solver or load visualization CSV |
 | No color on nodes | Missing scalar column | Ensure output was selected before solving |
+| Animation setup error | Multiple outputs selected | Select **one** output type for animation |
 | Animation won't play | No deformations | Load deformation file and re-solve |
 | Animation very slow | Too many frames | Increase "Every nth" value |
+| 3D view missing geometry | No `X, Y, Z` coordinates | Include coordinates in stress/force-moment file |
 
 ### Export Issues
 
@@ -1246,25 +1372,26 @@ This chapter provides solutions to common issues encountered while using MARS.
 | Symptom | Cause | Solution |
 |---------|-------|----------|
 | Plasticity won't enable | Von Mises not selected | Select Von Mises output first |
-| "Temperature file error" | Wrong file format | Use CSV with NodeID, Temperature columns |
+| "Temperature file error" | Wrong file format | Use .txt with `Node Number` and temperature column |
 | Corrected stress > elastic | Material data issue | Check stress-strain curve data |
 | Convergence failure | Difficult problem | Increase max iterations |
+| Diagnostics overlay missing | Diagnostics checkbox off or no corrected trace in current run | Use Time History + Von Mises + Plasticity Correction, then enable diagnostics checkbox |
 
 [**Image Placeholder**: Troubleshooting flowchart for "SOLVE button disabled" showing decision tree with solutions]
 
 ---
 
-## Chapter 26 – File Format Reference
+## Chapter 27 – File Format Reference
 
 ### Modal Coordinate File (.mcf)
 
 **Purpose**: Time-varying modal amplitudes
 
-**Required Structure**:
+**Required Structure** (whitespace-delimited; wrapped lines allowed):
 ```
-Time,Mode1,Mode2,Mode3,...,ModeN
-0.0000,1.23e-4,2.45e-5,3.67e-6,...
-0.0001,1.25e-4,2.42e-5,3.70e-6,...
+Time  Mode1  Mode2  Mode3 ... ModeN
+0.0000 1.23e-4 2.45e-5 3.67e-6 ...
+0.0001 1.25e-4 2.42e-5 3.70e-6 ...
 ```
 
 **Requirements**:
@@ -1272,6 +1399,17 @@ Time,Mode1,Mode2,Mode3,...,ModeN
 - Column count = 1 + number of modes
 - Time values in seconds
 - No missing values
+
+---
+
+### NASTRAN Punch Modal Coordinates (.pch)
+
+**Purpose**: Modal coordinates exported from NASTRAN SOL 112
+
+**Requirements**:
+- SDISPLACEMENT output with **(SOLUTION SET)** markers
+- `$POINT ID` mode identifiers and modal point lines with **M** markers
+- Consistent time vector across modes
 
 ---
 
@@ -1293,7 +1431,7 @@ Time,Mode1,Mode2,Mode3,...,ModeN
 **Optional Columns**:
 | Column | Description |
 |--------|-------------|
-| `X, Y, Z` | Node coordinates for visualization |
+| `X, Y, Z` | Node coordinates for visualization (required for Display tab) |
 
 ---
 
@@ -1311,6 +1449,24 @@ Time,Mode1,Mode2,Mode3,...,ModeN
 
 ---
 
+### Element Nodal Forces & Moments File (.csv)
+
+**Purpose**: Modal element nodal forces and moments per node
+
+**Required Columns**:
+| Column Pattern | Description |
+|----------------|-------------|
+| `NodeID` | Unique node identifier |
+| `enfox_1, enfoy_1, enfoz_1, ...` | Force components per mode |
+| `enmox_1, enmoy_1, enmoz_1, ...` | Moment components per mode |
+
+**Optional Columns**:
+| Column | Description |
+|--------|-------------|
+| `X, Y, Z` | Node coordinates for visualization |
+
+---
+
 ### Steady-State Stress File (.txt)
 
 **Purpose**: Static stress field to superimpose
@@ -1318,33 +1474,33 @@ Time,Mode1,Mode2,Mode3,...,ModeN
 **Format**: Tab-delimited
 
 ```
-NodeID	SX	SY	SZ	SXY	SYZ	SXZ
+Node Number	SX (MPa)	SY (MPa)	SZ (MPa)	SXY (MPa)	SYZ (MPa)	SXZ (MPa)
 1001	100.5	200.3	150.2	25.1	30.5	15.2
 ```
 
 ---
 
-### Temperature Field File (.csv)
+### Temperature Field File (.txt)
 
 **Purpose**: Node temperatures for plasticity correction
 
 **Required Columns**:
 | Column | Description |
 |--------|-------------|
-| `NodeID` | Must match stress file |
-| `Temperature` | Temperature in consistent units |
+| `Node Number` | Must match stress file |
+| Temperature column | Any column with temperature values (preferred name contains `Temp`) |
 
 **Example**:
-```csv
-NodeID,Temperature
-1001,25.0
-1002,150.5
-1003,300.0
+```
+Node Number	Temperature
+1001	25.0
+1002	150.5
+1003	300.0
 ```
 
 ---
 
-## Chapter 27 – Keyboard and Mouse Reference
+## Chapter 28 – Keyboard and Mouse Reference
 
 ### Mouse Controls (PyVista 3D Viewer)
 
@@ -1367,10 +1523,16 @@ NodeID,Temperature
 
 ---
 
-## Chapter 28 – FAQs
+## Chapter 29 – FAQs
 
 **Q: Which outputs require the deformation file?**  
 A: Deformation, Velocity, and Acceleration outputs require the modal deformation file to be loaded.
+
+**Q: Why are stress/kinematic outputs disabled when Element Nodal Forces & Moments is selected?**  
+A: Force/Moment output is mutually exclusive. Uncheck it to re-enable stress or kinematic outputs.
+
+**Q: Why can I select only one output in Time History mode?**  
+A: Time History mode is single-output by design; MARS enforces one output type for clarity.
 
 **Q: Can I compare results with the same color scale?**  
 A: Yes. Manually set Legend Range min/max to fixed values across different analyses.
@@ -1393,6 +1555,9 @@ A: It excludes the first n modes from reconstruction. Use this to skip rigid-bod
 **Q: Why can't I see all files in Navigator?**  
 A: Navigator automatically filters to show only .mcf, .csv, and .txt files relevant to MARS.
 
+**Q: Why isn't my .pch file visible in the Navigator?**  
+A: The Navigator filter excludes `.pch`. Use **Read Modal Coordinate File (.mcf / .pch)** instead.
+
 **Q: How do I track a node during animation?**  
 A: Use Go To Node to target it, then enable Lock Camera for Animation from the context menu.
 
@@ -1401,7 +1566,7 @@ A: Export animations as GIF instead of MP4. GIF export is always available but p
 
 ---
 
-## Chapter 29 – Getting Help
+## Chapter 30 – Getting Help
 
 ### Before Submitting a Support Request
 

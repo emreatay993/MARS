@@ -6,15 +6,15 @@ AÇIKLAMA: Tüm gerekli girdi dosyalarının yüklenmesini ve Navigator ile dosy
 
 GİRDİLER:
 
-- MARS v0.97 ile başlatılmış uygulama
-- Test dosyaları mevcut: geçerli .mcf, modal stress .csv, deformations .csv, steady-state .txt, temperature field .csv
+- MARS v0.98 ile başlatılmış uygulama
+- Test dosyaları mevcut: geçerli .mcf/.pch, modal stress .csv, deformations .csv, steady-state .txt, temperature field .txt
 - Proje dizini filtreleme doğrulaması için karışık dosya türleri içermektedir
 
 TEST ADIMLARI:
 
 1. File > Select Project Directory üzerinden proje dizinini ayarlayın ve Navigator'ın klasör içeriğiyle güncellendiğini doğrulayın
 2. Navigator'ın yalnızca .mcf, .csv ve .txt dosyalarını gösterdiğini doğrulayın (otomatik filtreleme davranışı)
-3. Read Modal Coordinate File düğmesine tıklayarak ve geçerli bir .mcf dosyası seçerek modal koordinat dosyasını yükleyin
+3. Read Modal Coordinate File düğmesine tıklayarak ve geçerli bir .mcf veya .pch dosyası seçerek modal koordinat dosyasını yükleyin
 4. Read Modal Stress File düğmesine tıklayarak ve geçerli bir .csv dosyası seçerek modal stress dosyasını yükleyin
 5. Include Deformations checkbox'ını etkinleştirin ve deformations dosya kontrollerinin görünür hale geldiğini doğrulayın
 6. Artık görünür olan düğmeyi kullanarak deformations .csv dosyasını yükleyin
@@ -27,6 +27,7 @@ BEKLENEN SONUÇLAR:
 - Navigator, proje diziniyle eşleşen yalnızca filtrelenmiş dosyaları (.mcf, .csv, .txt) gösterir
 - Console, yüklenen her dosya için başarı mesajları görüntüler
 - Dosya yolu alanları doğru mutlak yollarla doldurulur
+- Read Modal Coordinate File, .mcf ve .pch dosyalarını kabul eder
 - Stress çıktı checkbox'ları (Von-Mises, Max Principal, Min Principal), stress dosyası yüklendikten sonra etkinleşir
 - Deformation çıktı checkbox'ları (Deformation, Velocity, Acceleration), deformations dosyası yüklendikten sonra etkinleşir
 - Opsiyonel dosya kontrolleri (steady-state, deformations), checkbox'lar etkinleştirilene kadar gizlidir
@@ -45,28 +46,26 @@ GİRDİLER:
 
 - Modal coordinate ve stress dosyaları başarıyla yüklenmiştir
 - Skip modes: 6 (6 rijit-cisim modu olan free-free yapı için)
-- Fatigue parametreleri: σ'f = 1000 MPa, b = -0.12
 - Time history için Node ID: 1001
 - Tam çıktı testi için deformations dosyası yüklenmiştir
 
 TEST ADIMLARI:
 
 1. Birden fazla çıktı seçeneği seçin: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
-2. Damage Index checkbox'ını etkinleştirin ve fatigue parametreleri alanlarının göründüğünü doğrulayın
-3. Fatigue parametrelerini girin: σ'f = 1000 MPa ve b = -0.12
-4. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
-5. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
-6. Scoping alanına Node ID 1001'i girin
-7. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
-8. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
-9. İşleme mesajları ve doğrulama adımları için Console sekmesini izleyin
-10. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
-11. Solver'ın tamamlanmasını bekleyin ve Console'da başarı mesajının göründüğünü doğrulayın
+2. Damage Index / Potential Damage checkbox'ının gizli olduğunu ve fatigue alanlarının görünmediğini doğrulayın
+3. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
+4. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
+5. Scoping alanına Node ID 1001'i girin
+6. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
+7. Solver'ı çalıştırmak için SOLVE düğmesine tıklayın
+8. İşleme mesajları ve doğrulama adımları için Console sekmesini izleyin
+9. Progress bar'ın %0'dan %100'e ilerlemesini gözlemleyin
+10. Solver'ın tamamlanmasını bekleyin ve Console'da tamamlanma bilgisinin göründüğünü doğrulayın
 
 BEKLENEN SONUÇLAR:
 
 - Seçilen tüm çıktı checkbox'ları işaretlidir ve etkin kalır
-- Damage Index seçildiğinde fatigue parametreleri bölümü görünür
+- Damage Index / Potential Damage checkbox'ı gizli kalır (özellik benchmark sürecinde)
 - Skip modes dropdown, .mcf dosyasından gelen maksimum mod sayısına kadar 0'dan başlayan değerleri gösterir
 - Time History Mode scoping kontrolleri, checkbox etkinleştirildiğinde görünür
 - Minimum gereksinimler karşılandığında SOLVE düğmesi etkinleşir
@@ -88,7 +87,7 @@ AÇIKLAMA: Material profile girişi, temperature field yükleme, metod seçimi v
 GİRDİLER:
 
 - Von-Mises Stress çıktısı seçilmiştir (plasticity correction için gereklidir)
-- NodeID ve Temperature sütunlarına sahip temperature field CSV dosyası mevcuttur
+- Node Number sütunu ve en az bir sıcaklık sütunu içeren temperature field TXT dosyası mevcuttur
 - Material profile verisi: 3 sıcaklık (25°C, 200°C, 400°C), her biri için 8 stress-strain noktası
 - Plasticity metodu: Glinka (enerji tabanlı düzeltme)
 - Max Iterations: 80 (varsayılan 60'tan artırılmıştır)
@@ -101,14 +100,16 @@ TEST ADIMLARI:
 3. Malzeme tanımlama diyaloğunu açmak için Enter Material Profile düğmesine tıklayın
 4. Sıcaklığa bağlı stress-strain eğrilerini girin: her biri için 8 nokta ile 3 sıcaklık girin
 5. Plasticity seçeneklerinde dropdown'dan Extrapolation modunu Linear olarak seçin
-6. Read Temperature Field File düğmesine tıklayın ve temperature CSV dosyasını seçin
+6. Read Temperature Field File düğmesine tıklayın ve temperature TXT dosyasını seçin
 7. Temperature field dosya yolunun metin alanında görüntülendiğini doğrulayın
 8. Max Iterations alanını 80 olarak değiştirin (varsayılanı temizleyip yeni değeri girin)
 9. Tolerance alanını 1e-9 olarak değiştirin
 10. "Warning: Relaxed iteration settings may impact accuracy" belirten uyarı etiketinin göründüğünü doğrulayın
-11. Time history overlay için Show plasticity diagnostics checkbox'ını etkinleştirin
-12. Solver'ı çalıştırın ve plasticity'ye özgü mesajlar için Console'u izleyin
-13. Çıktı dizininde düzeltilmiş sonuçların oluşturulduğunu doğrulayın
+11. Batch modda solver'ı çalıştırın ve plasticity'ye özgü mesajlar için Console'u izleyin
+12. Çıktı dizininde batch düzeltilmiş sonuçların oluşturulduğunu doğrulayın
+13. Time History Mode'u etkinleştirin ve Node ID 1001 girin
+14. Show plasticity diagnostics checkbox'ını etkinleştirip solver'ı tekrar çalıştırın
+15. Time history plot üzerinde diagnostics katmanlarının göründüğünü doğrulayın
 
 BEKLENEN SONUÇLAR:
 
@@ -119,8 +120,9 @@ BEKLENEN SONUÇLAR:
 - Iterasyon ayarları varsayılandan değiştirildiğinde turuncu/sarı renkte uyarı etiketi görünür
 - Solver, düşürülmüş stress değerlerine sahip corrected_von_mises.csv dosyasını oluşturur
 - Solver, her düğümde eşdeğer plastik strain içeren plastic_strain.csv dosyasını oluşturur
-- Time history plot, diagnostics etkinleştirildiğinde ikincil eksende Δεp ve εp katmanlarını gösterir
-- Console, her düğüm için plasticity yakınsama bilgilerini görüntüler
+- Solver, time_of_max_corrected_von_mises.csv dosyasını oluşturur
+- Time history plot, Neuber/Glinka düzeltme eğrisini gösterir; diagnostics etkinse ikincil eksende Δεp ve εp katmanları görünür
+- Console, çalıştırılan analiz için plasticity düzeltme mesajlarını görüntüler
 - Düzeltilmiş stress değerleri, çentikte elastik stress'ten daha düşüktür
 
 GEREKSINIM NO: N/A
@@ -450,7 +452,7 @@ TEST ADIMLARI:
 2. "Save Time Point as CSV" düğmesine tıklayın
 3. Dışa aktarma konumunu ve dosya adını belirtin (örn. timepoint_0p5s.csv), Save'e tıklayın
 4. "Export Velocity as Initial Condition in APDL" düğmesine tıklayın
-5. Dışa aktarma konumunu ve dosya adını belirtin (örn. velocity_ic.txt), Save'e tıklayın
+5. Dışa aktarma konumunu ve dosya adını belirtin (örn. velocity_ic.inp), Save'e tıklayın
 6. Animasyon bir kez oynatıldıktan sonra "Save as Video/GIF" düğmesine tıklayın
 7. Dropdown'da MP4 formatını seçin
 8. Dışa aktarma konumunu ve dosya adını belirtin (örn. animation.mp4), Save'e tıklayın
@@ -462,7 +464,7 @@ BEKLENEN SONUÇLAR:
 - APDL IC dosyası belirtilen konuma başarıyla dışa aktarılır
 - Animation dışa aktarma diyalogu MP4 ve GIF format seçeneklerini sunar
 - MP4 video dosyası belirtilen konumda oluşturulur (ffmpeg gerektirir)
-- MP4 başarısız olursa yedek olarak GIF animasyonu oluşturulabilir
+- GIF formatı seçildiğinde GIF animasyonu başarıyla oluşturulur
 - Dışa aktarılan video, oynatmayla eşleşen time text overlay içerir
 - Dışa aktarılan tüm dosyalar uygun uygulamalarda açılabilir
 
@@ -501,7 +503,7 @@ BEKLENEN SONUÇLAR:
 - Doğrulama mesajları, her yüklenen dosyayı temel bilgilerle listeler
 - Progress bar %0'dan %100'e düzgün bir şekilde ilerler
 - Console, çalıştırma sırasında işleme mesajlarını görüntüler
-- Tamamlanma mesajı açıkça "Solver completed successfully" ifadesini belirtir
+- Tamamlanma bölümünde SOLVE COMPLETE başlığı ve bitiş bilgisi görünür
 - Toplam çalıştırma süresi Console'da görüntülenir
 - Bu mod kullanıldığında Time History plot sekmesi görünür hale gelir
 - Plot, etiketli eksenlerle görüntülenir (saniye cinsinden time, birimlerle metric)
