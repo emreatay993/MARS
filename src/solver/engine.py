@@ -59,10 +59,27 @@ class MSUPSmartSolverTransient(QObject):
         self.min_over_time_s3 = None
         self.max_over_time_svm = None
         self.max_over_time_def = None
+        self.min_over_time_def = None
         self.max_over_time_vel = None
+        self.min_over_time_vel = None
         self.max_over_time_acc = None
+        self.min_over_time_acc = None
         self.max_over_time_force_mag = None
         self.max_over_time_moment_mag = None
+        self.min_over_time_force_mag = None
+        self.min_over_time_moment_mag = None
+        self.max_over_time_force_fx = None
+        self.max_over_time_force_fy = None
+        self.max_over_time_force_fz = None
+        self.min_over_time_force_fx = None
+        self.min_over_time_force_fy = None
+        self.min_over_time_force_fz = None
+        self.max_over_time_moment_mx = None
+        self.max_over_time_moment_my = None
+        self.max_over_time_moment_mz = None
+        self.min_over_time_moment_mx = None
+        self.min_over_time_moment_my = None
+        self.min_over_time_moment_mz = None
 
         self.max_over_time_svm_corrected = None
         self.plasticity_context: Optional[PlasticityRuntimeContext] = None
@@ -754,59 +771,190 @@ class MSUPSmartSolverTransient(QObject):
                 'csv_time_name': 'time_of_min_s3_stress.csv'
             }
 
+        def _build_vector_job_config(base_name, header_token, num_nodes):
+            job = {
+                'job_type': 'vector',
+                'max_memmap': _prepare_memmap(
+                    os.path.join(self.output_directory, f'max_{base_name}.dat'),
+                    (num_nodes,),
+                ),
+                'time_memmap': _prepare_memmap(
+                    os.path.join(self.output_directory, f'time_of_max_{base_name}.dat'),
+                    (num_nodes,),
+                ),
+                'min_memmap': _prepare_memmap(
+                    os.path.join(self.output_directory, f'min_{base_name}.dat'),
+                    (num_nodes,),
+                ),
+                'time_min_memmap': _prepare_memmap(
+                    os.path.join(self.output_directory, f'time_of_min_{base_name}.dat'),
+                    (num_nodes,),
+                ),
+                'csv_header_val': f"{header_token}_Max",
+                'csv_header_time': f"Time_of_{header_token}_Max",
+                'csv_header_min': f"{header_token}_Min",
+                'csv_header_time_min': f"Time_of_{header_token}_Min",
+                'csv_value_name': f'max_{base_name}.csv',
+                'csv_time_name': f'time_of_max_{base_name}.csv',
+                'csv_min_name': f'min_{base_name}.csv',
+                'csv_time_min_name': f'time_of_min_{base_name}.csv',
+                'components': {},
+            }
+
+            for axis, axis_token in [('x', 'X'), ('y', 'Y'), ('z', 'Z')]:
+                axis_base = f"{base_name}_{axis}"
+                token = f"{header_token}_{axis_token}"
+                job['components'][axis] = {
+                    'max_memmap': _prepare_memmap(
+                        os.path.join(self.output_directory, f'max_{axis_base}.dat'),
+                        (num_nodes,),
+                    ),
+                    'time_memmap': _prepare_memmap(
+                        os.path.join(self.output_directory, f'time_of_max_{axis_base}.dat'),
+                        (num_nodes,),
+                    ),
+                    'min_memmap': _prepare_memmap(
+                        os.path.join(self.output_directory, f'min_{axis_base}.dat'),
+                        (num_nodes,),
+                    ),
+                    'time_min_memmap': _prepare_memmap(
+                        os.path.join(self.output_directory, f'time_of_min_{axis_base}.dat'),
+                        (num_nodes,),
+                    ),
+                    'csv_header_val': f"{token}_Max",
+                    'csv_header_time': f"Time_of_{token}_Max",
+                    'csv_header_min': f"{token}_Min",
+                    'csv_header_time_min': f"Time_of_{token}_Min",
+                    'csv_value_name': f'max_{axis_base}.csv',
+                    'csv_time_name': f'time_of_max_{axis_base}.csv',
+                    'csv_min_name': f'min_{axis_base}.csv',
+                    'csv_time_min_name': f'time_of_min_{axis_base}.csv',
+                }
+
+            return job
+
+        kinematics_num_nodes = (
+            self.modal_sx.shape[0]
+            if self.modal_sx is not None
+            else (self.modal_deformations_ux.shape[0] if self.modal_deformations_ux is not None else 0)
+        )
+
         if calculate_deformation:
             self.max_over_time_def = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
-            jobs['deformation'] = {
-                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_deformation.dat'),
-                                              (self.modal_sx.shape[0],)),
-                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_deformation.dat'),
-                                               (self.modal_sx.shape[0],)),
-                'csv_header_val': "DEF_Max",
-                'csv_header_time': "Time_of_DEF_Max",
-                'csv_value_name': 'max_deformation.csv',
-                'csv_time_name': 'time_of_max_deformation.csv'
-            }
+            self.min_over_time_def = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            jobs['deformation'] = _build_vector_job_config(
+                'deformation',
+                'DEF',
+                kinematics_num_nodes,
+            )
+        else:
+            self.max_over_time_def = None
+            self.min_over_time_def = None
 
         if calculate_velocity:
             self.max_over_time_vel = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
-            jobs['velocity'] = {
-                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_velocity.dat'),
-                                              (self.modal_sx.shape[0],)),
-                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_velocity.dat'),
-                                               (self.modal_sx.shape[0],)),
-                'csv_header_val': "VEL_Max",
-                'csv_header_time': "Time_of_VEL_Max",
-                'csv_value_name': 'max_velocity.csv',
-                'csv_time_name': 'time_of_max_velocity.csv'
-            }
+            self.min_over_time_vel = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            jobs['velocity'] = _build_vector_job_config(
+                'velocity',
+                'VEL',
+                kinematics_num_nodes,
+            )
+        else:
+            self.max_over_time_vel = None
+            self.min_over_time_vel = None
 
         if calculate_acceleration:
             self.max_over_time_acc = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
-            jobs['acceleration'] = {
-                'max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_acceleration.dat'),
-                                              (self.modal_sx.shape[0],)),
-                'time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_acceleration.dat'),
-                                               (self.modal_sx.shape[0],)),
-                'csv_header_val': "ACC_Max",
-                'csv_header_time': "Time_of_ACC_Max",
-                'csv_value_name': 'max_acceleration.csv',
-                'csv_time_name': 'time_of_max_acceleration.csv'
-            }
+            self.min_over_time_acc = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            jobs['acceleration'] = _build_vector_job_config(
+                'acceleration',
+                'ACC',
+                kinematics_num_nodes,
+            )
+        else:
+            self.max_over_time_acc = None
+            self.min_over_time_acc = None
 
         if calculate_force_moment and self.modal_forces_fx is not None:
             num_fm_nodes = self.modal_forces_fx.shape[0]
             self.max_over_time_force_mag = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.max_over_time_moment_mag = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
-            jobs['force_moment'] = {
+            self.min_over_time_force_mag = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_moment_mag = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_force_fx = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_force_fy = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_force_fz = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_force_fx = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_force_fy = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_force_fz = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_moment_mx = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_moment_my = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_moment_mz = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_moment_mx = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_moment_my = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_moment_mz = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            fm_job = {
                 'force_max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_element_nodal_force.dat'),
                                                     (num_fm_nodes,)),
                 'force_time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_element_nodal_force.dat'),
                                                      (num_fm_nodes,)),
+                'force_min_memmap': _prepare_memmap(os.path.join(self.output_directory, 'min_element_nodal_force.dat'),
+                                                    (num_fm_nodes,)),
+                'force_time_min_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_min_element_nodal_force.dat'),
+                                                         (num_fm_nodes,)),
                 'moment_max_memmap': _prepare_memmap(os.path.join(self.output_directory, 'max_element_nodal_moment.dat'),
                                                      (num_fm_nodes,)),
                 'moment_time_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_max_element_nodal_moment.dat'),
                                                       (num_fm_nodes,)),
+                'moment_min_memmap': _prepare_memmap(os.path.join(self.output_directory, 'min_element_nodal_moment.dat'),
+                                                     (num_fm_nodes,)),
+                'moment_time_min_memmap': _prepare_memmap(os.path.join(self.output_directory, 'time_of_min_element_nodal_moment.dat'),
+                                                          (num_fm_nodes,)),
             }
+
+            component_bases = {
+                'fx': 'element_nodal_force_fx',
+                'fy': 'element_nodal_force_fy',
+                'fz': 'element_nodal_force_fz',
+                'mx': 'element_nodal_moment_mx',
+                'my': 'element_nodal_moment_my',
+                'mz': 'element_nodal_moment_mz',
+            }
+            for comp_key, comp_base in component_bases.items():
+                fm_job[f'{comp_key}_max_memmap'] = _prepare_memmap(
+                    os.path.join(self.output_directory, f'max_{comp_base}.dat'),
+                    (num_fm_nodes,),
+                )
+                fm_job[f'{comp_key}_time_memmap'] = _prepare_memmap(
+                    os.path.join(self.output_directory, f'time_of_max_{comp_base}.dat'),
+                    (num_fm_nodes,),
+                )
+                fm_job[f'{comp_key}_min_memmap'] = _prepare_memmap(
+                    os.path.join(self.output_directory, f'min_{comp_base}.dat'),
+                    (num_fm_nodes,),
+                )
+                fm_job[f'{comp_key}_time_min_memmap'] = _prepare_memmap(
+                    os.path.join(self.output_directory, f'time_of_min_{comp_base}.dat'),
+                    (num_fm_nodes,),
+                )
+            jobs['force_moment'] = fm_job
+        else:
+            self.max_over_time_force_mag = None
+            self.max_over_time_moment_mag = None
+            self.min_over_time_force_mag = None
+            self.min_over_time_moment_mag = None
+            self.max_over_time_force_fx = None
+            self.max_over_time_force_fy = None
+            self.max_over_time_force_fz = None
+            self.min_over_time_force_fx = None
+            self.min_over_time_force_fy = None
+            self.min_over_time_force_fz = None
+            self.max_over_time_moment_mx = None
+            self.max_over_time_moment_my = None
+            self.max_over_time_moment_mz = None
+            self.min_over_time_moment_mx = None
+            self.min_over_time_moment_my = None
+            self.min_over_time_moment_mz = None
 
         if calculate_damage:
             jobs['damage'] = {
@@ -899,20 +1047,33 @@ class MSUPSmartSolverTransient(QObject):
 
         ux, uy, uz = self.compute_deformations(start_idx, end_idx)
 
+        def _fill_extrema(job_config, values):
+            job_config['max_memmap'][start_idx:end_idx] = np.max(values, axis=1)
+            job_config['time_memmap'][start_idx:end_idx] = time_values[np.argmax(values, axis=1)]
+            if 'min_memmap' in job_config:
+                job_config['min_memmap'][start_idx:end_idx] = np.min(values, axis=1)
+            if 'time_min_memmap' in job_config:
+                job_config['time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(values, axis=1)]
+
         # --- Deformation ---
         if 'deformation' in jobs:
             start_time = time.time()
             job = jobs['deformation']
             def_mag = np.sqrt(ux ** 2 + uy ** 2 + uz ** 2)
             self.max_over_time_def = np.maximum(self.max_over_time_def, np.max(def_mag, axis=0))
-            job['max_memmap'][start_idx:end_idx] = np.max(def_mag, axis=1)
-            job['time_memmap'][start_idx:end_idx] = time_values[np.argmax(def_mag, axis=1)]
+            self.min_over_time_def = np.minimum(self.min_over_time_def, np.min(def_mag, axis=0))
+            _fill_extrema(job, def_mag)
+            _fill_extrema(job['components']['x'], ux)
+            _fill_extrema(job['components']['y'], uy)
+            _fill_extrema(job['components']['z'], uz)
             print(f"Elapsed time for deformation magnitude and time: {(time.time() - start_time):.3f} seconds")
 
         # --- Velocity & Acceleration ---
         if 'velocity' in jobs or 'acceleration' in jobs:
             start_time = time.time()
-            vel_mag, acc_mag, _, _, _, _, _, _ = self._vel_acc_from_disp(ux, uy, uz, self.time_values)
+            vel_mag, acc_mag, vel_x, vel_y, vel_z, acc_x, acc_y, acc_z = self._vel_acc_from_disp(
+                ux, uy, uz, self.time_values
+            )
             print(
                 f"Elapsed time for calculation of velocity/acceleration components: {(time.time() - start_time):.3f} seconds")
 
@@ -920,17 +1081,24 @@ class MSUPSmartSolverTransient(QObject):
                 start_time = time.time()
                 job = jobs['velocity']
                 self.max_over_time_vel = np.maximum(self.max_over_time_vel, np.max(vel_mag, axis=0))
-                job['max_memmap'][start_idx:end_idx] = np.max(vel_mag, axis=1)
-                job['time_memmap'][start_idx:end_idx] = time_values[np.argmax(vel_mag, axis=1)]
+                self.min_over_time_vel = np.minimum(self.min_over_time_vel, np.min(vel_mag, axis=0))
+                _fill_extrema(job, vel_mag)
+                _fill_extrema(job['components']['x'], vel_x)
+                _fill_extrema(job['components']['y'], vel_y)
+                _fill_extrema(job['components']['z'], vel_z)
                 print(f"Elapsed time for velocity magnitude and time: {(time.time() - start_time):.3f} seconds")
 
             if 'acceleration' in jobs:
                 start_time = time.time()
                 job = jobs['acceleration']
                 self.max_over_time_acc = np.maximum(self.max_over_time_acc, np.max(acc_mag, axis=0))
-                job['max_memmap'][start_idx:end_idx] = np.max(acc_mag, axis=1)
-                job['time_memmap'][start_idx:end_idx] = time_values[np.argmax(acc_mag, axis=1)]
+                self.min_over_time_acc = np.minimum(self.min_over_time_acc, np.min(acc_mag, axis=0))
+                _fill_extrema(job, acc_mag)
+                _fill_extrema(job['components']['x'], acc_x)
+                _fill_extrema(job['components']['y'], acc_y)
+                _fill_extrema(job['components']['z'], acc_z)
                 print(f"Elapsed time for acceleration magnitude and time: {(time.time() - start_time):.3f} seconds")
+
     def _process_force_moment_chunk(self, jobs, time_values, start_idx, end_idx):
         """Processes element nodal force and moment magnitude for a given chunk."""
         if 'force_moment' not in jobs or self.modal_forces_fx is None:
@@ -944,14 +1112,60 @@ class MSUPSmartSolverTransient(QObject):
         # Force magnitude
         force_mag = np.sqrt(fx ** 2 + fy ** 2 + fz ** 2)
         self.max_over_time_force_mag = np.maximum(self.max_over_time_force_mag, np.max(force_mag, axis=0))
+        self.min_over_time_force_mag = np.minimum(self.min_over_time_force_mag, np.min(force_mag, axis=0))
         job['force_max_memmap'][start_idx:end_idx] = np.max(force_mag, axis=1)
         job['force_time_memmap'][start_idx:end_idx] = time_values[np.argmax(force_mag, axis=1)]
+        job['force_min_memmap'][start_idx:end_idx] = np.min(force_mag, axis=1)
+        job['force_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(force_mag, axis=1)]
+
+        # Force components
+        self.max_over_time_force_fx = np.maximum(self.max_over_time_force_fx, np.max(fx, axis=0))
+        self.max_over_time_force_fy = np.maximum(self.max_over_time_force_fy, np.max(fy, axis=0))
+        self.max_over_time_force_fz = np.maximum(self.max_over_time_force_fz, np.max(fz, axis=0))
+        self.min_over_time_force_fx = np.minimum(self.min_over_time_force_fx, np.min(fx, axis=0))
+        self.min_over_time_force_fy = np.minimum(self.min_over_time_force_fy, np.min(fy, axis=0))
+        self.min_over_time_force_fz = np.minimum(self.min_over_time_force_fz, np.min(fz, axis=0))
+        job['fx_max_memmap'][start_idx:end_idx] = np.max(fx, axis=1)
+        job['fx_time_memmap'][start_idx:end_idx] = time_values[np.argmax(fx, axis=1)]
+        job['fx_min_memmap'][start_idx:end_idx] = np.min(fx, axis=1)
+        job['fx_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(fx, axis=1)]
+        job['fy_max_memmap'][start_idx:end_idx] = np.max(fy, axis=1)
+        job['fy_time_memmap'][start_idx:end_idx] = time_values[np.argmax(fy, axis=1)]
+        job['fy_min_memmap'][start_idx:end_idx] = np.min(fy, axis=1)
+        job['fy_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(fy, axis=1)]
+        job['fz_max_memmap'][start_idx:end_idx] = np.max(fz, axis=1)
+        job['fz_time_memmap'][start_idx:end_idx] = time_values[np.argmax(fz, axis=1)]
+        job['fz_min_memmap'][start_idx:end_idx] = np.min(fz, axis=1)
+        job['fz_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(fz, axis=1)]
 
         # Moment magnitude
         moment_mag = np.sqrt(mx ** 2 + my ** 2 + mz ** 2)
         self.max_over_time_moment_mag = np.maximum(self.max_over_time_moment_mag, np.max(moment_mag, axis=0))
+        self.min_over_time_moment_mag = np.minimum(self.min_over_time_moment_mag, np.min(moment_mag, axis=0))
         job['moment_max_memmap'][start_idx:end_idx] = np.max(moment_mag, axis=1)
         job['moment_time_memmap'][start_idx:end_idx] = time_values[np.argmax(moment_mag, axis=1)]
+        job['moment_min_memmap'][start_idx:end_idx] = np.min(moment_mag, axis=1)
+        job['moment_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(moment_mag, axis=1)]
+
+        # Moment components
+        self.max_over_time_moment_mx = np.maximum(self.max_over_time_moment_mx, np.max(mx, axis=0))
+        self.max_over_time_moment_my = np.maximum(self.max_over_time_moment_my, np.max(my, axis=0))
+        self.max_over_time_moment_mz = np.maximum(self.max_over_time_moment_mz, np.max(mz, axis=0))
+        self.min_over_time_moment_mx = np.minimum(self.min_over_time_moment_mx, np.min(mx, axis=0))
+        self.min_over_time_moment_my = np.minimum(self.min_over_time_moment_my, np.min(my, axis=0))
+        self.min_over_time_moment_mz = np.minimum(self.min_over_time_moment_mz, np.min(mz, axis=0))
+        job['mx_max_memmap'][start_idx:end_idx] = np.max(mx, axis=1)
+        job['mx_time_memmap'][start_idx:end_idx] = time_values[np.argmax(mx, axis=1)]
+        job['mx_min_memmap'][start_idx:end_idx] = np.min(mx, axis=1)
+        job['mx_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(mx, axis=1)]
+        job['my_max_memmap'][start_idx:end_idx] = np.max(my, axis=1)
+        job['my_time_memmap'][start_idx:end_idx] = time_values[np.argmax(my, axis=1)]
+        job['my_min_memmap'][start_idx:end_idx] = np.min(my, axis=1)
+        job['my_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(my, axis=1)]
+        job['mz_max_memmap'][start_idx:end_idx] = np.max(mz, axis=1)
+        job['mz_time_memmap'][start_idx:end_idx] = time_values[np.argmax(mz, axis=1)]
+        job['mz_min_memmap'][start_idx:end_idx] = np.min(mz, axis=1)
+        job['mz_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(mz, axis=1)]
 
         print(f"Elapsed time for element nodal force & moment: {(time.time() - start_time):.3f} seconds")
     # endregion
@@ -1353,7 +1567,7 @@ class MSUPSmartSolverTransient(QObject):
             print(f"Error writing {csv_filename}: {e}")
 
     def _finalize_force_moment_job(self, job_data, node_ids, node_coords):
-        """Finalize the combined force/moment job -- writes 4 CSV files."""
+        """Finalize the combined force/moment job and write max/min CSV outputs."""
         def _flush_memmap(memmap_obj):
             if memmap_obj is None:
                 return None, None
@@ -1365,29 +1579,124 @@ class MSUPSmartSolverTransient(QObject):
             path = getattr(memmap_obj, 'filename', None)
             return data_copy, path
 
-        for prefix, label in [('force', 'Force_Mag'), ('moment', 'Moment_Mag')]:
-            max_vals, max_path = _flush_memmap(job_data.get(f'{prefix}_max_memmap'))
-            time_vals, time_path = _flush_memmap(job_data.get(f'{prefix}_time_memmap'))
+        def _finalize_series(base_key, csv_base, label):
+            max_vals, max_path = _flush_memmap(job_data.get(f'{base_key}_max_memmap'))
+            max_time_vals, max_time_path = _flush_memmap(job_data.get(f'{base_key}_time_memmap'))
+            min_vals, min_path = _flush_memmap(job_data.get(f'{base_key}_min_memmap'))
+            min_time_vals, min_time_path = _flush_memmap(job_data.get(f'{base_key}_time_min_memmap'))
+
             if max_vals is not None:
                 self._write_csv(
                     node_ids, node_coords, max_vals,
-                    os.path.join(self.output_directory, f'max_element_nodal_{prefix}.csv'),
+                    os.path.join(self.output_directory, f'max_{csv_base}.csv'),
                     f"{label}_Max"
                 )
-            if time_vals is not None:
+            if max_time_vals is not None:
                 self._write_csv(
-                    node_ids, node_coords, time_vals,
-                    os.path.join(self.output_directory, f'time_of_max_element_nodal_{prefix}.csv'),
+                    node_ids, node_coords, max_time_vals,
+                    os.path.join(self.output_directory, f'time_of_max_{csv_base}.csv'),
                     f"Time_of_{label}_Max"
                 )
-            for p in (max_path, time_path):
-                if p:
+            if min_vals is not None:
+                self._write_csv(
+                    node_ids, node_coords, min_vals,
+                    os.path.join(self.output_directory, f'min_{csv_base}.csv'),
+                    f"{label}_Min"
+                )
+            if min_time_vals is not None:
+                self._write_csv(
+                    node_ids, node_coords, min_time_vals,
+                    os.path.join(self.output_directory, f'time_of_min_{csv_base}.csv'),
+                    f"Time_of_{label}_Min"
+                )
+
+            for path in (max_path, max_time_path, min_path, min_time_path):
+                if path:
                     try:
-                        os.remove(p)
+                        os.remove(path)
                     except OSError:
                         pass
-            job_data[f'{prefix}_max_memmap'] = None
-            job_data[f'{prefix}_time_memmap'] = None
+            job_data[f'{base_key}_max_memmap'] = None
+            job_data[f'{base_key}_time_memmap'] = None
+            job_data[f'{base_key}_min_memmap'] = None
+            job_data[f'{base_key}_time_min_memmap'] = None
+
+        _finalize_series('force', 'element_nodal_force', 'Force_Mag')
+        _finalize_series('moment', 'element_nodal_moment', 'Moment_Mag')
+
+        for key, csv_base, label in [
+            ('fx', 'element_nodal_force_fx', 'FX'),
+            ('fy', 'element_nodal_force_fy', 'FY'),
+            ('fz', 'element_nodal_force_fz', 'FZ'),
+            ('mx', 'element_nodal_moment_mx', 'MX'),
+            ('my', 'element_nodal_moment_my', 'MY'),
+            ('mz', 'element_nodal_moment_mz', 'MZ'),
+        ]:
+            _finalize_series(key, csv_base, label)
+
+    def _finalize_vector_job(self, job_data, node_ids, node_coords):
+        """Finalize a vector job (magnitude + X/Y/Z components) with max/min/time CSV outputs."""
+        def _finalize_memmap(memmap_obj):
+            if memmap_obj is None:
+                return None, None
+            try:
+                memmap_obj.flush()
+            except Exception:
+                pass
+            data_copy = np.asarray(memmap_obj, dtype=float).copy()
+            path = getattr(memmap_obj, 'filename', None)
+            return data_copy, path
+
+        def _finalize_entry(entry):
+            max_values, max_path = _finalize_memmap(entry.get('max_memmap'))
+            max_time_values, max_time_path = _finalize_memmap(entry.get('time_memmap'))
+            min_values, min_path = _finalize_memmap(entry.get('min_memmap'))
+            min_time_values, min_time_path = _finalize_memmap(entry.get('time_min_memmap'))
+
+            if max_values is not None:
+                self._write_csv(
+                    node_ids, node_coords,
+                    max_values,
+                    os.path.join(self.output_directory, entry['csv_value_name']),
+                    entry['csv_header_val']
+                )
+            if max_time_values is not None:
+                self._write_csv(
+                    node_ids, node_coords,
+                    max_time_values,
+                    os.path.join(self.output_directory, entry['csv_time_name']),
+                    entry['csv_header_time']
+                )
+            if min_values is not None:
+                self._write_csv(
+                    node_ids, node_coords,
+                    min_values,
+                    os.path.join(self.output_directory, entry['csv_min_name']),
+                    entry['csv_header_min']
+                )
+            if min_time_values is not None:
+                self._write_csv(
+                    node_ids, node_coords,
+                    min_time_values,
+                    os.path.join(self.output_directory, entry['csv_time_min_name']),
+                    entry['csv_header_time_min']
+                )
+
+            for path in (max_path, max_time_path, min_path, min_time_path):
+                if path:
+                    try:
+                        os.remove(path)
+                    except OSError:
+                        pass
+
+            entry['max_memmap'] = None
+            entry['time_memmap'] = None
+            entry['min_memmap'] = None
+            entry['time_min_memmap'] = None
+
+        _finalize_entry(job_data)
+        for component_entry in job_data.get('components', {}).values():
+            _finalize_entry(component_entry)
 
     def _finalize_single_job(self, job_data, job_name, node_ids, node_coords):
         """Finalize a single max-value job (force or moment) with its own node scope."""
@@ -1525,7 +1834,11 @@ class MSUPSmartSolverTransient(QObject):
                 job_data['time_memmap'] = None
                 continue
 
-            # Handles max value cases (s1, svm, def, vel, acc)
+            if job_data.get('job_type') == 'vector':
+                self._finalize_vector_job(job_data, df_node_ids, node_coords)
+                continue
+
+            # Handles max-only value cases (s1, svm)
             max_values, max_path = _finalize_memmap(job_data.get('max_memmap'))
             time_values, time_path = _finalize_memmap(job_data.get('time_memmap'))
             if max_values is not None:

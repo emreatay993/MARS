@@ -78,6 +78,19 @@ class DisplayTabUIBuilder:
         scalar_max_spin.setPrefix("Max: ")
         scalar_min_spin.setDecimals(3)
         scalar_max_spin.setDecimals(3)
+
+        # Result selection controls
+        result_group_combo = QComboBox()
+        result_group_combo.setMinimumWidth(170)
+        result_group_combo.setEnabled(False)
+
+        result_component_combo = QComboBox()
+        result_component_combo.setMinimumWidth(150)
+        result_component_combo.setEnabled(False)
+
+        result_mode_combo = QComboBox()
+        result_mode_combo.setMinimumWidth(170)
+        result_mode_combo.setEnabled(False)
         
         # Deformation scale factor
         deformation_scale_label = QLabel("Deformation Scale Factor:")
@@ -113,6 +126,12 @@ class DisplayTabUIBuilder:
         graphics_control_layout.addWidget(QLabel("Legend Range:"))
         graphics_control_layout.addWidget(scalar_min_spin)
         graphics_control_layout.addWidget(scalar_max_spin)
+        graphics_control_layout.addWidget(QLabel("Result Group:"))
+        graphics_control_layout.addWidget(result_group_combo)
+        graphics_control_layout.addWidget(QLabel("Component:"))
+        graphics_control_layout.addWidget(result_component_combo)
+        graphics_control_layout.addWidget(QLabel("Mode:"))
+        graphics_control_layout.addWidget(result_mode_combo)
         graphics_control_layout.addWidget(deformation_scale_label)
         graphics_control_layout.addWidget(deformation_scale_edit)
         graphics_control_layout.addWidget(absolute_deformation_checkbox)
@@ -126,6 +145,9 @@ class DisplayTabUIBuilder:
         self.components['point_size'] = point_size
         self.components['scalar_min_spin'] = scalar_min_spin
         self.components['scalar_max_spin'] = scalar_max_spin
+        self.components['result_group_combo'] = result_group_combo
+        self.components['result_component_combo'] = result_component_combo
+        self.components['result_mode_combo'] = result_mode_combo
         self.components['deformation_scale_label'] = deformation_scale_label
         self.components['deformation_scale_edit'] = deformation_scale_edit
         self.components['absolute_deformation_checkbox'] = absolute_deformation_checkbox
@@ -321,4 +343,3 @@ class DisplayTabUIBuilder:
         main_layout.addWidget(plotter)
         
         return main_layout, self.components
-

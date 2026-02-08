@@ -21,6 +21,7 @@ import pyvista as pv
 
 from solver import engine as solver_engine
 from utils import constants
+from utils.node_utils import get_node_index_from_id
 from core.data_models import PlasticityConfig, SolverConfig
 from ui.widgets.plotting import PlotlyMaxWidget
 
@@ -191,6 +192,24 @@ class SolverAnalysisHandler:
         # Get skip modes
         config.skip_n_modes = self._get_skip_n_modes()
 
+        # Force/moment output must remain exclusive to avoid mixed-result visualization.
+        if config.calculate_force_moment and any([
+            config.calculate_von_mises,
+            config.calculate_max_principal_stress,
+            config.calculate_min_principal_stress,
+            config.calculate_deformation,
+            config.calculate_velocity,
+            config.calculate_acceleration,
+            config.calculate_damage,
+        ]):
+            QMessageBox.warning(
+                self.tab,
+                "Invalid Output Selection",
+                "Element Nodal Forces & Moments cannot be combined with other output types."
+            )
+            self.tab.progress_bar.setVisible(False)
+            return None
+
         # Validate time history mode
         if is_time_history:
             node_id = self._validate_time_history_mode(force_node_id)
@@ -242,10 +261,13 @@ class SolverAnalysisHandler:
         """Check if a node ID exists in any loaded dataset relevant to selected outputs."""
         # If force or moment output is selected, check those datasets
         if self.tab.force_moment_output_checkbox.isChecked() and self.tab.force_moment_data is not None:
-            if node_id in self.tab.force_moment_data.node_ids:
+            if get_node_index_from_id(node_id, self.tab.force_moment_data.node_ids, log_missing=False) is not None:
                 return True
         # Otherwise check stress data
-        if self.tab.stress_data is not None and node_id in self.tab.stress_data.node_ids:
+        if (
+            self.tab.stress_data is not None and
+            get_node_index_from_id(node_id, self.tab.stress_data.node_ids, log_missing=False) is not None
+        ):
             return True
         return False
 
@@ -511,21 +533,17 @@ class SolverAnalysisHandler:
         """Handle results from batch analysis."""
         # Create maximum over time plots
         max_traces = []
+        min_traces = []
         solver = self.tab.analysis_engine.solver  # Shortcut
-
-        dataset_options = []
 
         if config.calculate_von_mises and hasattr(solver, 'max_over_time_svm'):
             max_traces.append({
                 'name': 'Von Mises (MPa)',
                 'data': solver.max_over_time_svm
             })
-            dataset_options.append(("SVM (MPa)", "max_von_mises_stress.csv"))
 
         plasticity_ctx = getattr(solver, 'plasticity_context', None)
         if plasticity_ctx and plasticity_ctx.method in {'neuber', 'glinka'}:
-            dataset_options.append(("Corrected SVM (MPa)", "corrected_von_mises.csv"))
-            dataset_options.append(("Plastic Strain", "plastic_strain.csv"))
             corrected_trace = getattr(solver, 'max_over_time_svm_corrected', None)
             if corrected_trace is not None:
                 corrected_copy = np.array(corrected_trace, dtype=float)
@@ -544,45 +562,86 @@ class SolverAnalysisHandler:
                 'name': 'S1 (MPa)',
                 'data': solver.max_over_time_s1
             })
-            dataset_options.append(("S1 (MPa)", "max_s1_stress.csv"))
 
         if config.calculate_min_principal_stress and hasattr(solver, 'min_over_time_s3'):
-            dataset_options.append(("S3 (MPa)", "min_s3_stress.csv"))
+            min_traces.append({
+                'name': 'S3 (MPa)',
+                'data': solver.min_over_time_s3
+            })
 
         if config.calculate_deformation and hasattr(solver, 'max_over_time_def'):
             max_traces.append({
                 'name': 'Deformation (mm)',
                 'data': solver.max_over_time_def
             })
-            dataset_options.append(("Deformation (mm)", "max_deformation.csv"))
+            if hasattr(solver, 'min_over_time_def') and solver.min_over_time_def is not None:
+                min_traces.append({
+                    'name': 'Deformation (mm)',
+                    'data': solver.min_over_time_def
+                })
 
         if config.calculate_velocity and hasattr(solver, 'max_over_time_vel'):
             max_traces.append({
                 'name': 'Velocity (mm/s)',
                 'data': solver.max_over_time_vel
             })
-            dataset_options.append(("Velocity (mm/s)", "max_velocity.csv"))
+            if hasattr(solver, 'min_over_time_vel') and solver.min_over_time_vel is not None:
+                min_traces.append({
+                    'name': 'Velocity (mm/s)',
+                    'data': solver.min_over_time_vel
+                })
 
         if config.calculate_acceleration and hasattr(solver, 'max_over_time_acc'):
             max_traces.append({
                 'name': 'Acceleration (mm/s²)',
                 'data': solver.max_over_time_acc
             })
-            dataset_options.append(("Acceleration (mm/s²)", "max_acceleration.csv"))
+            if hasattr(solver, 'min_over_time_acc') and solver.min_over_time_acc is not None:
+                min_traces.append({
+                    'name': 'Acceleration (mm/s²)',
+                    'data': solver.min_over_time_acc
+                })
 
         if config.calculate_force_moment:
             if hasattr(solver, 'max_over_time_force_mag') and solver.max_over_time_force_mag is not None:
                 max_traces.append({
-                    'name': 'Force (N)',
+                    'name': '|F| (N)',
                     'data': solver.max_over_time_force_mag
                 })
-                dataset_options.append(("Force (N)", "max_element_nodal_force.csv"))
+            if hasattr(solver, 'max_over_time_force_fx') and solver.max_over_time_force_fx is not None:
+                max_traces.append({'name': 'Fx (N)', 'data': solver.max_over_time_force_fx})
+            if hasattr(solver, 'max_over_time_force_fy') and solver.max_over_time_force_fy is not None:
+                max_traces.append({'name': 'Fy (N)', 'data': solver.max_over_time_force_fy})
+            if hasattr(solver, 'max_over_time_force_fz') and solver.max_over_time_force_fz is not None:
+                max_traces.append({'name': 'Fz (N)', 'data': solver.max_over_time_force_fz})
             if hasattr(solver, 'max_over_time_moment_mag') and solver.max_over_time_moment_mag is not None:
                 max_traces.append({
-                    'name': 'Moment (N·mm)',
+                    'name': '|M| (N·mm)',
                     'data': solver.max_over_time_moment_mag
                 })
-                dataset_options.append(("Moment (N·mm)", "max_element_nodal_moment.csv"))
+            if hasattr(solver, 'max_over_time_moment_mx') and solver.max_over_time_moment_mx is not None:
+                max_traces.append({'name': 'Mx (N·mm)', 'data': solver.max_over_time_moment_mx})
+            if hasattr(solver, 'max_over_time_moment_my') and solver.max_over_time_moment_my is not None:
+                max_traces.append({'name': 'My (N·mm)', 'data': solver.max_over_time_moment_my})
+            if hasattr(solver, 'max_over_time_moment_mz') and solver.max_over_time_moment_mz is not None:
+                max_traces.append({'name': 'Mz (N·mm)', 'data': solver.max_over_time_moment_mz})
+
+            if hasattr(solver, 'min_over_time_force_mag') and solver.min_over_time_force_mag is not None:
+                min_traces.append({'name': '|F| (N)', 'data': solver.min_over_time_force_mag})
+            if hasattr(solver, 'min_over_time_force_fx') and solver.min_over_time_force_fx is not None:
+                min_traces.append({'name': 'Fx (N)', 'data': solver.min_over_time_force_fx})
+            if hasattr(solver, 'min_over_time_force_fy') and solver.min_over_time_force_fy is not None:
+                min_traces.append({'name': 'Fy (N)', 'data': solver.min_over_time_force_fy})
+            if hasattr(solver, 'min_over_time_force_fz') and solver.min_over_time_force_fz is not None:
+                min_traces.append({'name': 'Fz (N)', 'data': solver.min_over_time_force_fz})
+            if hasattr(solver, 'min_over_time_moment_mag') and solver.min_over_time_moment_mag is not None:
+                min_traces.append({'name': '|M| (N·mm)', 'data': solver.min_over_time_moment_mag})
+            if hasattr(solver, 'min_over_time_moment_mx') and solver.min_over_time_moment_mx is not None:
+                min_traces.append({'name': 'Mx (N·mm)', 'data': solver.min_over_time_moment_mx})
+            if hasattr(solver, 'min_over_time_moment_my') and solver.min_over_time_moment_my is not None:
+                min_traces.append({'name': 'My (N·mm)', 'data': solver.min_over_time_moment_my})
+            if hasattr(solver, 'min_over_time_moment_mz') and solver.min_over_time_moment_mz is not None:
+                min_traces.append({'name': 'Mz (N·mm)', 'data': solver.min_over_time_moment_mz})
 
         # Show maximum over time tab if there are traces
         if max_traces:
@@ -603,14 +662,15 @@ class SolverAnalysisHandler:
                 self.tab.show_output_tab_widget.indexOf(self.tab.plot_max_over_time_tab),
                 True
             )
+        elif self.tab.plot_max_over_time_tab is not None:
+            self.tab.plot_max_over_time_tab.clear_plot()
+            self.tab.show_output_tab_widget.setTabVisible(
+                self.tab.show_output_tab_widget.indexOf(self.tab.plot_max_over_time_tab),
+                False
+            )
 
-        # Show minimum over time tab if min principal stress was calculated
-        if config.calculate_min_principal_stress and hasattr(solver, 'min_over_time_s3'):
-            min_traces = [{
-                'name': 'S3 (MPa)',
-                'data': solver.min_over_time_s3
-            }]
-
+        # Show minimum over time tab if minimum traces are available
+        if min_traces:
             if self.tab.plot_min_over_time_tab is None:
                 self.tab.plot_min_over_time_tab = PlotlyMaxWidget()
                 if self.tab.plot_max_over_time_tab is not None:
@@ -630,13 +690,171 @@ class SolverAnalysisHandler:
                 self.tab.show_output_tab_widget.indexOf(self.tab.plot_min_over_time_tab),
                 True
             )
+        elif self.tab.plot_min_over_time_tab is not None:
+            self.tab.plot_min_over_time_tab.clear_plot()
+            self.tab.show_output_tab_widget.setTabVisible(
+                self.tab.show_output_tab_widget.indexOf(self.tab.plot_min_over_time_tab),
+                False
+            )
 
-        # Update display tab scalar range controls
-        self._update_display_tab_scalar_range(solver, dataset_options)
+        dataset_catalog = self._build_display_dataset_catalog(
+            solver=solver,
+            config=config,
+            plasticity_ctx=plasticity_ctx,
+        )
 
-    def _update_display_tab_scalar_range(self, solver, dataset_options):
-        """Update the display tab with solver-generated datasets."""
-        if not dataset_options:
+        # Update display tab scalar controls and selector catalog
+        self._update_display_tab_scalar_range(solver, dataset_catalog)
+
+    def _build_display_dataset_catalog(self, solver, config, plasticity_ctx):
+        """Build catalog[group][component][mode] for Display selector controls."""
+        catalog = {}
+        output_dir = getattr(solver, 'output_directory', None)
+        if not output_dir:
+            return catalog
+
+        def _file_exists(file_name):
+            return bool(file_name) and os.path.exists(os.path.join(output_dir, file_name))
+
+        def _add_entry(group, component, mode, field_name, csv_filename, units):
+            if not _file_exists(csv_filename):
+                return
+            catalog.setdefault(group, {}).setdefault(component, {})[mode] = {
+                "field_name": field_name,
+                "csv_filename": csv_filename,
+                "units": units,
+            }
+
+        mode_labels = {
+            "max_over_time": "Max over Time",
+            "min_over_time": "Min over Time",
+            "time_of_max": "Time of Max",
+            "time_of_min": "Time of Min",
+        }
+
+        def _add_component_modes(group, component, base_filename, value_label, value_unit):
+            _add_entry(
+                group,
+                component,
+                "max_over_time",
+                f"{value_label} ({value_unit}) - {mode_labels['max_over_time']}",
+                f"max_{base_filename}.csv",
+                value_unit,
+            )
+            _add_entry(
+                group,
+                component,
+                "min_over_time",
+                f"{value_label} ({value_unit}) - {mode_labels['min_over_time']}",
+                f"min_{base_filename}.csv",
+                value_unit,
+            )
+            _add_entry(
+                group,
+                component,
+                "time_of_max",
+                f"{mode_labels['time_of_max']}: {value_label} (s)",
+                f"time_of_max_{base_filename}.csv",
+                "s",
+            )
+            _add_entry(
+                group,
+                component,
+                "time_of_min",
+                f"{mode_labels['time_of_min']}: {value_label} (s)",
+                f"time_of_min_{base_filename}.csv",
+                "s",
+            )
+
+        if config.calculate_von_mises:
+            _add_component_modes("Von Mises", "Magnitude", "von_mises_stress", "SVM", "MPa")
+
+        if config.calculate_max_principal_stress:
+            _add_component_modes("Max Principal", "S1", "s1_stress", "S1", "MPa")
+
+        if config.calculate_min_principal_stress:
+            _add_component_modes("Min Principal", "S3", "s3_stress", "S3", "MPa")
+
+        if config.calculate_deformation:
+            for component, suffix, label in [
+                ("|U|", "", "Deformation"),
+                ("UX", "_x", "UX"),
+                ("UY", "_y", "UY"),
+                ("UZ", "_z", "UZ"),
+            ]:
+                _add_component_modes(
+                    "Deformation",
+                    component,
+                    f"deformation{suffix}",
+                    label,
+                    "mm",
+                )
+
+        if config.calculate_velocity:
+            for component, suffix, label in [
+                ("|V|", "", "Velocity"),
+                ("VX", "_x", "VX"),
+                ("VY", "_y", "VY"),
+                ("VZ", "_z", "VZ"),
+            ]:
+                _add_component_modes(
+                    "Velocity",
+                    component,
+                    f"velocity{suffix}",
+                    label,
+                    "mm/s",
+                )
+
+        if config.calculate_acceleration:
+            for component, suffix, label in [
+                ("|A|", "", "Acceleration"),
+                ("AX", "_x", "AX"),
+                ("AY", "_y", "AY"),
+                ("AZ", "_z", "AZ"),
+            ]:
+                _add_component_modes(
+                    "Acceleration",
+                    component,
+                    f"acceleration{suffix}",
+                    label,
+                    "mm/s²",
+                )
+
+        if config.calculate_force_moment:
+            for component, base_filename, label, unit in [
+                ("|F|", "element_nodal_force", "Force", "N"),
+                ("FX", "element_nodal_force_fx", "FX", "N"),
+                ("FY", "element_nodal_force_fy", "FY", "N"),
+                ("FZ", "element_nodal_force_fz", "FZ", "N"),
+                ("|M|", "element_nodal_moment", "Moment", "N·mm"),
+                ("MX", "element_nodal_moment_mx", "MX", "N·mm"),
+                ("MY", "element_nodal_moment_my", "MY", "N·mm"),
+                ("MZ", "element_nodal_moment_mz", "MZ", "N·mm"),
+            ]:
+                _add_component_modes("Force/Moment", component, base_filename, label, unit)
+
+        if plasticity_ctx and plasticity_ctx.method in {'neuber', 'glinka'}:
+            _add_component_modes(
+                "Corrected Von Mises",
+                "Magnitude",
+                "corrected_von_mises",
+                "Corrected SVM",
+                "MPa",
+            )
+            _add_entry(
+                "Plastic Strain",
+                "Equivalent",
+                "max_over_time",
+                "Plastic Strain",
+                "plastic_strain.csv",
+                "",
+            )
+
+        return catalog
+
+    def _update_display_tab_scalar_range(self, solver, dataset_catalog):
+        """Update the display tab with solver-generated dataset catalog."""
+        if not dataset_catalog:
             return
 
         try:
@@ -647,7 +865,7 @@ class SolverAnalysisHandler:
         current_field = getattr(display_tab, 'data_column', None)
         display_tab.results_handler.apply_solver_results(
             solver,
-            dataset_options,
+            dataset_catalog,
             current_field
         )
 
@@ -849,6 +1067,9 @@ class SolverAnalysisHandler:
             # Compute requested scalar field
             scalar_field, display_name = None, "Result"
 
+            def _to_1d(values):
+                return np.asarray(values, dtype=float).reshape(-1)
+
             if options.get('compute_von_mises', False):
                 scalar_field = temp_solver.compute_von_mises_stress(
                     actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz
@@ -878,7 +1099,19 @@ class SolverAnalysisHandler:
                     return
                 if ux_tp is None:
                     ux_tp, uy_tp, uz_tp = temp_solver.compute_deformations(0, num_nodes)
-                scalar_field = np.sqrt(ux_tp ** 2 + uy_tp ** 2 + uz_tp ** 2)
+                def_x = _to_1d(ux_tp)
+                def_y = _to_1d(uy_tp)
+                def_z = _to_1d(uz_tp)
+                def_mag = np.sqrt(def_x ** 2 + def_y ** 2 + def_z ** 2)
+                mesh["def_x"] = def_x
+                mesh["def_y"] = def_y
+                mesh["def_z"] = def_z
+                mesh["def_mag"] = def_mag
+                mesh["UX (mm)"] = def_x
+                mesh["UY (mm)"] = def_y
+                mesh["UZ (mm)"] = def_z
+                mesh["Deformation (mm)"] = def_mag
+                scalar_field = def_mag
                 display_name = "Deformation (mm)"
 
             elif is_vel_or_accel:
@@ -889,19 +1122,40 @@ class SolverAnalysisHandler:
                     )
                     return
                 ux_blk, uy_blk, uz_blk = temp_solver.compute_deformations(0, num_nodes)
-                vel_mag, acc_mag, vel_x, vel_y, vel_z, _acc_x, _acc_y, _acc_z = \
+                vel_mag, acc_mag, vel_x, vel_y, vel_z, acc_x, acc_y, acc_z = \
                     temp_solver._vel_acc_from_disp(ux_blk, uy_blk, uz_blk, dt_window.astype(temp_solver.NP_DTYPE))
 
                 if options.get('compute_velocity', False):
-                    scalar_field = vel_mag[:, [centre_offset]]
+                    vel_x_tp = _to_1d(vel_x[:, [centre_offset]])
+                    vel_y_tp = _to_1d(vel_y[:, [centre_offset]])
+                    vel_z_tp = _to_1d(vel_z[:, [centre_offset]])
+                    vel_mag_tp = _to_1d(vel_mag[:, [centre_offset]])
+                    scalar_field = vel_mag_tp
                     display_name = "Velocity (mm/s)"
-                    # Add components for IC export
-                    mesh["vel_x"] = vel_x[:, [centre_offset]]
-                    mesh["vel_y"] = vel_y[:, [centre_offset]]
-                    mesh["vel_z"] = vel_z[:, [centre_offset]]
+                    # Keep lowercase component names for APDL IC export compatibility.
+                    mesh["vel_x"] = vel_x_tp
+                    mesh["vel_y"] = vel_y_tp
+                    mesh["vel_z"] = vel_z_tp
+                    mesh["vel_mag"] = vel_mag_tp
+                    mesh["VX (mm/s)"] = vel_x_tp
+                    mesh["VY (mm/s)"] = vel_y_tp
+                    mesh["VZ (mm/s)"] = vel_z_tp
+                    mesh["Velocity (mm/s)"] = vel_mag_tp
                 else:  # Acceleration
-                    scalar_field = acc_mag[:, [centre_offset]]
+                    acc_x_tp = _to_1d(acc_x[:, [centre_offset]])
+                    acc_y_tp = _to_1d(acc_y[:, [centre_offset]])
+                    acc_z_tp = _to_1d(acc_z[:, [centre_offset]])
+                    acc_mag_tp = _to_1d(acc_mag[:, [centre_offset]])
+                    scalar_field = acc_mag_tp
                     display_name = "Acceleration (mm/s²)"
+                    mesh["acc_x"] = acc_x_tp
+                    mesh["acc_y"] = acc_y_tp
+                    mesh["acc_z"] = acc_z_tp
+                    mesh["acc_mag"] = acc_mag_tp
+                    mesh["AX (mm/s²)"] = acc_x_tp
+                    mesh["AY (mm/s²)"] = acc_y_tp
+                    mesh["AZ (mm/s²)"] = acc_z_tp
+                    mesh["Acceleration (mm/s²)"] = acc_mag_tp
 
             elif options.get('compute_force_moment', False):
                 if not self.tab.force_moment_data:
@@ -913,18 +1167,46 @@ class SolverAnalysisHandler:
                 fm_result = temp_solver.compute_forces_moments(0, temp_solver.modal_forces_fx.shape[0])
                 if fm_result is not None:
                     fx_tp, fy_tp, fz_tp, mx_tp, my_tp, mz_tp = fm_result
-                    scalar_field = np.sqrt(fx_tp ** 2 + fy_tp ** 2 + fz_tp ** 2)
-                    display_name = "Force (N)"
                     # Use force/moment node coords for mesh
                     mesh = pv.PolyData(self.tab.force_moment_data.node_coords)
                     if self.tab.force_moment_data.node_ids is not None:
                         mesh["NodeID"] = self.tab.force_moment_data.node_ids.astype(int)
-                    # Also add moment magnitude as secondary scalar
-                    mesh["Moment (N·mm)"] = np.sqrt(mx_tp ** 2 + my_tp ** 2 + mz_tp ** 2)
+                    fx = _to_1d(fx_tp)
+                    fy = _to_1d(fy_tp)
+                    fz = _to_1d(fz_tp)
+                    mx = _to_1d(mx_tp)
+                    my = _to_1d(my_tp)
+                    mz = _to_1d(mz_tp)
+                    f_mag = np.sqrt(fx ** 2 + fy ** 2 + fz ** 2)
+                    m_mag = np.sqrt(mx ** 2 + my ** 2 + mz ** 2)
+                    mesh["fx"] = fx
+                    mesh["fy"] = fy
+                    mesh["fz"] = fz
+                    mesh["f_mag"] = f_mag
+                    mesh["mx"] = mx
+                    mesh["my"] = my
+                    mesh["mz"] = mz
+                    mesh["m_mag"] = m_mag
+                    mesh["FX (N)"] = fx
+                    mesh["FY (N)"] = fy
+                    mesh["FZ (N)"] = fz
+                    mesh["Force (N)"] = f_mag
+                    mesh["MX (N·mm)"] = mx
+                    mesh["MY (N·mm)"] = my
+                    mesh["MZ (N·mm)"] = mz
+                    mesh["Moment (N·mm)"] = m_mag
+                    scalar_field = f_mag
+                    display_name = "Force (N)"
 
             if scalar_field is None:
                 print("No valid output was calculated.")
                 return
+
+            if mesh is None:
+                print("No mesh was prepared for display.")
+                return
+
+            scalar_field = _to_1d(scalar_field)
 
             # Add scalar field to mesh
             mesh[display_name] = scalar_field

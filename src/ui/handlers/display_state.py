@@ -5,8 +5,8 @@ This dataclass holds mutable state that needs to be shared between the
 DisplayTab widget and its supporting handler classes.
 """
 
-from dataclasses import dataclass
-from typing import Any, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
 
 import numpy as np
 import pyvista as pv
@@ -49,3 +49,5 @@ class DisplayState:
     freeze_tracked_node: bool = False
     freeze_baseline: Optional[Any] = None
     pick_indicator_actor: Optional[Any] = None
+    result_catalog: Dict[str, Dict[str, Dict[str, dict]]] = field(default_factory=dict)
+    result_selection: Dict[str, str] = field(default_factory=dict)

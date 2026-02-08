@@ -66,6 +66,8 @@ class DisplayFileHandler(DisplayBaseHandler):
         self.state.current_mesh = mesh
         self.tab.current_mesh = mesh
         self.tab.file_path.setText(filename)
+        if hasattr(self.tab, "results_handler"):
+            self.tab.results_handler.clear_result_catalog()
 
         # Refresh the 3D view via the widget API
         self.tab.update_visualization()

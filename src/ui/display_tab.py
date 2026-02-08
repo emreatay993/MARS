@@ -145,6 +145,9 @@ class DisplayTab(QWidget):
         self.point_size = self.components['point_size']
         self.scalar_min_spin = self.components['scalar_min_spin']
         self.scalar_max_spin = self.components['scalar_max_spin']
+        self.result_group_combo = self.components['result_group_combo']
+        self.result_component_combo = self.components['result_component_combo']
+        self.result_mode_combo = self.components['result_mode_combo']
         self.deformation_scale_label = self.components['deformation_scale_label']
         self.deformation_scale_edit = self.components['deformation_scale_edit']
         self.absolute_deformation_checkbox = self.components['absolute_deformation_checkbox']
@@ -199,6 +202,15 @@ class DisplayTab(QWidget):
         self.deformation_scale_edit.editingFinished.connect(
             self._validate_deformation_scale
         )
+        self.result_group_combo.currentTextChanged.connect(
+            self._on_result_group_changed
+        )
+        self.result_component_combo.currentTextChanged.connect(
+            self._on_result_component_changed
+        )
+        self.result_mode_combo.currentTextChanged.connect(
+            self._on_result_mode_changed
+        )
         
         # Time point controls
         self.update_time_button.clicked.connect(self.update_time_point_results)
@@ -248,6 +260,7 @@ class DisplayTab(QWidget):
             )
             self.state.current_mesh = mesh
             self.current_mesh = mesh
+            self.results_handler.clear_result_catalog()
             self.update_visualization()
             self.plotter.reset_camera()
     
@@ -317,6 +330,21 @@ class DisplayTab(QWidget):
     def _update_scalar_range(self, value):
         """Update the scalar range of the color map."""
         self.visual_handler.update_scalar_range()
+
+    @pyqtSlot(str)
+    def _on_result_group_changed(self, _text):
+        """Handle result-group selector changes."""
+        self.results_handler.on_result_group_changed()
+
+    @pyqtSlot(str)
+    def _on_result_component_changed(self, _text):
+        """Handle component selector changes."""
+        self.results_handler.on_result_component_changed()
+
+    @pyqtSlot(str)
+    def _on_result_mode_changed(self, _text):
+        """Handle mode selector changes."""
+        self.results_handler.on_result_mode_changed()
     
     @pyqtSlot()
     def _validate_deformation_scale(self):
@@ -454,6 +482,7 @@ class DisplayTab(QWidget):
         
         # Update the visualization
         self.update_visualization()
+        self.results_handler.configure_time_point_catalog(mesh, scalar_bar_title)
         
         # Clear file path since this is computed data, not loaded from file
         self.file_path.clear()
@@ -476,6 +505,7 @@ class DisplayTab(QWidget):
             return
         
         print("DisplayTab: Received precomputed animation data. Starting playback.")
+        self.results_handler.clear_result_catalog()
         
         # Unpack data
         (precomputed_scalars, precomputed_coords, precomputed_anim_times, 
@@ -596,6 +626,7 @@ class DisplayTab(QWidget):
     def _clear_visualization(self):
         """Properly clear existing visualization."""
         self.stop_animation()
+        self.results_handler.clear_result_catalog()
         self.interaction_handler.clear_goto_node_markers()
         
         # Clear hover elements
