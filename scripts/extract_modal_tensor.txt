@@ -227,13 +227,6 @@ def as_list(sequence):
     return out
 
 
-def safe_float(value, default_value=0.0):
-    try:
-        return float(value.Value if hasattr(value, "Value") else value)
-    except Exception:
-        return default_value
-
-
 def bytes_to_gib(num_bytes):
     return float(num_bytes) / float(1024 ** 3)
 
@@ -1052,7 +1045,7 @@ def extract_node_ids_from_result(result_object):
 
 def extract_aligned_values(result_object, base_node_ids, scale_factor):
     values_raw = result_object.PlotData.Dependents["Values"]
-    values = [safe_float(v, 0.0) * scale_factor for v in values_raw]
+    values = [float(v.Value if hasattr(v, "Value") else v) * scale_factor for v in values_raw]
     current_node_ids = extract_node_ids_from_result(result_object)
 
     if len(current_node_ids) == len(base_node_ids):
@@ -1090,9 +1083,9 @@ def get_node_coordinates(node_ids, progress_dialog=None):
             y = ""
             z = ""
         else:
-            x = safe_float(node.X, "")
-            y = safe_float(node.Y, "")
-            z = safe_float(node.Z, "")
+            x = float(node.X.Value if hasattr(node.X, "Value") else node.X)
+            y = float(node.Y.Value if hasattr(node.Y, "Value") else node.Y)
+            z = float(node.Z.Value if hasattr(node.Z, "Value") else node.Z)
         coords.append((x, y, z))
 
         if i > 0 and i % 20000 == 0:
