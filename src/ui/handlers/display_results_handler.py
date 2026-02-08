@@ -104,6 +104,28 @@ class DisplayResultsHandler(DisplayBaseHandler):
         finally:
             self._block_selector_signals(False)
 
+    def set_selectors_enabled(self, enabled: bool) -> None:
+        """Enable/disable result selector widgets without mutating catalog state."""
+        if not enabled:
+            self.tab.result_group_combo.setEnabled(False)
+            self.tab.result_component_combo.setEnabled(False)
+            self.tab.result_mode_combo.setEnabled(False)
+            return
+
+        if not self.state.result_catalog:
+            return
+
+        self.tab.result_group_combo.setEnabled(self.tab.result_group_combo.count() > 0)
+        self.tab.result_component_combo.setEnabled(self.tab.result_component_combo.count() > 0)
+        self.tab.result_mode_combo.setEnabled(self.tab.result_mode_combo.count() > 0)
+
+    def reapply_current_selection(self) -> None:
+        """Re-apply currently selected entry to sync mesh/scalar bar with selectors."""
+        selection = self._get_current_selection()
+        if selection is None:
+            return
+        self._apply_selection(*selection)
+
     def on_result_group_changed(self) -> None:
         """Handle result-group combo changes."""
         catalog = self.state.result_catalog

@@ -223,6 +223,14 @@ class DisplayAnimationHandler(DisplayBaseHandler):
             except Exception as exc:
                 print(f"Error resetting mesh points: {exc}")
 
+        if has_data and self.state.result_catalog:
+            try:
+                tab.results_handler.set_selectors_enabled(True)
+                tab.results_handler.reapply_current_selection()
+                print("Re-enabled result selector controls after animation stop.")
+            except Exception as exc:
+                print(f"Could not re-enable result selector controls: {exc}")
+
         if has_data:
             print("\nAnimation stopped.")
 

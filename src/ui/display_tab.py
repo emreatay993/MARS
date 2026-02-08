@@ -505,7 +505,7 @@ class DisplayTab(QWidget):
             return
         
         print("DisplayTab: Received precomputed animation data. Starting playback.")
-        self.results_handler.clear_result_catalog()
+        self.results_handler.set_selectors_enabled(False)
         
         # Unpack data
         (precomputed_scalars, precomputed_coords, precomputed_anim_times, 
