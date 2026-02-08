@@ -1,7 +1,8 @@
 
 # ANSYS Mechanical IronPython script
-# - Select nodal named selection with WinForms UI
-# - Extract one or more result types per run: stress, deformation, and/or ENFO+ENMO
+# - Select nodal named selection with WinForms UI and submit extraction jobs to a queue
+# - Extract one or more result types per job: stress, deformation, and/or ENFO+ENMO
+# - Executes pending jobs in batch mode and writes per-job output folders + metadata text
 # - Uses RAM-aware mode batching and temporary CSV merging to limit memory growth
 # - Cleans up temporary Mechanical result objects and temporary files
 
@@ -39,6 +40,9 @@ from System.Windows.Forms import (
     ProgressBar,
     ProgressBarStyle,
     FormStartPosition,
+    ListView,
+    ListViewItem,
+    View,
 )
 from System.Drawing import Point, Size, Font, FontStyle
 
@@ -64,6 +68,11 @@ RESULT_OUTPUT_FILES = {
 PREF_LEVEL_OF_DETAIL = "PID_Level_Of_Detail"
 PREF_LEVEL_OF_DETAIL_NO_GRAPHICS = "0"
 ANALYSIS_TYPE_MODAL_VALUE = 5
+
+JOB_STATUS_PENDING = "Pending"
+JOB_STATUS_RUNNING = "Running"
+JOB_STATUS_COMPLETED = "Completed"
+JOB_STATUS_FAILED = "Failed"
 
 
 class _NoOpTransaction(object):
@@ -227,6 +236,29 @@ def safe_float(value, default_value=0.0):
 
 def bytes_to_gib(num_bytes):
     return float(num_bytes) / float(1024 ** 3)
+
+
+def format_timestamp(epoch_seconds):
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(epoch_seconds))
+
+
+def format_yes_no(flag):
+    if bool(flag):
+        return "Yes"
+    return "No"
+
+
+def get_result_kind_labels(result_kinds):
+    labels = []
+    for result_kind in result_kinds:
+        labels.append(RESULT_KIND_LABEL_BY_ID.get(result_kind, result_kind))
+    return labels
+
+
+def format_available_ram_text(available_ram_bytes):
+    if available_ram_bytes > 0:
+        return "{0:.2f} GiB".format(bytes_to_gib(available_ram_bytes))
+    return "unknown"
 
 
 def get_available_ram_bytes():
@@ -436,10 +468,13 @@ class ExtractOptionsDialog(Form):
         self._named_selection_objects = named_selection_objects
         self._run_callback = run_callback
         self._is_running = False
+        self._queued_jobs = []
+        self._job_items_by_id = {}
+        self._next_job_id = 1
 
         self.Text = "Modal Tensor Extractor"
         self.StartPosition = FormStartPosition.CenterScreen
-        self.Size = Size(920, 500)
+        self.Size = Size(920, 660)
         self.FormBorderStyle = FormBorderStyle.FixedSingle
         self.MaximizeBox = False
         self.MinimizeBox = False
@@ -565,10 +600,42 @@ class ExtractOptionsDialog(Form):
             "Preference set/get uses direct API first, then PreferenceMgr fallback when needed.",
         )
 
+        self.jobs_label = Label()
+        self.jobs_label.Text = "Submitted Jobs (Read-Only Queue):"
+        self.jobs_label.Location = Point(20, 320)
+        self.jobs_label.Size = Size(340, 22)
+        self.Controls.Add(self.jobs_label)
+        self.tooltips.SetToolTip(
+            self.jobs_label,
+            "Jobs submitted with current selections. Only pending jobs are executed when Run Extraction Jobs is clicked.",
+        )
+
+        self.jobs_table = ListView()
+        self.jobs_table.Location = Point(20, 344)
+        self.jobs_table.Size = Size(860, 140)
+        self.jobs_table.View = View.Details
+        self.jobs_table.FullRowSelect = True
+        self.jobs_table.GridLines = True
+        self.jobs_table.MultiSelect = False
+        self.jobs_table.HideSelection = False
+        self.jobs_table.LabelEdit = False
+        self.jobs_table.Columns.Add("Job ID", 55)
+        self.jobs_table.Columns.Add("Status", 85)
+        self.jobs_table.Columns.Add("Analysis", 150)
+        self.jobs_table.Columns.Add("Named Selection", 150)
+        self.jobs_table.Columns.Add("Result Types", 220)
+        self.jobs_table.Columns.Add("No Graphics", 80)
+        self.jobs_table.Columns.Add("Submitted", 100)
+        self.Controls.Add(self.jobs_table)
+        self.tooltips.SetToolTip(
+            self.jobs_table,
+            "Read-only queue of extraction jobs. Each row stores analysis, scope, outputs, and graphics preference.",
+        )
+
         self.status_label = Label()
         self.status_label.Text = "Ready."
-        self.status_label.Location = Point(20, 320)
-        self.status_label.Size = Size(860, 40)
+        self.status_label.Location = Point(20, 492)
+        self.status_label.Size = Size(860, 32)
         self.Controls.Add(self.status_label)
         self.tooltips.SetToolTip(
             self.status_label,
@@ -576,7 +643,7 @@ class ExtractOptionsDialog(Form):
         )
 
         self.progress_bar = ProgressBar()
-        self.progress_bar.Location = Point(20, 364)
+        self.progress_bar.Location = Point(20, 526)
         self.progress_bar.Size = Size(860, 24)
         self.progress_bar.Minimum = 0
         self.progress_bar.Maximum = 1000
@@ -588,22 +655,10 @@ class ExtractOptionsDialog(Form):
             "Progress indicator (0..1000 internal scale). Most progress is allocated to per-mode extraction.",
         )
 
-        self.run_button = Button()
-        self.run_button.Text = "Run Extractions"
-        self.run_button.Location = Point(730, 406)
-        self.run_button.Size = Size(150, 32)
-        self.run_button.Click += self._on_run_clicked
-        self.Controls.Add(self.run_button)
-        self.tooltips.SetToolTip(
-            self.run_button,
-            "Run extraction for selected analysis, scope, and result types. "
-            "Each selected result type is exported sequentially to reduce memory pressure.",
-        )
-
         self.close_button = Button()
         self.close_button.Text = "Close"
-        self.close_button.Location = Point(650, 406)
-        self.close_button.Size = Size(70, 32)
+        self.close_button.Location = Point(490, 564)
+        self.close_button.Size = Size(80, 32)
         self.close_button.Click += self._on_close_clicked
         self.Controls.Add(self.close_button)
         self.tooltips.SetToolTip(
@@ -611,11 +666,128 @@ class ExtractOptionsDialog(Form):
             "Close this dialog. Closing is blocked while extraction is running.",
         )
 
+        self.submit_button = Button()
+        self.submit_button.Text = "Submit Jobs"
+        self.submit_button.Location = Point(580, 564)
+        self.submit_button.Size = Size(150, 32)
+        self.submit_button.Click += self._on_submit_job_clicked
+        self.Controls.Add(self.submit_button)
+        self.tooltips.SetToolTip(
+            self.submit_button,
+            "Store current analysis/scope/result-type/graphics selections as a queued job without running extraction.",
+        )
+
+        self.run_button = Button()
+        self.run_button.Text = "Run Extraction Jobs"
+        self.run_button.Location = Point(740, 564)
+        self.run_button.Size = Size(140, 32)
+        self.run_button.Click += self._on_run_jobs_clicked
+        self.Controls.Add(self.run_button)
+        self.tooltips.SetToolTip(
+            self.run_button,
+            "Run all pending jobs from the queue one by one. Completed/failed jobs are not re-run automatically.",
+        )
+
+        self._refresh_action_buttons()
+
     def _show_warning(self, text, caption):
         MessageBox.Show(self, text, caption, MessageBoxButtons.OK, MessageBoxIcon.Warning)
 
     def _show_error(self, text, caption):
         MessageBox.Show(self, text, caption, MessageBoxButtons.OK, MessageBoxIcon.Error)
+
+    def _pending_jobs_count(self):
+        pending = 0
+        for job in self._queued_jobs:
+            if job.get("status", "") == JOB_STATUS_PENDING:
+                pending += 1
+        return pending
+
+    def _refresh_action_buttons(self):
+        if self._is_running:
+            self.submit_button.Enabled = False
+            self.run_button.Enabled = False
+            self.close_button.Enabled = False
+            return
+
+        self.submit_button.Enabled = True
+        self.run_button.Enabled = (self._pending_jobs_count() > 0)
+        self.close_button.Enabled = True
+
+    def _get_job_record(self, job_id):
+        for job in self._queued_jobs:
+            if int(job.get("job_id", -1)) == int(job_id):
+                return job
+        return None
+
+    def _make_job_record(self):
+        selected_analysis = self.selected_analysis()
+        selected_ns = self.selected_named_selection()
+        selected_kinds = self.selected_result_kinds()
+
+        if selected_analysis is None:
+            self._show_warning("Please select a modal analysis environment.", "Missing Analysis")
+            return None
+        if selected_ns is None:
+            self._show_warning("Please select a nodal named selection.", "Missing Selection")
+            return None
+        if len(selected_kinds) == 0:
+            self._show_warning("Select at least one result type to extract.", "Missing Result Type")
+            return None
+
+        submitted_epoch = time.time()
+        record = {
+            "job_id": int(self._next_job_id),
+            "analysis": selected_analysis,
+            "analysis_name": str(selected_analysis.Name),
+            "named_selection": selected_ns,
+            "named_selection_name": str(selected_ns.Name),
+            "result_kinds": list(selected_kinds),
+            "use_no_graphics": self.use_no_graphics_enabled(),
+            "submitted_epoch": submitted_epoch,
+            "status": JOB_STATUS_PENDING,
+            "output_dir": "",
+            "output_csv_paths": [],
+            "error": "",
+            "started_epoch": 0.0,
+            "completed_epoch": 0.0,
+        }
+        self._next_job_id += 1
+        return record
+
+    def _append_job_to_table(self, job_record):
+        job_id = int(job_record["job_id"])
+        result_labels = get_result_kind_labels(job_record.get("result_kinds", []))
+
+        item = ListViewItem(str(job_id))
+        item.SubItems.Add(str(job_record.get("status", JOB_STATUS_PENDING)))
+        item.SubItems.Add(str(job_record.get("analysis_name", "")))
+        item.SubItems.Add(str(job_record.get("named_selection_name", "")))
+        item.SubItems.Add("; ".join(result_labels))
+        item.SubItems.Add(format_yes_no(job_record.get("use_no_graphics", False)))
+        item.SubItems.Add(time.strftime("%H:%M:%S", time.localtime(job_record.get("submitted_epoch", time.time()))))
+
+        self.jobs_table.Items.Add(item)
+        self._job_items_by_id[job_id] = item
+
+    def pending_jobs(self):
+        pending = []
+        for job in self._queued_jobs:
+            if job.get("status", "") == JOB_STATUS_PENDING:
+                pending.append(job)
+        return pending
+
+    def set_job_status(self, job_id, status_text):
+        job = self._get_job_record(job_id)
+        if job is not None:
+            job["status"] = str(status_text)
+
+        table_item = self._job_items_by_id.get(int(job_id), None)
+        if table_item is not None and table_item.SubItems.Count > 1:
+            table_item.SubItems[1].Text = str(status_text)
+
+        self._refresh_action_buttons()
+        Application.DoEvents()
 
     def _set_extract_controls_enabled(self, enabled):
         self.analysis_combo.Enabled = (enabled and self.analysis_combo.Items.Count > 1)
@@ -624,8 +796,12 @@ class ExtractOptionsDialog(Form):
         self.cb_deformation.Enabled = enabled
         self.cb_forces.Enabled = enabled
         self.cb_use_no_graphics.Enabled = enabled
-        self.run_button.Enabled = enabled
-        self.close_button.Enabled = enabled
+        if enabled:
+            self._refresh_action_buttons()
+        else:
+            self.submit_button.Enabled = False
+            self.run_button.Enabled = False
+            self.close_button.Enabled = False
 
     def _ensure_visible_foreground(self):
         # During heavy Mechanical updates (notably UDR/ENFO-ENMO evaluation),
@@ -635,29 +811,46 @@ class ExtractOptionsDialog(Form):
         self.BringToFront()
         self.Activate()
 
-    def _on_run_clicked(self, sender, args):
+    def _on_submit_job_clicked(self, sender, args):
         if self._is_running:
             return
-        if self.analysis_combo.SelectedIndex < 0:
-            self._show_warning("Please select a modal analysis environment.", "Missing Analysis")
+        new_job = self._make_job_record()
+        if new_job is None:
             return
-        if self.ns_combo.SelectedIndex < 0:
-            self._show_warning("Please select a nodal named selection.", "Missing Selection")
+
+        self._queued_jobs.append(new_job)
+        self._append_job_to_table(new_job)
+        self._refresh_action_buttons()
+
+        result_labels = get_result_kind_labels(new_job.get("result_kinds", []))
+        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4}".format(
+            new_job.get("job_id", ""),
+            new_job.get("analysis_name", ""),
+            new_job.get("named_selection_name", ""),
+            "; ".join(result_labels),
+            format_yes_no(new_job.get("use_no_graphics", False)),
+        )
+        self.update_progress(queue_msg, 0, 1000)
+        log_message(queue_msg, None)
+
+    def _on_run_jobs_clicked(self, sender, args):
+        if self._is_running:
             return
-        if len(self.selected_result_kinds()) == 0:
-            self._show_warning("Select at least one result type to extract.", "Missing Result Type")
+        if self._pending_jobs_count() == 0:
+            self._show_warning("No pending jobs found. Use 'Submit Jobs' before running.", "No Pending Jobs")
             return
 
         self._is_running = True
         self._set_extract_controls_enabled(False)
         self.TopMost = True
         self._ensure_visible_foreground()
-        self.update_progress("Starting extraction...", 0, 1000)
+        start_msg = "Starting extraction jobs ({0} pending)...".format(self._pending_jobs_count())
+        self.update_progress(start_msg, 0, 1000)
 
         try:
             self._run_callback(self)
         except Exception as ex:
-            err = "Extraction failed: {0}".format(str(ex))
+            err = "Extraction jobs failed: {0}".format(str(ex))
             self.update_progress(err)
             self._show_error(err, "Modal Extractor Error")
         finally:
@@ -1081,7 +1274,88 @@ def merge_batches_into_output(temp_dir, base_csv_path, batch_files, output_csv_p
     return output_csv_path
 
 
-def run_extraction(solution, named_selection, result_kind, mode_ids, progress_dialog=None, result_kind_label=None):
+def append_suffix_before_extension(file_name, suffix_text):
+    root, ext = os.path.splitext(file_name)
+    return "{0}{1}{2}".format(root, suffix_text, ext)
+
+
+def create_job_output_folder(base_output_dir, job_id):
+    base_name = "modal_tensor_output_job_{0}".format(job_id)
+    candidate = os.path.join(base_output_dir, base_name)
+
+    if not os.path.exists(candidate):
+        os.makedirs(candidate)
+        return candidate
+
+    run_idx = 2
+    while True:
+        candidate_name = "modal_tensor_output_run{0}_job_{1}".format(run_idx, job_id)
+        candidate = os.path.join(base_output_dir, candidate_name)
+        if not os.path.exists(candidate):
+            os.makedirs(candidate)
+            return candidate
+        run_idx += 1
+
+
+def write_job_metadata_file(
+    job_output_dir,
+    job_record,
+    mode_count,
+    started_epoch,
+    completed_epoch,
+    status_text,
+    output_csv_paths,
+    available_ram_start=-1,
+    error_text="",
+):
+    if job_output_dir is None:
+        return
+
+    metadata_path = os.path.join(job_output_dir, "job_metadata.txt")
+    elapsed_seconds = max(0.0, float(completed_epoch - started_epoch))
+
+    result_labels = get_result_kind_labels(job_record.get("result_kinds", []))
+    lines = [
+        "Job ID: {0}".format(job_record.get("job_id", "")),
+        "Status: {0}".format(status_text),
+        "Modal Analysis Environment: {0}".format(job_record.get("analysis_name", "")),
+        "Nodal Named Selection: {0}".format(job_record.get("named_selection_name", "")),
+        "Requested Output Types: {0}".format("; ".join(result_labels)),
+        "No Graphics Preference Enabled: {0}".format(format_yes_no(job_record.get("use_no_graphics", False))),
+        "Mode Count: {0}".format(mode_count),
+        "Available RAM at Job Start: {0}".format(format_available_ram_text(available_ram_start)),
+        "Job Start Time: {0}".format(format_timestamp(started_epoch)),
+        "Job Completion Time: {0}".format(format_timestamp(completed_epoch)),
+        "Job Duration (s): {0:.3f}".format(elapsed_seconds),
+        "Output Folder: {0}".format(job_output_dir),
+        "Output CSV Files:",
+    ]
+
+    if output_csv_paths is not None and len(output_csv_paths) > 0:
+        for path in output_csv_paths:
+            lines.append(path)
+    else:
+        lines.append("(none)")
+
+    if error_text is not None and str(error_text).strip() != "":
+        lines.append("Error: {0}".format(str(error_text)))
+
+    with open(metadata_path, "wb") as f:
+        for line in lines:
+            f.write(str(line))
+            f.write("\n")
+
+
+def run_extraction(
+    solution,
+    named_selection,
+    result_kind,
+    mode_ids,
+    progress_dialog=None,
+    result_kind_label=None,
+    output_dir=None,
+    output_name_suffix="",
+):
     start_time = time.time()
     temp_objects = []
     temp_dir = None
@@ -1089,6 +1363,8 @@ def run_extraction(solution, named_selection, result_kind, mode_ids, progress_di
     component_names = []
     component_objects = []
     batch_files = []
+    node_ids = []
+    base_csv_path = None
     if result_kind_label is None:
         result_kind_label = RESULT_KIND_LABEL_BY_ID.get(result_kind, result_kind)
 
@@ -1246,7 +1522,14 @@ def run_extraction(solution, named_selection, result_kind, mode_ids, progress_di
                 mode_cursor += len(batch_modes)
 
         output_name = RESULT_OUTPUT_FILES[result_kind]
-        output_csv_path = os.path.join(solution.WorkingDir, output_name)
+        if output_name_suffix is not None and str(output_name_suffix).strip() != "":
+            output_name = append_suffix_before_extension(output_name, str(output_name_suffix))
+
+        if output_dir is None or str(output_dir).strip() == "":
+            output_dir = solution.WorkingDir
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        output_csv_path = os.path.join(output_dir, output_name)
 
         msg = "Merging temporary CSV chunks into final output..."
         log_message(msg, progress_dialog)
@@ -1287,83 +1570,195 @@ def main():
         raise Exception("No named selections found in tree.")
 
     def run_from_dialog(dialog):
-        selected_analysis = dialog.selected_analysis()
-        selected_ns = dialog.selected_named_selection()
-        selected_kinds = dialog.selected_result_kinds()
-        use_no_graphics_pref = dialog.use_no_graphics_enabled()
+        pending_jobs = dialog.pending_jobs()
+        if len(pending_jobs) == 0:
+            raise Exception("No pending jobs found. Use 'Submit Jobs' before running.")
 
-        if selected_analysis is None:
-            raise Exception("No modal analysis environment was selected.")
-        if selected_ns is None:
-            raise Exception("No named selection was chosen.")
-        if len(selected_kinds) == 0:
-            raise Exception("No result type was selected.")
-
-        solution, mode_ids = get_analysis_solution_and_modes(selected_analysis)
-        kind_labels = [RESULT_KIND_LABEL_BY_ID.get(k, k) for k in selected_kinds]
-        start_msg = "Starting extraction | Analysis: {0} | NS: {1} | Result types: {2} | Modes: 1..{3}".format(
-            selected_analysis.Name,
-            selected_ns.Name,
-            "; ".join(kind_labels),
-            len(mode_ids),
+        total_jobs = len(pending_jobs)
+        log_message("Starting extraction queue with {0} pending jobs.".format(total_jobs), dialog)
+        log_message(
+            "Jobs are processed sequentially with per-kind and per-job cleanup to keep RAM usage stable.",
+            dialog,
         )
-        log_message(start_msg, dialog)
-        log_message("Multiple result types are executed sequentially to minimize peak RAM usage.", dialog)
 
-        pref_state = None
-        if use_no_graphics_pref:
-            pref_state = enter_no_graphics_preference_mode(dialog)
-        else:
-            log_message("No-Graphics preference toggle is disabled from GUI for this run.", dialog)
+        completed_job_ids = []
+        failed_jobs = []
+        all_output_csvs = []
 
-        try:
+        for job_idx in xrange(total_jobs):
+            job = pending_jobs[job_idx]
+            job_id = int(job.get("job_id", job_idx + 1))
+            selected_analysis = job.get("analysis", None)
+            selected_ns = job.get("named_selection", None)
+            selected_kinds = list(job.get("result_kinds", []))
+            use_no_graphics_pref = bool(job.get("use_no_graphics", False))
+
+            if selected_analysis is None or selected_ns is None or len(selected_kinds) == 0:
+                dialog.set_job_status(job_id, JOB_STATUS_FAILED)
+                cfg_err = "Job configuration is incomplete."
+                job["error"] = cfg_err
+                failed_jobs.append((job_id, cfg_err))
+                log_message("Job {0} failed before start: {1}".format(job_id, cfg_err), dialog)
+                continue
+
+            pref_state = None
+            solution = None
+            mode_ids = []
+            output_dir = None
             output_csvs = []
-            n_selected = len(selected_kinds)
-            for run_idx in xrange(n_selected):
-                selected_kind = selected_kinds[run_idx]
-                kind_label = RESULT_KIND_LABEL_BY_ID.get(selected_kind, selected_kind)
-                available_ram = get_available_ram_bytes()
-                if available_ram > 0:
-                    ram_line = "{0:.2f} GiB".format(bytes_to_gib(available_ram))
+            job_start = time.time()
+            job_end = job_start
+            available_ram_start = get_available_ram_bytes()
+
+            job["started_epoch"] = job_start
+            job["completed_epoch"] = 0.0
+            job["error"] = ""
+            dialog.set_job_status(job_id, JOB_STATUS_RUNNING)
+
+            try:
+                solution, mode_ids = get_analysis_solution_and_modes(selected_analysis)
+                output_dir = create_job_output_folder(solution.WorkingDir, job_id)
+                job["output_dir"] = output_dir
+
+                kind_labels = get_result_kind_labels(selected_kinds)
+                start_msg = (
+                    "Job {0}/{1} (ID {2}) | Analysis: {3} | NS: {4} | Result types: {5} | Modes: 1..{6}"
+                ).format(
+                    job_idx + 1,
+                    total_jobs,
+                    job_id,
+                    selected_analysis.Name,
+                    selected_ns.Name,
+                    "; ".join(kind_labels),
+                    len(mode_ids),
+                )
+                log_message(start_msg, dialog)
+                log_message("Job {0} output folder: {1}".format(job_id, output_dir), dialog)
+                dialog.update_progress(start_msg, 0, 1000)
+
+                if use_no_graphics_pref:
+                    pref_state = enter_no_graphics_preference_mode(dialog)
                 else:
-                    ram_line = "unknown"
-                stage_msg = "Extraction {0}/{1}: {2} | Available RAM before start: {3}".format(
-                    run_idx + 1,
-                    n_selected,
-                    kind_label,
-                    ram_line,
-                )
-                log_message(stage_msg, dialog)
-                dialog.update_progress(stage_msg, 0, 1000)
+                    log_message("Job {0}: No-Graphics preference is disabled.".format(job_id), dialog)
 
-                output_csv = run_extraction(
-                    solution,
-                    selected_ns,
-                    selected_kind,
-                    mode_ids,
-                    dialog,
-                    kind_label,
-                )
-                output_csvs.append(output_csv)
+                n_selected = len(selected_kinds)
+                for run_idx in xrange(n_selected):
+                    selected_kind = selected_kinds[run_idx]
+                    kind_label = RESULT_KIND_LABEL_BY_ID.get(selected_kind, selected_kind)
+                    available_ram = get_available_ram_bytes()
+                    stage_msg = (
+                        "Job {0}/{1} (ID {2}) | Extraction {3}/{4}: {5} | Available RAM before start: {6}"
+                    ).format(
+                        job_idx + 1,
+                        total_jobs,
+                        job_id,
+                        run_idx + 1,
+                        n_selected,
+                        kind_label,
+                        format_available_ram_text(available_ram),
+                    )
+                    log_message(stage_msg, dialog)
+                    dialog.update_progress(stage_msg, 0, 1000)
 
-                # Explicit cleanup between extractions to keep memory stable.
+                    output_csv = run_extraction(
+                        solution,
+                        selected_ns,
+                        selected_kind,
+                        mode_ids,
+                        dialog,
+                        kind_label,
+                        output_dir=output_dir,
+                        output_name_suffix="_job_{0}".format(job_id),
+                    )
+                    output_csvs.append(output_csv)
+                    all_output_csvs.append(output_csv)
+
+                    # Explicit cleanup between result kinds for stable memory behavior.
+                    gc.collect()
+                    time.sleep(0.1)
+
+                job_end = time.time()
+                job["completed_epoch"] = job_end
+                job["output_csv_paths"] = list(output_csvs)
+                dialog.set_job_status(job_id, JOB_STATUS_COMPLETED)
+                completed_job_ids.append(job_id)
+
+                write_job_metadata_file(
+                    job_output_dir=output_dir,
+                    job_record=job,
+                    mode_count=len(mode_ids),
+                    started_epoch=job_start,
+                    completed_epoch=job_end,
+                    status_text=JOB_STATUS_COMPLETED,
+                    output_csv_paths=output_csvs,
+                    available_ram_start=available_ram_start,
+                )
+
+                elapsed = job_end - job_start
+                log_message("Job {0} completed in {1:.1f} s".format(job_id, elapsed), dialog)
+
+            except Exception as job_ex:
+                job_end = time.time()
+                job_err = str(job_ex)
+                job["completed_epoch"] = job_end
+                job["output_csv_paths"] = list(output_csvs)
+                job["error"] = job_err
+                dialog.set_job_status(job_id, JOB_STATUS_FAILED)
+                failed_jobs.append((job_id, job_err))
+                log_message("Job {0} failed: {1}".format(job_id, job_err), dialog)
+
+                if output_dir is not None:
+                    write_job_metadata_file(
+                        job_output_dir=output_dir,
+                        job_record=job,
+                        mode_count=len(mode_ids),
+                        started_epoch=job_start,
+                        completed_epoch=job_end,
+                        status_text=JOB_STATUS_FAILED,
+                        output_csv_paths=output_csvs,
+                        available_ram_start=available_ram_start,
+                        error_text=job_err,
+                    )
+            finally:
+                try:
+                    restore_no_graphics_preference_mode(pref_state, dialog)
+                except Exception:
+                    pass
+
+                # Release references and force collection between jobs.
+                solution = None
+                mode_ids = []
                 gc.collect()
                 time.sleep(0.1)
+                restore_ui_interaction_state()
 
-            out_lines = "\n".join(output_csvs)
-            MessageBox.Show(
-                dialog,
-                "Extraction completed.\n\nOutput CSV files:\n{0}".format(out_lines),
-                "Modal Extractor",
-                MessageBoxButtons.OK,
-                MessageBoxIcon.Information,
-            )
-        finally:
-            try:
-                restore_no_graphics_preference_mode(pref_state, dialog)
-            except Exception:
-                pass
-            gc.collect()
+        summary_lines = [
+            "Extraction jobs completed.",
+            "Completed jobs: {0}".format(len(completed_job_ids)),
+            "Failed jobs: {0}".format(len(failed_jobs)),
+        ]
+
+        if len(all_output_csvs) > 0:
+            summary_lines.append("")
+            summary_lines.append("Output CSV files:")
+            for out_idx in xrange(len(all_output_csvs)):
+                out_path = all_output_csvs[out_idx]
+                summary_lines.append("{0}. {1}".format(out_idx + 1, out_path))
+                summary_lines.append("")
+
+        if len(failed_jobs) > 0:
+            summary_lines.append("")
+            summary_lines.append("Failed job details:")
+            for failed_job_id, failed_err in failed_jobs:
+                summary_lines.append("Job {0}: {1}".format(failed_job_id, failed_err))
+
+        MessageBox.Show(
+            dialog,
+            "\n".join(summary_lines),
+            "Modal Extractor",
+            MessageBoxButtons.OK,
+            MessageBoxIcon.Information if len(failed_jobs) == 0 else MessageBoxIcon.Warning,
+        )
 
     dlg = ExtractOptionsDialog(modal_analyses, nodal_named_selections, run_from_dialog)
     dlg.ShowDialog()
