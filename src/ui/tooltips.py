@@ -171,3 +171,24 @@ PLASTICITY_DIAG_CHECKBOX = (
     "Plots per-step &Delta;&epsilon;<sub>p</sub> and cumulative "
     "&epsilon;<sub>p</sub> on a secondary axis in Time History mode."
 )
+
+# =============================================================================
+# Display Tab Section
+# =============================================================================
+
+DISPLAY_FILE_BUTTON = (
+    "<b>Load Visualization File</b><br>"
+    "<hr>"
+    "Loads a CSV directly into the Display tab for standalone visualization "
+    "without running a new solve.<br><br>"
+    "<b>Format:</b>&nbsp;&nbsp;.csv&nbsp;&nbsp;(comma-separated)<br><br>"
+    "<b>Expected columns:</b><br>"
+    "<pre style='font-family: Consolas; font-size: 8pt; margin: 4px 0 0 0;'>"
+    "X, Y, Z, NodeID, Result</pre>"
+    "<br><b>Notes:</b><br>"
+    "<ul style='margin-top: 2px; margin-bottom: 0;'>"
+    "<li>X, Y, Z are required for 3D plotting</li>"
+    "<li>NodeID is optional (enables node hover/picking labels)</li>"
+    "<li>If multiple scalar columns exist, the first valid scalar is shown initially</li>"
+    "</ul>"
+)

@@ -16,6 +16,7 @@ from pyvistaqt import QtInteractor
 from ui.styles.style_constants import (
     BUTTON_STYLE, GROUP_BOX_STYLE, READONLY_INPUT_STYLE
 )
+from ui import tooltips
 
 from utils.constants import (
     DEFAULT_POINT_SIZE, DEFAULT_BACKGROUND_COLOR, DEFAULT_ANIMATION_INTERVAL_MS
@@ -43,6 +44,7 @@ class DisplayTabUIBuilder:
         """
         file_button = QPushButton('Load Visualization File')
         file_button.setStyleSheet(BUTTON_STYLE)
+        file_button.setToolTip(tooltips.DISPLAY_FILE_BUTTON)
 
         file_path = QLineEdit()
         file_path.setReadOnly(True)
