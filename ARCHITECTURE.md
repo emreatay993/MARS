@@ -16,8 +16,8 @@ The implementation is centered in `src/` and uses a layered, handler-driven GUI 
 ## Codebase Snapshot (`src/`)
 
 - 50 Python files
-- 15,320 Python lines
-- UI stack: 32 files / 9,708 lines
+- 15,356 Python lines
+- UI stack: 32 files / 9,744 lines
 - Core + solver stack: 8 files / 3,724 lines
 - I/O + utilities: 8 files / 1,839 lines
 

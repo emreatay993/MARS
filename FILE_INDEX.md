@@ -6,8 +6,8 @@ All counts below were refreshed from the live tree.
 ## Snapshot (Current - v0.98)
 
 - 50 Python files under `src/` (excluding `__pycache__`)
-- 15,320 Python lines in `src/`
-- UI layer: 32 Python files and 9,708 lines
+- 15,356 Python lines in `src/`
+- UI layer: 32 Python files and 9,744 lines
 - Solver + core numerics: 8 Python files and 3,724 lines
 - File I/O layer: 4 Python files and 1,451 lines
 - Utility layer: 4 Python files and 388 lines
@@ -57,23 +57,23 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Shell (5 files - 1,724 lines)
+## UI Shell (5 files - 1,758 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/application_controller.py` | 237 | Main window controller: menu/navigation setup, tab wiring, and cross-tab signal routing |
+| `src/ui/application_controller.py` | 250 | Main window controller: menu/navigation setup, tab wiring, and cross-tab signal routing |
 | `src/ui/display_tab.py` | 682 | Display tab widget delegating rendering, interaction, animation, export, and result selection to handler classes |
 | `src/ui/solver_tab.py` | 630 | Solver tab widget delegating loading, validation, solving, UI-state logic, and logging |
-| `src/ui/tooltips.py` | 173 | Centralized HTML tooltip text for solver controls |
+| `src/ui/tooltips.py` | 194 | Centralized HTML tooltip text for solver controls |
 | `src/ui/__init__.py` | 2 | Package marker |
 
 ---
 
-## UI Builders (3 files - 887 lines)
+## UI Builders (3 files - 889 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/builders/display_ui.py` | 345 | Builder for display layouts (visualization controls, result selectors, time-point tools, animation controls) |
+| `src/ui/builders/display_ui.py` | 347 | Builder for display layouts (visualization controls, result selectors, time-point tools, animation controls) |
 | `src/ui/builders/solver_ui.py` | 540 | Builder for solver layouts (file inputs, outputs, fatigue/plasticity options, plots, console, progress controls) |
 | `src/ui/builders/__init__.py` | 2 | Package initializer |
 
@@ -88,7 +88,7 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Handlers (15 files - 4,906 lines)
+## UI Handlers (15 files - 4,912 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
@@ -163,8 +163,8 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Totals
 
-- **`src/` Python total**: 50 files, 15,320 lines
-- **UI total**: 32 files, 9,708 lines
+- **`src/` Python total**: 50 files, 15,356 lines
+- **UI total**: 32 files, 9,744 lines
 - **Core + solver total**: 8 files, 3,724 lines
 - **I/O + utils total**: 8 files, 1,839 lines
 
