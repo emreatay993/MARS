@@ -16,9 +16,9 @@ The implementation is centered in `src/` and uses a layered, handler-driven GUI 
 ## Codebase Snapshot (`src/`)
 
 - 50 Python files
-- 15,280 Python lines
-- UI stack: 32 files / 9,674 lines
-- Core + solver stack: 8 files / 3,718 lines
+- 15,320 Python lines
+- UI stack: 32 files / 9,708 lines
+- Core + solver stack: 8 files / 3,724 lines
 - I/O + utilities: 8 files / 1,839 lines
 
 Primary entrypoints:
@@ -26,6 +26,15 @@ Primary entrypoints:
 - `src/ui/application_controller.py`
 - `src/ui/solver_tab.py`
 - `src/ui/display_tab.py`
+
+---
+
+## Recent Updates (February 9, 2026)
+
+- Single-node time-history outputs now return physical time values (seconds) when `solver.time_values` length matches output length; they fall back to sample indices only when lengths differ.
+- Display time-point updates now merge `selected_time` entries into the existing result catalog instead of replacing it, so users can switch back to max/min/time-of modes after pressing **Update**.
+- Display contour rendering now forces orthographic projection (`enable_parallel_projection` with VTK camera fallback), eliminating perspective distortion in engineering views.
+- `MARS.spec` was hardened for executable packaging with explicit hidden imports, hook path, resources, icon wiring, and GUI-friendly flags (`console=False`, `upx=False`).
 
 ---
 

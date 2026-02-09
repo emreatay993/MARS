@@ -67,9 +67,26 @@ Changes apply on next SOLVE. Use defaults unless experiencing performance issues
   - *Actual Data Time Steps*: Use "Every nth" to throttle frames (e.g., "Every 10th")
 - **Pick Node**: Activate point picking via context menu; emits to solver tab for time history plotting.
 
----
+## 6. February 9, 2026 Behavior Updates
 
-## 6. Plasticity Correction Quick Reference
+- **Time History axis**: Matplotlib single-node plots now use physical time (seconds) from the modal coordinate time vector.
+- **Result selectors after time-point update**: Pressing Display tab **Update** now keeps prior result modes (Max/Min/Time-of) and adds/refreshes **Selected Time** entries.
+- **Contour camera projection**: Display tab contour views now open in orthographic projection to avoid perspective distortion.
+
+## 7. Building a Windows EXE (PyInstaller)
+
+Use the root `MARS.spec` file:
+
+```bash
+pyinstaller MARS.spec
+```
+
+Notes:
+- The spec includes required hooks/hidden imports for PyQt5, VTK/PyVista, Plotly, and plotly-resampler.
+- It packages `resources/` and uses `resources/icons/mars_icon.ico` when available.
+- Build flags are set for desktop release behavior (`console=False`, `upx=False`).
+
+## 8. Plasticity Correction Quick Reference
 
 When enabled:
 - **Methods**: Neuber (faster) or Glinka (conservative). IBG is experimental.
@@ -78,9 +95,7 @@ When enabled:
 - **Diagnostics**: Enable to plot Δεp and εp in Time History mode.
 - **Output**: Produces `corrected_von_mises.csv` and `plastic_strain.csv`.
 
----
-
-## 7. Exports at a Glance
+## 9. Exports at a Glance
 
 - **Time Point CSV**: *Save Time Point Results* on Display tab.
 - **APDL IC Commands**: *Extract Initial Conditions* (velocity) and save to file.
@@ -89,24 +104,23 @@ When enabled:
 
 Outputs default to the solver's configured directory; update it before running if required.
 
----
-
-## 8. Quick Troubleshooting
+## 10. Quick Troubleshooting
 
 | Issue | Fix |
 | --- | --- |
 | `Invalid MCF file` | Re-export MCF ensuring `Time` header; delete stale `_unwrapped` file. |
 | Solver stalls at 0% | Large dataset chunking – wait for progress or reduce outputs. |
 | Blank Display | Load mesh or ensure exported CSV has `Result` column; reset camera. |
+| Time history x-axis shows indices | Re-run with current build; axis now reads from modal coordinate seconds automatically. |
+| Result dropdown only shows selected component after `Update` | Use latest build; existing max/min/time-of modes should remain available alongside `Selected Time`. |
+| Contours look distorted with depth perspective | Use current build; display camera is now orthographic by default. |
 | Animation fails | Reduce frame count / adjust range; confirm deformation data exists. |
 | Solver too slow | Increase RAM allocation, switch to Single precision, or reduce output scope. |
 | Temperature file error | Use CSV format with `NodeID, Temperature` columns (not tab-delimited .txt). |
 
 Use the console log for diagnostics and re-run after correcting inputs.
 
----
-
-## 9. Need More Detail?
+## 11. Need More Detail
 
 - **Full walkthrough**: `DETAILED_USER_MANUAL_20_Pages.md`
 - **Algorithm & architecture deep dive**: `DETAILED_THEORY_MANUAL.md`

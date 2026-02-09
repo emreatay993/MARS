@@ -126,6 +126,7 @@
 - [ ] Progress bar appears (if applicable)
 - [ ] Plot updates with stress vs time
 - [ ] Plot shows correct title (stress type + node ID)
+- [ ] Plot X-axis shows physical time in seconds (not sample indices)
 - [ ] Data table populated with time and values
 - [ ] Max value annotation appears on plot
 - [ ] Legend is interactive (click to hide/show)
@@ -201,6 +202,9 @@
 - [ ] Point size updates immediately
 - [ ] Range 1-100 works
 
+### Camera Projection
+- [ ] Verify contour view is orthographic (parallel projection, no perspective distortion)
+
 ### Scalar Range
 - [ ] Adjust Min spinbox
 - [ ] Color map updates immediately
@@ -240,6 +244,7 @@
 - [ ] Click "Update"
 - [ ] Visualization updates with new time point
 - [ ] Scalar values change appropriately
+- [ ] Result Group/Component/Mode dropdowns still include previous Max/Min/Time-of options after Update
 - [ ] Click "Save Time Point as CSV"
 - [ ] CSV saved with correct filename format
 - [ ] CSV contains correct data

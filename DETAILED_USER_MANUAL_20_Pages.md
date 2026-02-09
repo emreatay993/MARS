@@ -12,6 +12,16 @@ MARS turns modal analysis inputs into stress maps, time histories, animations, a
 - No programming required.
 - Assumes you have modal coordinate, modal stress, and optional deformation/steady-state files.
 
+### February 9, 2026 Update Notes
+
+- Time History plots now always use physical time in seconds from the modal coordinate file.
+- Display tab **Update** keeps existing result selector options (Max/Min/Time-of) and refreshes **Selected Time**.
+- Display contour visualization now uses orthographic camera projection by default.
+- For Windows packaging, build from project root with:
+  ```bash
+  pyinstaller MARS.spec
+  ```
+
 [Image Placeholder: Main Window overview — tabs, navigator, menu]
 
 ---
@@ -145,6 +155,7 @@ Use **Skip first n modes** to exclude initial modes from the analysis. The dropd
 4) Click SOLVE to plot
 
 The Time History plot appears in the Plot (Time History) tab.
+The horizontal axis is taken from the modal coordinate time vector in seconds.
 
 [Image Placeholder: Scoping group and time history checkbox]
 
@@ -310,6 +321,7 @@ Click the Display tab to see the 3D view and controls:
 - Hover over points to see Node ID and current scalar value
 - Adjust Node Point Size for clarity
 - Set Legend Range Min/Max to focus the color scale
+- Contours are rendered in orthographic projection to avoid perspective distortion in engineering inspection.
 
 Tip: Reset camera after large changes for a clean view.
 
@@ -323,6 +335,7 @@ When initialization is complete (after SOLVE), enable time point workflows:
 1) In Initialization & Time Point Controls, set Time (seconds)
 2) Click Update to compute node-wise values for that instant
 3) Use Save Time Point as CSV to export what you see
+4) Use Result Group/Component/Mode dropdowns to switch between previous Max/Min/Time-of results and the new Selected Time field
 
 If deformations exist, you can also Export Velocity as Initial Condition in APDL.
 

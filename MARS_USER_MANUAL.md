@@ -1,7 +1,7 @@
 # MARS: Modal Analysis Response Solver
 ## Complete User Manual
-**Version**: v0.98  
-**Last updated**: February 8, 2026
+**Version**: v0.98.1  
+**Last updated**: February 9, 2026
 
 > **Audience**: Mechanical and structural engineers using MARS via the desktop GUI  
 > **Format**: Designed for Microsoft Word (10 pt) with image placeholders for each section
@@ -33,6 +33,13 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 | **Hotspot Detection** | Automatically identify nodes with critical stress values |
 | **Data Export** | Save max/min/time-of CSVs and export velocity initial conditions in APDL format |
 | **Plasticity Correction** | Temperature-dependent Neuber/Glinka correction (IBG method currently disabled) |
+
+### February 9, 2026 Patch Highlights
+
+- Single-node time history plots now use physical time values (seconds) from modal coordinate input instead of sample indices.
+- Display tab time-point **Update** now preserves existing result catalog entries (Max/Min/Time-of), while refreshing **Selected Time** entries.
+- Display contour rendering now uses orthographic camera projection by default for engineering interpretation.
+- Windows executable packaging is standardized through the root `MARS.spec` (PyInstaller hooks/imports/resources/icon configured).
 
 [**Image Placeholder**: MARS main window screenshot showing the complete interface with tabs, navigator, and console]
 
@@ -71,6 +78,16 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
    ```bash
    python -m src.main
    ```
+
+### Build Standalone EXE (Windows)
+
+From the project root:
+
+```bash
+pyinstaller MARS.spec
+```
+
+This spec is configured for GUI distribution (`console=False`, `upx=False`) and includes required Qt/VTK/PyVista/Plotly imports and bundled resources.
 
 [**Image Placeholder**: Terminal showing successful launch of MARS application]
 
@@ -403,6 +420,7 @@ This feature allows you to exclude the first n modes from the analysis – usefu
 ## Chapter 12 – Time History Mode (Single Node Analysis)
 
 Time History Mode computes and plots the time series of a selected output quantity for a specific node.
+The x-axis is always sourced from the modal coordinate time vector in seconds when available.
 
 ### Enabling Time History Mode
 
@@ -736,6 +754,7 @@ The **Initialization & Time Point Controls** group allows you to compute and exp
 2. Reconstructs stress tensor field
 3. Computes selected output (Von-Mises, Principal, etc.)
 4. Updates 3D visualization with new scalar values
+5. Preserves existing Result Group/Component/Mode entries and refreshes **Selected Time** entries
 
 ### Save Time Point as CSV
 
@@ -1354,6 +1373,8 @@ This chapter provides solutions to common issues encountered while using MARS.
 |---------|-------|----------|
 | Blank 3D view | No data loaded | Run solver or load visualization CSV |
 | No color on nodes | Missing scalar column | Ensure output was selected before solving |
+| Only "Selected Time" appears in result dropdowns after clicking Update | Older build replaced the result catalog | Use current build; Max/Min/Time-of entries are preserved |
+| Contour view appears perspective-distorted | Perspective camera projection | Use current build; orthographic projection is enabled by default |
 | Animation setup error | Multiple outputs selected | Select **one** output type for animation |
 | Animation won't play | No deformations | Load deformation file and re-solve |
 | Animation very slow | Too many frames | Increase "Every nth" value |

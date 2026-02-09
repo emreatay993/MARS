@@ -22,14 +22,23 @@ pytest tests/ --cov=src --cov-report=html
 ### Test Coverage
 
 **Created Tests**:
-- `test_validators.py` - File validation functions (8 tests)
+- `test_validators.py` - File validation functions (7 tests)
 - `test_data_models.py` - Data model classes (8 tests)
-- `test_file_utils.py` - File utility functions (3 tests)
-- `test_node_utils.py` - Node mapping functions (5 tests)
+- `test_file_utils.py` - File utility functions (2 tests)
+- `test_node_utils.py` - Node mapping functions (7 tests)
+- `test_plasticity.py` - Plasticity profile/temperature mapping checks (7 tests)
+- `test_solver_single_node_time_axis.py` - Single-node time-axis regression checks (3 tests)
+- `test_display_handlers_regressions.py` - Display catalog/projection regression checks (3 tests)
 
-**Total**: 24 unit tests covering core utilities and data structures.
+**Total**: 37 unit tests covering core utilities, solver behavior, and display regressions.
 
 **Target Coverage**: >80% for utils, io, and core packages.
+
+### Regression Test Shortcut (Feb 2026)
+
+```bash
+pytest tests/test_solver_single_node_time_axis.py tests/test_display_handlers_regressions.py -v
+```
 
 ### Adding New Tests
 
