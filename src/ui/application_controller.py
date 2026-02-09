@@ -5,12 +5,13 @@ Provides the main application window with menu bar, navigator, and tab widgets
 for solver and display functionality.
 """
 
+import sys
 from pathlib import Path
 
 from PyQt5.QtCore import Qt, QDir, pyqtSlot
 from PyQt5.QtGui import QPalette, QColor, QIcon
 from PyQt5.QtWidgets import (
-    QAction, QDialog, QDockWidget, QFileSystemModel,
+    QAction, QApplication, QDialog, QDockWidget, QFileSystemModel,
     QMainWindow, QMenuBar, QMessageBox, QTabWidget, QTreeView
 )
 
@@ -65,8 +66,16 @@ class ApplicationController(QMainWindow):
     
     def _set_window_icon(self):
         """Set the application window icon."""
-        # Get path to icon file (relative to project root)
-        icon_dir = Path(__file__).parent.parent.parent / "resources" / "icons"
+        # Resolve resource root for both source runs and PyInstaller builds.
+        if getattr(sys, "frozen", False):
+            base_dir = Path(getattr(sys, "_MEIPASS", Path(sys.executable).resolve().parent))
+            # PyInstaller one-dir build stores bundled data under _internal (sys._MEIPASS).
+            resources_dir = base_dir / "resources"
+            if not resources_dir.exists():
+                resources_dir = Path(sys.executable).resolve().parent / "resources"
+        else:
+            resources_dir = Path(__file__).resolve().parents[2] / "resources"
+        icon_dir = resources_dir / "icons"
         
         # Try .ico first (best for Windows), then fall back to PNG
         icon_paths = [
@@ -77,7 +86,11 @@ class ApplicationController(QMainWindow):
         
         for icon_path in icon_paths:
             if icon_path.exists():
-                self.setWindowIcon(QIcon(str(icon_path)))
+                icon = QIcon(str(icon_path))
+                self.setWindowIcon(icon)
+                app = QApplication.instance()
+                if app is not None:
+                    app.setWindowIcon(icon)
                 break
     
     def _create_menu_bar(self):
