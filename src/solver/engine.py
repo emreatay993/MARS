@@ -1441,6 +1441,12 @@ class MSUPSmartSolverTransient(QObject):
 
         metadata = {}
 
+        def _time_axis_for(num_steps):
+            """Return physical time values when available, fallback to indices."""
+            if self.time_values is not None and len(self.time_values) == num_steps:
+                return np.asarray(self.time_values, dtype=constants.NP_DTYPE).reshape(-1)
+            return np.arange(num_steps, dtype=constants.NP_DTYPE)
+
         is_stress_calc_needed = calculate_von_mises or calculate_max_principal_stress or calculate_min_principal_stress
         if is_stress_calc_needed:
             # region Compute normal stresses for the selected node
@@ -1468,7 +1474,7 @@ class MSUPSmartSolverTransient(QObject):
                     plasticity_info['elastic_vm'] = sigma_vm[0, :]
                     metadata['plasticity'] = plasticity_info
 
-                return np.arange(sigma_vm.shape[1]), sigma_vm[0, :], metadata  # time_points, stress_values
+                return _time_axis_for(sigma_vm.shape[1]), sigma_vm[0, :], metadata  # time_points, stress_values
 
             if calculate_max_principal_stress or calculate_min_principal_stress:
                 s1, _, s3 = self.compute_principal_stresses(actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz,
@@ -1476,11 +1482,11 @@ class MSUPSmartSolverTransient(QObject):
                 if calculate_max_principal_stress:
                     # Compute Principal Stresses for the selected node
                     print(f"Max Principal Stresses calculated for Node {selected_node_id}\n")
-                    return np.arange(s1.shape[1]), s1[0, :], metadata  # time_indices, stress_values
+                    return _time_axis_for(s1.shape[1]), s1[0, :], metadata  # time_points, stress_values
 
                 if calculate_min_principal_stress:
                     print(f"Min Principal Stresses calculated for Node {selected_node_id}\n")
-                    return np.arange(s3.shape[1]), s3[0, :], metadata  # S₃ min history
+                    return _time_axis_for(s3.shape[1]), s3[0, :], metadata  # S₃ min history
 
         if calculate_deformation or calculate_velocity or calculate_acceleration:
             if self.modal_deformations_ux is None:
@@ -1497,7 +1503,7 @@ class MSUPSmartSolverTransient(QObject):
                         'Z': uz[0, :]
                     }
                     print(f"Deformation calculated for Node {selected_node_id}\n")
-                    return np.arange(def_mag.shape[1]), deformation_data, metadata
+                    return _time_axis_for(def_mag.shape[1]), deformation_data, metadata
 
                 if calculate_velocity or calculate_acceleration:
                     vel_mag, acc_mag, vel_x, vel_y, vel_z, acc_x, acc_y, acc_z = \
@@ -1510,7 +1516,7 @@ class MSUPSmartSolverTransient(QObject):
                             'Z': vel_z[0, :]
                         }
                         print(f"Velocity calculated for Node {selected_node_id}\n")
-                        return np.arange(vel_mag.shape[1]), velocity_data, metadata
+                        return _time_axis_for(vel_mag.shape[1]), velocity_data, metadata
                     if calculate_acceleration:
                         acceleration_data = {
                             'Magnitude': acc_mag[0, :],
@@ -1519,7 +1525,7 @@ class MSUPSmartSolverTransient(QObject):
                             'Z': acc_z[0, :]
                         }
                         print(f"Acceleration calculated for Node {selected_node_id}\n")
-                        return np.arange(acc_mag.shape[1]), acceleration_data, metadata
+                        return _time_axis_for(acc_mag.shape[1]), acceleration_data, metadata
 
         if calculate_force_moment:
             if self.modal_forces_fx is None:
@@ -1540,7 +1546,7 @@ class MSUPSmartSolverTransient(QObject):
                     'Mz': mz[0, :]
                 }
                 print(f"Element Nodal Forces & Moments calculated for Node {selected_node_id}\n")
-                return np.arange(force_mag.shape[1]), fm_data, metadata
+                return _time_axis_for(force_mag.shape[1]), fm_data, metadata
 
         # Return none if no output is requested
         return None, None, metadata

@@ -77,12 +77,24 @@ class DisplayResultsHandler(DisplayBaseHandler):
         self._set_catalog(normalized, preferred_selection=preferred)
 
     def configure_time_point_catalog(self, mesh, default_field: Optional[str]) -> None:
-        """Build and apply selector catalog for a time-point mesh result."""
-        self._active_solver = None
-        catalog = self._build_time_point_catalog(mesh)
-        if not catalog:
-            self.clear_result_catalog()
+        """
+        Build and apply selector catalog for a time-point mesh result.
+
+        Preserves any existing batch-result entries and only refreshes the
+        ``selected_time`` mode entries so users can switch back to prior results.
+        """
+        time_catalog = self._build_time_point_catalog(mesh)
+        if not time_catalog:
+            if not self.state.result_catalog:
+                self.clear_result_catalog()
             return
+
+        # Keep existing catalog (max/min/time-of-*) and only replace selected_time entries.
+        catalog = self._normalize_catalog(self.state.result_catalog)
+        self._remove_mode_from_catalog(catalog, "selected_time")
+        for group, components in time_catalog.items():
+            for component, modes in components.items():
+                catalog.setdefault(group, {}).setdefault(component, {}).update(modes)
 
         preferred = self._find_selection_by_field(catalog, default_field)
         if preferred is None:
@@ -460,6 +472,20 @@ class DisplayResultsHandler(DisplayBaseHandler):
         self.tab.result_group_combo.blockSignals(block)
         self.tab.result_component_combo.blockSignals(block)
         self.tab.result_mode_combo.blockSignals(block)
+
+    @staticmethod
+    def _remove_mode_from_catalog(
+        catalog: Dict[str, Dict[str, Dict[str, dict]]],
+        mode_key: str,
+    ) -> None:
+        """Remove one mode from all group/component entries in a catalog."""
+        for group in list(catalog.keys()):
+            for component in list(catalog[group].keys()):
+                catalog[group][component].pop(mode_key, None)
+                if not catalog[group][component]:
+                    del catalog[group][component]
+            if not catalog[group]:
+                del catalog[group]
 
     def _build_time_point_catalog(self, mesh) -> Dict[str, Dict[str, Dict[str, dict]]]:
         """Create selector catalog from scalar arrays already attached to a mesh."""

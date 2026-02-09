@@ -71,6 +71,14 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         self.setup_hover_annotation()
 
         plotter.reset_camera()
+        try:
+            # Use orthographic projection for engineering contour views.
+            plotter.enable_parallel_projection()
+        except Exception:
+            try:
+                plotter.camera.SetParallelProjection(True)
+            except Exception:
+                pass
         
         # Clear old camera widget if it exists
         self._clear_camera_widget()
