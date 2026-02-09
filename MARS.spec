@@ -42,10 +42,6 @@ hiddenimports += _safe_collect_submodules("vtkmodules")
 hiddenimports = sorted(set(hiddenimports))
 
 excludes = [
-    "dash",
-    "dash_core_components",
-    "dash_html_components",
-    "dash_table",
     "pytest",
     "scipy._lib.array_api_compat.cupy",
     "scipy._lib.array_api_compat.torch",
