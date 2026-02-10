@@ -43,8 +43,9 @@ class Logger(QObject):
         Args:
             message: Text message to write.
         """
-        # Write to the original terminal
-        self.terminal.write(message)
+        # Write to the original terminal when available (e.g., console builds).
+        if self.terminal is not None and hasattr(self.terminal, "write"):
+            self.terminal.write(message)
         # Append the message to the buffer
         self.log_buffer += message
     
@@ -61,4 +62,6 @@ class Logger(QObject):
     
     def flush(self):
         """Flush the buffer (called by sys.stdout.flush())."""
+        if self.terminal is not None and hasattr(self.terminal, "flush"):
+            self.terminal.flush()
         self.flush_buffer()
