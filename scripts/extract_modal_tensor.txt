@@ -3,6 +3,7 @@
 # - Select nodal named selection with WinForms UI and submit extraction jobs to a queue
 # - Extract one or more result types per job: stress, deformation, and/or ENFO+ENMO
 # - Executes pending jobs in batch mode and writes per-job output folders + metadata text
+#   under a user-selected base directory (or analysis WorkingDir by default)
 # - Uses RAM-aware mode batching and temporary CSV merging to limit memory growth
 # - Cleans up temporary Mechanical result objects and temporary files
 
@@ -32,8 +33,10 @@ from System.Windows.Forms import (
     ComboBoxStyle,
     GroupBox,
     CheckBox,
+    TextBox,
     Button,
     DialogResult,
+    FolderBrowserDialog,
     MessageBox,
     MessageBoxButtons,
     MessageBoxIcon,
@@ -467,7 +470,7 @@ class ExtractOptionsDialog(Form):
 
         self.Text = "Modal Tensor Extractor"
         self.StartPosition = FormStartPosition.CenterScreen
-        self.Size = Size(920, 660)
+        self.Size = Size(920, 710)
         self.FormBorderStyle = FormBorderStyle.FixedSingle
         self.MaximizeBox = False
         self.MinimizeBox = False
@@ -593,9 +596,37 @@ class ExtractOptionsDialog(Form):
             "Preference set/get uses direct API first, then PreferenceMgr fallback when needed.",
         )
 
+        output_dir_label = Label()
+        output_dir_label.Text = "Job Output Base Folder (optional):"
+        output_dir_label.Location = Point(20, 320)
+        output_dir_label.Size = Size(360, 22)
+        self.Controls.Add(output_dir_label)
+
+        self.output_dir_textbox = TextBox()
+        self.output_dir_textbox.Location = Point(20, 345)
+        self.output_dir_textbox.Size = Size(730, 24)
+        self.output_dir_textbox.Text = ""
+        self.Controls.Add(self.output_dir_textbox)
+        self.tooltips.SetToolTip(
+            self.output_dir_textbox,
+            "Optional base folder for per-job output directories. "
+            "Leave empty to use each analysis Solution WorkingDir.",
+        )
+
+        self.output_dir_browse_button = Button()
+        self.output_dir_browse_button.Text = "Browse..."
+        self.output_dir_browse_button.Location = Point(760, 344)
+        self.output_dir_browse_button.Size = Size(120, 26)
+        self.output_dir_browse_button.Click += self._on_browse_output_dir_clicked
+        self.Controls.Add(self.output_dir_browse_button)
+        self.tooltips.SetToolTip(
+            self.output_dir_browse_button,
+            "Pick the base folder where job output subfolders are created.",
+        )
+
         self.jobs_label = Label()
         self.jobs_label.Text = "Submitted Jobs (Read-Only Queue):"
-        self.jobs_label.Location = Point(20, 320)
+        self.jobs_label.Location = Point(20, 378)
         self.jobs_label.Size = Size(340, 22)
         self.Controls.Add(self.jobs_label)
         self.tooltips.SetToolTip(
@@ -604,30 +635,31 @@ class ExtractOptionsDialog(Form):
         )
 
         self.jobs_table = ListView()
-        self.jobs_table.Location = Point(20, 344)
-        self.jobs_table.Size = Size(860, 140)
+        self.jobs_table.Location = Point(20, 402)
+        self.jobs_table.Size = Size(860, 134)
         self.jobs_table.View = View.Details
         self.jobs_table.FullRowSelect = True
         self.jobs_table.GridLines = True
         self.jobs_table.MultiSelect = False
         self.jobs_table.HideSelection = False
         self.jobs_table.LabelEdit = False
-        self.jobs_table.Columns.Add("Job ID", 55)
-        self.jobs_table.Columns.Add("Status", 85)
-        self.jobs_table.Columns.Add("Analysis", 150)
-        self.jobs_table.Columns.Add("Named Selection", 150)
-        self.jobs_table.Columns.Add("Result Types", 220)
-        self.jobs_table.Columns.Add("No Graphics", 80)
-        self.jobs_table.Columns.Add("Submitted", 100)
+        self.jobs_table.Columns.Add("Job ID", 50)
+        self.jobs_table.Columns.Add("Status", 75)
+        self.jobs_table.Columns.Add("Analysis", 115)
+        self.jobs_table.Columns.Add("Named Selection", 115)
+        self.jobs_table.Columns.Add("Result Types", 165)
+        self.jobs_table.Columns.Add("No Graphics", 75)
+        self.jobs_table.Columns.Add("Submitted", 80)
+        self.jobs_table.Columns.Add("Save Base Dir", 165)
         self.Controls.Add(self.jobs_table)
         self.tooltips.SetToolTip(
             self.jobs_table,
-            "Read-only queue of extraction jobs. Each row stores analysis, scope, outputs, and graphics preference.",
+            "Read-only queue of extraction jobs. Each row stores analysis, scope, outputs, graphics preference, and save location.",
         )
 
         self.status_label = Label()
         self.status_label.Text = "Ready."
-        self.status_label.Location = Point(20, 492)
+        self.status_label.Location = Point(20, 544)
         self.status_label.Size = Size(860, 32)
         self.Controls.Add(self.status_label)
         self.tooltips.SetToolTip(
@@ -636,7 +668,7 @@ class ExtractOptionsDialog(Form):
         )
 
         self.progress_bar = ProgressBar()
-        self.progress_bar.Location = Point(20, 526)
+        self.progress_bar.Location = Point(20, 578)
         self.progress_bar.Size = Size(860, 24)
         self.progress_bar.Minimum = 0
         self.progress_bar.Maximum = 1000
@@ -650,7 +682,7 @@ class ExtractOptionsDialog(Form):
 
         self.close_button = Button()
         self.close_button.Text = "Close"
-        self.close_button.Location = Point(490, 564)
+        self.close_button.Location = Point(490, 616)
         self.close_button.Size = Size(80, 32)
         self.close_button.Click += self._on_close_clicked
         self.Controls.Add(self.close_button)
@@ -661,7 +693,7 @@ class ExtractOptionsDialog(Form):
 
         self.submit_button = Button()
         self.submit_button.Text = "Submit Jobs"
-        self.submit_button.Location = Point(580, 564)
+        self.submit_button.Location = Point(580, 616)
         self.submit_button.Size = Size(150, 32)
         self.submit_button.Click += self._on_submit_job_clicked
         self.Controls.Add(self.submit_button)
@@ -672,7 +704,7 @@ class ExtractOptionsDialog(Form):
 
         self.run_button = Button()
         self.run_button.Text = "Run Extraction Jobs"
-        self.run_button.Location = Point(740, 564)
+        self.run_button.Location = Point(740, 616)
         self.run_button.Size = Size(140, 32)
         self.run_button.Click += self._on_run_jobs_clicked
         self.Controls.Add(self.run_button)
@@ -713,10 +745,26 @@ class ExtractOptionsDialog(Form):
                 return job
         return None
 
+    def selected_base_output_dir(self):
+        path_text = str(self.output_dir_textbox.Text).strip()
+        if path_text == "":
+            return ""
+        return os.path.abspath(path_text)
+
+    def _ensure_output_base_dir(self, path_text):
+        path = str(path_text).strip()
+        if path == "":
+            return ""
+        path = os.path.abspath(path)
+        if not os.path.isdir(path):
+            os.makedirs(path)
+        return path
+
     def _make_job_record(self):
         selected_analysis = self.selected_analysis()
         selected_ns = self.selected_named_selection()
         selected_kinds = self.selected_result_kinds()
+        selected_base_output_dir = self.selected_base_output_dir()
 
         if selected_analysis is None:
             self._show_warning("Please select a modal analysis environment.", "Missing Analysis")
@@ -728,6 +776,15 @@ class ExtractOptionsDialog(Form):
             self._show_warning("Select at least one result type to extract.", "Missing Result Type")
             return None
 
+        try:
+            selected_base_output_dir = self._ensure_output_base_dir(selected_base_output_dir)
+        except Exception as out_ex:
+            self._show_warning(
+                "Could not access selected output folder: {0}".format(str(out_ex)),
+                "Invalid Output Folder",
+            )
+            return None
+
         submitted_epoch = time.time()
         record = {
             "job_id": int(self._next_job_id),
@@ -737,6 +794,7 @@ class ExtractOptionsDialog(Form):
             "named_selection_name": str(selected_ns.Name),
             "result_kinds": list(selected_kinds),
             "use_no_graphics": self.use_no_graphics_enabled(),
+            "base_output_dir": selected_base_output_dir,
             "submitted_epoch": submitted_epoch,
             "status": JOB_STATUS_PENDING,
             "output_dir": "",
@@ -751,6 +809,9 @@ class ExtractOptionsDialog(Form):
     def _append_job_to_table(self, job_record):
         job_id = int(job_record["job_id"])
         result_labels = get_result_kind_labels(job_record.get("result_kinds", []))
+        base_output_dir = str(job_record.get("base_output_dir", "")).strip()
+        if base_output_dir == "":
+            base_output_dir = "(analysis WorkingDir)"
 
         item = ListViewItem(str(job_id))
         item.SubItems.Add(str(job_record.get("status", JOB_STATUS_PENDING)))
@@ -759,6 +820,7 @@ class ExtractOptionsDialog(Form):
         item.SubItems.Add("; ".join(result_labels))
         item.SubItems.Add(format_yes_no(job_record.get("use_no_graphics", False)))
         item.SubItems.Add(time.strftime("%H:%M:%S", time.localtime(job_record.get("submitted_epoch", time.time()))))
+        item.SubItems.Add(base_output_dir)
 
         self.jobs_table.Items.Add(item)
         self._job_items_by_id[job_id] = item
@@ -789,6 +851,8 @@ class ExtractOptionsDialog(Form):
         self.cb_deformation.Enabled = enabled
         self.cb_forces.Enabled = enabled
         self.cb_use_no_graphics.Enabled = enabled
+        self.output_dir_textbox.Enabled = enabled
+        self.output_dir_browse_button.Enabled = enabled
         if enabled:
             self._refresh_action_buttons()
         else:
@@ -804,6 +868,29 @@ class ExtractOptionsDialog(Form):
         self.BringToFront()
         self.Activate()
 
+    def _on_browse_output_dir_clicked(self, sender, args):
+        if self._is_running:
+            return
+
+        picker = FolderBrowserDialog()
+        picker.Description = "Select base folder where extraction job outputs will be written."
+        picker.ShowNewFolderButton = True
+
+        try:
+            current_path = str(self.output_dir_textbox.Text).strip()
+            if current_path != "" and os.path.isdir(current_path):
+                picker.SelectedPath = current_path
+
+            if picker.ShowDialog(self) == DialogResult.OK:
+                chosen = str(picker.SelectedPath).strip()
+                if chosen != "":
+                    self.output_dir_textbox.Text = os.path.abspath(chosen)
+        finally:
+            try:
+                picker.Dispose()
+            except Exception:
+                pass
+
     def _on_submit_job_clicked(self, sender, args):
         if self._is_running:
             return
@@ -816,12 +903,17 @@ class ExtractOptionsDialog(Form):
         self._refresh_action_buttons()
 
         result_labels = get_result_kind_labels(new_job.get("result_kinds", []))
-        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4}".format(
+        base_output_dir = str(new_job.get("base_output_dir", "")).strip()
+        if base_output_dir == "":
+            base_output_dir = "(analysis WorkingDir)"
+
+        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4} | Save base: {5}".format(
             new_job.get("job_id", ""),
             new_job.get("analysis_name", ""),
             new_job.get("named_selection_name", ""),
             "; ".join(result_labels),
             format_yes_no(new_job.get("use_no_graphics", False)),
+            base_output_dir,
         )
         self.update_progress(queue_msg, 0, 1000)
         log_message(queue_msg, None)
@@ -1306,6 +1398,9 @@ def write_job_metadata_file(
 
     metadata_path = os.path.join(job_output_dir, "job_metadata.txt")
     elapsed_seconds = max(0.0, float(completed_epoch - started_epoch))
+    base_output_dir = str(job_record.get("base_output_dir", "")).strip()
+    if base_output_dir == "":
+        base_output_dir = "(analysis WorkingDir)"
 
     result_labels = get_result_kind_labels(job_record.get("result_kinds", []))
     lines = [
@@ -1320,6 +1415,7 @@ def write_job_metadata_file(
         "Job Start Time: {0}".format(format_timestamp(started_epoch)),
         "Job Completion Time: {0}".format(format_timestamp(completed_epoch)),
         "Job Duration (s): {0:.3f}".format(elapsed_seconds),
+        "Base Output Folder: {0}".format(base_output_dir),
         "Output Folder: {0}".format(job_output_dir),
         "Output CSV Files:",
     ]
@@ -1610,7 +1706,14 @@ def main():
 
             try:
                 solution, mode_ids = get_analysis_solution_and_modes(selected_analysis)
-                output_dir = create_job_output_folder(solution.WorkingDir, job_id)
+                selected_base_output_dir = str(job.get("base_output_dir", "")).strip()
+                if selected_base_output_dir == "":
+                    selected_base_output_dir = solution.WorkingDir
+                if not os.path.isdir(selected_base_output_dir):
+                    os.makedirs(selected_base_output_dir)
+
+                job["base_output_dir"] = selected_base_output_dir
+                output_dir = create_job_output_folder(selected_base_output_dir, job_id)
                 job["output_dir"] = output_dir
 
                 kind_labels = get_result_kind_labels(selected_kinds)
@@ -1626,6 +1729,7 @@ def main():
                     len(mode_ids),
                 )
                 log_message(start_msg, dialog)
+                log_message("Job {0} base output folder: {1}".format(job_id, selected_base_output_dir), dialog)
                 log_message("Job {0} output folder: {1}".format(job_id, output_dir), dialog)
                 dialog.update_progress(start_msg, 0, 1000)
 
