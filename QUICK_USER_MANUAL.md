@@ -114,6 +114,7 @@ Outputs default to the solver's configured directory; update it before running i
 | Time history x-axis shows indices | Re-run with current build; axis now reads from modal coordinate seconds automatically. |
 | Result dropdown only shows selected component after `Update` | Use latest build; existing max/min/time-of modes should remain available alongside `Selected Time`. |
 | Contours look distorted with depth perspective | Use current build; display camera is now orthographic by default. |
+| Node cloud invisible but hover shows values | Enable **Compatibility Rendering** in Display tab. If needed, restart with `MARS_SOFTWARE_OPENGL=1`. |
 | Animation fails | Reduce frame count / adjust range; confirm deformation data exists. |
 | Solver too slow | Increase RAM allocation, switch to Single precision, or reduce output scope. |
 | Temperature file error | Use CSV format with `NodeID, Temperature` columns (not tab-delimited .txt). |

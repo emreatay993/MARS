@@ -13,6 +13,7 @@ Tested with Python 3.11
 Initialises the Qt application and launches the main window.
 """
 
+import os
 import sys
 
 from PyQt5.QtCore import Qt
@@ -23,6 +24,17 @@ from ui.application_controller import ApplicationController
 
 def main():
     """Main entry point for the application."""
+    use_software_opengl = os.getenv("MARS_SOFTWARE_OPENGL", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+    if use_software_opengl:
+        os.environ.setdefault("QT_OPENGL", "software")
+        QApplication.setAttribute(Qt.AA_UseSoftwareOpenGL, True)
+        print("MARS: software OpenGL mode enabled via MARS_SOFTWARE_OPENGL.")
+
     # Enable high DPI scaling
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)

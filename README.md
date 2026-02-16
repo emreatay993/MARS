@@ -410,6 +410,27 @@ pip install -r requirements.txt
 - Increase RAM allocation to 85-90% via Settings → Advanced
 - Switch to Single precision if accuracy permits
 
+### Display Tab Graphics Issue (Node Cloud Invisible, Hover Works)
+
+If users can hover and read node values but cannot see node points, try:
+
+1. In **Display → Visualization Controls**, enable **Compatibility Rendering**.
+2. Restart MARS with software OpenGL enabled:
+
+```bash
+# Windows PowerShell
+$env:MARS_SOFTWARE_OPENGL=1
+python src/main.py
+```
+
+```bash
+# Windows Command Prompt
+set MARS_SOFTWARE_OPENGL=1
+python src/main.py
+```
+
+This issue is usually system-specific (GPU driver/OpenGL path). The app now logs renderer details once on Display-tab render to help diagnostics.
+
 ## 🤝 Contributing
 
 ### Code Style

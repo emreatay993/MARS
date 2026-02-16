@@ -25,6 +25,7 @@ class DisplayState:
     hover_observer: Optional[int] = None
     last_hover_time: float = 0.0
     data_column: str = "Result"
+    compatibility_rendering: bool = False
     anim_timer: Optional[QTimer] = None
     time_text_actor: Optional[Any] = None
     current_anim_time: float = 0.0

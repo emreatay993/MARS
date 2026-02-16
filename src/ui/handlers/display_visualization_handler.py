@@ -6,6 +6,7 @@ import time
 import numpy as np
 import vtk
 from PyQt5.QtCore import QTimer
+from PyQt5.QtWidgets import QApplication
 
 from ui.handlers.display_base_handler import DisplayBaseHandler
 from core.visualization import VisualizationManager
@@ -18,28 +19,93 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         super().__init__(tab, state)
         self.viz_manager = viz_manager
 
-    def update_visualization(self) -> None:
-        """Refresh the 3D view with the current mesh."""
-        mesh = self.state.current_mesh or self.tab.current_mesh
-        if mesh is None:
-            return
+    def _compatibility_rendering_enabled(self) -> bool:
+        """Return whether compatibility rendering mode is active."""
+        checkbox = getattr(self.tab, "compatibility_rendering_checkbox", None)
+        if checkbox is not None:
+            return bool(checkbox.isChecked())
+        return bool(getattr(self.state, "compatibility_rendering", False))
 
-        plotter = self.tab.plotter
-        plotter.clear()
+    def _set_compatibility_rendering(self, enabled: bool) -> None:
+        """Synchronize compatibility rendering state between tab and state."""
+        enabled = bool(enabled)
+        if hasattr(self.state, "compatibility_rendering"):
+            self.state.compatibility_rendering = enabled
+        if hasattr(self.tab, "compatibility_rendering"):
+            self.tab.compatibility_rendering = enabled
 
-        # Use active scalars if set, otherwise fall back to first array (e.g., NodeID)
-        active_scalars = mesh.active_scalars_name
-        if not active_scalars and mesh.array_names:
-            active_scalars = mesh.array_names[0]
-        if active_scalars:
-            self.state.data_column = active_scalars
-            self.tab.data_column = active_scalars
+        checkbox = getattr(self.tab, "compatibility_rendering_checkbox", None)
+        if checkbox is not None and checkbox.isChecked() != enabled:
+            checkbox.blockSignals(True)
+            checkbox.setChecked(enabled)
+            checkbox.blockSignals(False)
 
-        actor = plotter.add_mesh(
+    def toggle_compatibility_rendering(self, enabled: bool) -> None:
+        """Toggle compatibility mode and refresh the mesh if loaded."""
+        self._set_compatibility_rendering(enabled)
+        if (self.state.current_mesh or getattr(self.tab, "current_mesh", None)) is not None:
+            self.update_visualization()
+
+    def _compute_effective_point_size(
+        self, base_point_size: float, compatibility_mode: bool
+    ) -> float:
+        """Scale point size based on display DPI so clouds remain visible."""
+        effective_size = max(1.0, float(base_point_size))
+        dpi_scale = 1.0
+
+        plotter_widget = getattr(self.tab, "plotter", None)
+        if plotter_widget is not None:
+            try:
+                device_ratio = float(plotter_widget.devicePixelRatioF())
+                if device_ratio > 1.0:
+                    dpi_scale = max(dpi_scale, device_ratio)
+            except Exception:
+                pass
+
+        screen = None
+        try:
+            window_handle = self.tab.window().windowHandle()
+            if window_handle is not None:
+                screen = window_handle.screen()
+        except Exception:
+            screen = None
+
+        if screen is None:
+            app = QApplication.instance()
+            if app is not None:
+                try:
+                    screen = app.primaryScreen()
+                except Exception:
+                    screen = None
+
+        if screen is not None:
+            try:
+                logical_dpi = float(screen.logicalDotsPerInch())
+                if logical_dpi > 96.0:
+                    dpi_scale = max(dpi_scale, logical_dpi / 96.0)
+            except Exception:
+                pass
+
+        effective_size *= dpi_scale
+        if compatibility_mode:
+            effective_size = max(effective_size, 8.0)
+
+        return min(effective_size, 300.0)
+
+    def _add_mesh_actor(
+        self,
+        mesh,
+        active_scalars,
+        point_size: float,
+        compatibility_mode: bool,
+    ):
+        """Add the mesh actor using the selected rendering mode."""
+        return self.tab.plotter.add_mesh(
             mesh,
             scalars=active_scalars,
-            point_size=self.tab.point_size.value(),
-            render_points_as_spheres=True,
+            point_size=point_size,
+            render_points_as_spheres=not compatibility_mode,
+            lighting=not compatibility_mode,
             show_scalar_bar=True,
             cmap="jet",
             below_color="gray",
@@ -58,6 +124,55 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
                 "n_labels": 10,
             },
         )
+
+    def update_visualization(self) -> None:
+        """Refresh the 3D view with the current mesh."""
+        mesh = self.state.current_mesh or self.tab.current_mesh
+        if mesh is None:
+            return
+
+        plotter = self.tab.plotter
+        plotter.clear()
+
+        # Use active scalars if set, otherwise fall back to first array (e.g., NodeID)
+        active_scalars = mesh.active_scalars_name
+        if not active_scalars and mesh.array_names:
+            active_scalars = mesh.array_names[0]
+        if active_scalars:
+            self.state.data_column = active_scalars
+            self.tab.data_column = active_scalars
+
+        compatibility_mode = self._compatibility_rendering_enabled()
+        point_size = self._compute_effective_point_size(
+            self.tab.point_size.value(),
+            compatibility_mode,
+        )
+
+        try:
+            actor = self._add_mesh_actor(
+                mesh,
+                active_scalars,
+                point_size,
+                compatibility_mode,
+            )
+        except Exception as exc:
+            if compatibility_mode:
+                raise
+            print(
+                "Warning: sphere point rendering failed; "
+                f"falling back to compatibility mode ({exc})."
+            )
+            self._set_compatibility_rendering(True)
+            point_size = self._compute_effective_point_size(
+                self.tab.point_size.value(),
+                True,
+            )
+            actor = self._add_mesh_actor(
+                mesh,
+                active_scalars,
+                point_size,
+                True,
+            )
 
         self.state.current_actor = actor
         self.tab.current_actor = actor
@@ -85,6 +200,8 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         
         # Force render to establish window size
         plotter.render()
+        if hasattr(self.tab, "log_renderer_capabilities_once"):
+            self.tab.log_renderer_capabilities_once()
         
         # Check if tab is visible - if so, add widget immediately
         # If not visible, set flag for showEvent to handle it
@@ -205,8 +322,18 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         if actor is None:
             return
 
+        compatibility_mode = self._compatibility_rendering_enabled()
+        point_size = self._compute_effective_point_size(
+            self.tab.point_size.value(),
+            compatibility_mode,
+        )
         self.clear_hover_elements()
-        actor.GetProperty().SetPointSize(self.tab.point_size.value())
+        actor_prop = actor.GetProperty()
+        actor_prop.SetPointSize(point_size)
+        try:
+            actor_prop.SetRenderPointsAsSpheres(not compatibility_mode)
+        except Exception:
+            pass
         self.setup_hover_annotation()
         self.tab.plotter.render()
 

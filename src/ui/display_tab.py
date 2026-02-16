@@ -78,6 +78,8 @@ class DisplayTab(QWidget):
         self.hover_observer = None
         self.last_hover_time = 0  # For frame rate throttling
         self.data_column = "Result"  # Track current data column name
+        self.compatibility_rendering = self.compatibility_rendering_checkbox.isChecked()
+        self.state.compatibility_rendering = self.compatibility_rendering
         self.anim_timer = None
         self.time_text_actor = None
         self.current_anim_time = 0.0
@@ -111,6 +113,7 @@ class DisplayTab(QWidget):
         # Track if camera widget needs to be re-initialized on show
         self._camera_widget_pending = False
         self._first_show = True
+        self._renderer_capabilities_logged = False
         
         # Connect signals
         self._connect_signals()
@@ -133,6 +136,66 @@ class DisplayTab(QWidget):
             color="gray",
             name="welcome_message"
         )
+
+    @staticmethod
+    def _extract_capability_value(report: str, key_fragments):
+        """Extract a capability value from VTK's capability report."""
+        for raw_line in report.splitlines():
+            line = raw_line.strip()
+            if ":" not in line:
+                continue
+            key, value = line.split(":", 1)
+            key_lower = key.strip().lower()
+            if any(fragment in key_lower for fragment in key_fragments):
+                clean_value = value.strip()
+                if clean_value:
+                    return clean_value
+        return "Unknown"
+
+    def log_renderer_capabilities_once(self):
+        """Log OpenGL renderer details once for support diagnostics."""
+        if self._renderer_capabilities_logged:
+            return
+        self._renderer_capabilities_logged = True
+
+        try:
+            self.plotter.render()
+        except Exception:
+            pass
+
+        render_window = getattr(self.plotter, "ren_win", None)
+        if render_window is None:
+            render_window = getattr(self.plotter, "render_window", None)
+
+        if render_window is None:
+            print("Display renderer info: unavailable (render window not initialized).")
+            return
+
+        try:
+            report = render_window.ReportCapabilities() or ""
+        except Exception:
+            report = ""
+
+        if not report:
+            print("Display renderer info: capabilities report unavailable.")
+            return
+
+        vendor = self._extract_capability_value(
+            report,
+            ("vendor", "vendor string"),
+        )
+        renderer = self._extract_capability_value(
+            report,
+            ("renderer", "renderer string"),
+        )
+        version = self._extract_capability_value(
+            report,
+            ("version", "opengl version"),
+        )
+        print(
+            "Display renderer info: "
+            f"Vendor={vendor}; Renderer={renderer}; Version={version}"
+        )
     
     def _setup_component_references(self):
         """Create direct references to frequently used components."""
@@ -143,6 +206,7 @@ class DisplayTab(QWidget):
         # Visualization controls
         self.plotter = self.components['plotter']
         self.point_size = self.components['point_size']
+        self.compatibility_rendering_checkbox = self.components['compatibility_rendering_checkbox']
         self.scalar_min_spin = self.components['scalar_min_spin']
         self.scalar_max_spin = self.components['scalar_max_spin']
         self.result_group_combo = self.components['result_group_combo']
@@ -191,6 +255,9 @@ class DisplayTab(QWidget):
         
         # Visualization controls
         self.point_size.valueChanged.connect(self.update_point_size)
+        self.compatibility_rendering_checkbox.toggled.connect(
+            self._on_compatibility_rendering_toggled
+        )
         self.scalar_min_spin.valueChanged.connect(self._update_scalar_range)
         self.scalar_max_spin.valueChanged.connect(self._update_scalar_range)
         self.scalar_min_spin.valueChanged.connect(
@@ -325,6 +392,11 @@ class DisplayTab(QWidget):
     def update_point_size(self, value):
         """Update the point size of the displayed mesh."""
         self.visual_handler.update_point_size()
+
+    @pyqtSlot(bool)
+    def _on_compatibility_rendering_toggled(self, checked):
+        """Toggle compatibility rendering mode for problematic OpenGL drivers."""
+        self.visual_handler.toggle_compatibility_rendering(checked)
     
     @pyqtSlot(float)
     def _update_scalar_range(self, value):

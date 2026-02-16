@@ -72,6 +72,13 @@ class DisplayTabUIBuilder:
         point_size.setRange(1, 100)
         point_size.setValue(DEFAULT_POINT_SIZE)
         point_size.setPrefix("Size: ")
+
+        compatibility_rendering_checkbox = QCheckBox("Compatibility Rendering")
+        compatibility_rendering_checkbox.setToolTip(
+            "Use a safer point rendering path for systems with GPU/driver issues.\n"
+            "This disables sphere-style points and uses simpler OpenGL settings."
+        )
+        compatibility_rendering_checkbox.setChecked(False)
         
         # Scalar range controls
         scalar_min_spin = QDoubleSpinBox()
@@ -125,6 +132,7 @@ class DisplayTabUIBuilder:
         graphics_control_layout = QHBoxLayout()
         graphics_control_layout.addWidget(QLabel("Node Point Size:"))
         graphics_control_layout.addWidget(point_size)
+        graphics_control_layout.addWidget(compatibility_rendering_checkbox)
         graphics_control_layout.addWidget(QLabel("Legend Range:"))
         graphics_control_layout.addWidget(scalar_min_spin)
         graphics_control_layout.addWidget(scalar_max_spin)
@@ -145,6 +153,7 @@ class DisplayTabUIBuilder:
         
         # Store components
         self.components['point_size'] = point_size
+        self.components['compatibility_rendering_checkbox'] = compatibility_rendering_checkbox
         self.components['scalar_min_spin'] = scalar_min_spin
         self.components['scalar_max_spin'] = scalar_max_spin
         self.components['result_group_combo'] = result_group_combo
