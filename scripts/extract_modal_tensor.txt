@@ -12,6 +12,7 @@ import csv
 import gc
 import time
 import math
+import re
 import clr
 
 clr.AddReference("System.Windows.Forms")
@@ -94,6 +95,7 @@ MERGE_GROUP_LIMIT_UNKNOWN_RAM = 24
 MERGE_GROUP_MID_RAM_THRESHOLD_BYTES = 6 * 1024 ** 3
 MERGE_GROUP_HIGH_RAM_THRESHOLD_BYTES = 12 * 1024 ** 3
 MERGE_GROUP_VERY_HIGH_RAM_THRESHOLD_BYTES = 24 * 1024 ** 3
+NUMERIC_TOKEN_PATTERN = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][-+]?\d+)?")
 
 
 class _NoOpTransaction(object):
@@ -1204,6 +1206,154 @@ def get_scale_factors(result_kind, component_count, unit_text):
     return factors
 
 
+def parse_float_token(token_text):
+    return float(str(token_text).replace("D", "E").replace("d", "e"))
+
+
+def extract_named_selection_node_ids(named_selection):
+    try:
+        ids = named_selection.Location.Ids
+    except Exception:
+        ids = None
+
+    if ids is None or len(ids) == 0:
+        raise Exception(
+            "Named selection '{0}' does not provide node IDs for fallback extraction.".format(
+                getattr(named_selection, "Name", "")
+            )
+        )
+
+    unique = {}
+    node_ids = []
+    for raw_id in ids:
+        try:
+            nid = int(raw_id)
+        except Exception:
+            continue
+        if nid not in unique:
+            unique[nid] = True
+            node_ids.append(nid)
+
+    if len(node_ids) == 0:
+        raise Exception(
+            "Named selection '{0}' did not resolve to valid node IDs.".format(
+                getattr(named_selection, "Name", "")
+            )
+        )
+
+    node_ids.sort()
+    return node_ids
+
+
+def export_result_to_text_file(result_object, export_path):
+    if os.path.exists(export_path):
+        safe_delete_file(export_path)
+
+    exporters = ["ExportToTextFile", "ExportToFile", "Export"]
+    last_error = None
+
+    for method_name in exporters:
+        method = getattr(result_object, method_name, None)
+        if method is None:
+            continue
+
+        try:
+            method(export_path)
+            if os.path.exists(export_path):
+                return export_path
+        except Exception as ex:
+            last_error = ex
+
+    if last_error is not None:
+        raise Exception(
+            "Failed to export result data to text file using {0}. Detail: {1}".format(
+                ", ".join(exporters), str(last_error)
+            )
+        )
+
+    raise Exception("Failed to export result data to text file: no export method available.")
+
+
+def extract_aligned_values_from_text_export(
+    result_object,
+    base_node_ids,
+    scale_factor,
+    export_path,
+    component_name="",
+):
+    if base_node_ids is None or len(base_node_ids) == 0:
+        raise Exception("Base node IDs are empty.")
+
+    export_result_to_text_file(result_object, export_path)
+
+    base_node_id_set = set([int(nid) for nid in base_node_ids])
+    sum_map = {}
+    count_map = {}
+
+    with open(export_path, "rb") as f:
+        for raw_line in f:
+            try:
+                line_text = raw_line.decode("utf-8", "ignore")
+            except Exception:
+                line_text = str(raw_line)
+
+            tokens = NUMERIC_TOKEN_PATTERN.findall(line_text)
+            if len(tokens) < 2:
+                continue
+
+            try:
+                value = parse_float_token(tokens[-1])
+            except Exception:
+                continue
+
+            node_id = None
+            for i in xrange(len(tokens) - 1):
+                token = tokens[i]
+                try:
+                    node_float = parse_float_token(token)
+                except Exception:
+                    continue
+
+                node_int = int(node_float)
+                if abs(node_float - float(node_int)) > 1e-9:
+                    continue
+                if node_int in base_node_id_set:
+                    node_id = node_int
+                    break
+
+            if node_id is None:
+                continue
+
+            if node_id in sum_map:
+                sum_map[node_id] += value
+                count_map[node_id] += 1
+            else:
+                sum_map[node_id] = value
+                count_map[node_id] = 1
+
+    if len(sum_map) == 0:
+        if component_name is None or str(component_name).strip() == "":
+            component_name = "(unknown)"
+        raise Exception(
+            "Text export parsing returned no usable node-value rows for component '{0}'.".format(component_name)
+        )
+
+    aligned = []
+    matched = 0
+    for nid in base_node_ids:
+        nid_int = int(nid)
+        if nid_int in sum_map:
+            matched += 1
+            aligned.append((sum_map[nid_int] / float(max(1, count_map[nid_int]))) * scale_factor)
+        else:
+            aligned.append(0.0)
+
+    if matched == 0:
+        raise Exception("Text export parsing found no rows matching the base node scope.")
+
+    return aligned
+
+
 def extract_node_ids_from_result(result_object):
     independent = result_object.PlotData.Independents
     candidate_keys = ["Node", "Nodes", "NodeID", "Node ID"]
@@ -1584,6 +1734,8 @@ def run_extraction(
     batch_files = []
     node_ids = []
     base_csv_path = None
+    use_plotdata_values = True
+    plotdata_fallback_logged = False
     if result_kind_label is None:
         result_kind_label = RESULT_KIND_LABEL_BY_ID.get(result_kind, result_kind)
 
@@ -1605,7 +1757,22 @@ def run_extraction(
             with begin_transaction(True):
                 component_objects[0].SetNumber = first_mode
             component_objects[0].EvaluateAllResults()
-            node_ids = extract_node_ids_from_result(component_objects[0])
+
+            try:
+                node_ids = extract_node_ids_from_result(component_objects[0])
+            except Exception as node_ex:
+                if result_kind == RESULT_KIND_FORCE_MOMENT:
+                    node_ids = extract_named_selection_node_ids(named_selection)
+                    use_plotdata_values = False
+                    log_message(
+                        "PlotData is unavailable for ENFO/ENMO in this environment. "
+                        "Switching to ExportToTextFile fallback. Detail: {0}".format(str(node_ex)),
+                        progress_dialog,
+                    )
+                    plotdata_fallback_logged = True
+                else:
+                    raise
+
             if len(node_ids) == 0:
                 raise Exception("No nodes found in extracted scope.")
             first_unit = get_values_unit(component_objects[0])
@@ -1718,20 +1885,75 @@ def run_extraction(
                             obj.EvaluateAllResults()
 
                     mode_component_values = []
-                    first_component_values, first_is_base_order = extract_aligned_values(
-                        component_objects[0],
-                        node_ids,
-                        scale_factors[0],
-                        return_order_match=True,
-                    )
+                    if use_plotdata_values:
+                        try:
+                            first_component_values, first_is_base_order = extract_aligned_values(
+                                component_objects[0],
+                                node_ids,
+                                scale_factors[0],
+                                return_order_match=True,
+                            )
+                        except Exception as value_ex:
+                            if result_kind != RESULT_KIND_FORCE_MOMENT:
+                                raise
+
+                            use_plotdata_values = False
+                            if not plotdata_fallback_logged:
+                                log_message(
+                                    "PlotData access failed for ENFO/ENMO. "
+                                    "Switching to ExportToTextFile fallback for remaining extraction. "
+                                    "Detail: {0}".format(str(value_ex)),
+                                    progress_dialog,
+                                )
+                                plotdata_fallback_logged = True
+
+                            export_path = os.path.join(
+                                temp_dir,
+                                "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_names[0]),
+                            )
+                            first_component_values = extract_aligned_values_from_text_export(
+                                component_objects[0],
+                                node_ids,
+                                scale_factors[0],
+                                export_path,
+                                component_name=component_names[0],
+                            )
+                            first_is_base_order = False
+                    else:
+                        export_path = os.path.join(
+                            temp_dir,
+                            "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_names[0]),
+                        )
+                        first_component_values = extract_aligned_values_from_text_export(
+                            component_objects[0],
+                            node_ids,
+                            scale_factors[0],
+                            export_path,
+                            component_name=component_names[0],
+                        )
+                        first_is_base_order = False
+
                     mode_component_values.append(first_component_values)
 
                     for comp_idx in xrange(1, comp_count):
                         obj = component_objects[comp_idx]
-                        if first_is_base_order:
-                            values = extract_scaled_values(obj, scale_factors[comp_idx])
+                        if use_plotdata_values:
+                            if first_is_base_order:
+                                values = extract_scaled_values(obj, scale_factors[comp_idx])
+                            else:
+                                values = extract_aligned_values(obj, node_ids, scale_factors[comp_idx])
                         else:
-                            values = extract_aligned_values(obj, node_ids, scale_factors[comp_idx])
+                            export_path = os.path.join(
+                                temp_dir,
+                                "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_names[comp_idx]),
+                            )
+                            values = extract_aligned_values_from_text_export(
+                                obj,
+                                node_ids,
+                                scale_factors[comp_idx],
+                                export_path,
+                                component_name=component_names[comp_idx],
+                            )
                         mode_component_values.append(values)
 
                     mode_file = os.path.join(temp_dir, "mode_{0:05d}.csv".format(mode))
