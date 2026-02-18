@@ -77,6 +77,24 @@ JOB_STATUS_RUNNING = "Running"
 JOB_STATUS_COMPLETED = "Completed"
 JOB_STATUS_FAILED = "Failed"
 
+# RAM guardrails. Values are intentionally conservative to avoid host memory pressure.
+RAM_SAFETY_FRACTION = 0.04
+RAM_MIN_SAFE_BYTES = 128 * 1024 * 1024
+RAM_MAX_MODES_PER_BATCH = 6
+LOW_RAM_BACKPRESSURE_BYTES = 3 * 1024 ** 3
+LARGE_MODE_BYTES_THRESHOLD = int(0.75 * 1024 ** 3)
+VERY_LARGE_MODE_BYTES_THRESHOLD = int(1.5 * 1024 ** 3)
+MERGE_GROUP_LIMIT_MIN = 8
+MERGE_GROUP_LIMIT_MAX = 64
+MERGE_GROUP_LIMIT_LOW_RAM = 12
+MERGE_GROUP_LIMIT_MID_RAM = 24
+MERGE_GROUP_LIMIT_HIGH_RAM = 40
+MERGE_GROUP_LIMIT_VERY_HIGH_RAM = 56
+MERGE_GROUP_LIMIT_UNKNOWN_RAM = 24
+MERGE_GROUP_MID_RAM_THRESHOLD_BYTES = 6 * 1024 ** 3
+MERGE_GROUP_HIGH_RAM_THRESHOLD_BYTES = 12 * 1024 ** 3
+MERGE_GROUP_VERY_HIGH_RAM_THRESHOLD_BYTES = 24 * 1024 ** 3
+
 
 class _NoOpTransaction(object):
     def __enter__(self):
@@ -286,6 +304,38 @@ def get_available_ram_bytes():
     return -1
 
 
+def force_memory_cleanup(wait_for_finalizers=False):
+    try:
+        gc.collect()
+    except Exception:
+        pass
+
+    # Mechanical objects and arrays are .NET-backed; collect both runtimes.
+    try:
+        clr.AddReference("System")
+        from System import GC as DotNetGC
+        DotNetGC.Collect()
+        if wait_for_finalizers:
+            DotNetGC.WaitForPendingFinalizers()
+            DotNetGC.Collect()
+    except Exception:
+        pass
+
+
+def apply_low_ram_backpressure(progress_dialog=None, context_text=""):
+    available_bytes = get_available_ram_bytes()
+    if available_bytes > 0 and available_bytes < LOW_RAM_BACKPRESSURE_BYTES:
+        msg = "Low available RAM detected ({0}). Running aggressive cleanup.".format(
+            format_available_ram_text(available_bytes)
+        )
+        if context_text is not None and str(context_text).strip() != "":
+            msg += " Context: {0}".format(str(context_text))
+        log_message(msg, progress_dialog)
+        force_memory_cleanup(True)
+        time.sleep(0.2)
+    return available_bytes
+
+
 def estimate_mode_batch_size(node_count, component_count, remaining_modes):
     if remaining_modes <= 0:
         return 1, -1
@@ -294,23 +344,59 @@ def estimate_mode_batch_size(node_count, component_count, remaining_modes):
     if node_count <= 0 or component_count <= 0:
         return 1, available_bytes
 
-    # Conservative estimate for Python list/object overhead.
-    overhead_multiplier = 10.0
+    # Conservative estimate for Python + .NET object overhead.
+    overhead_multiplier = 14.0
     bytes_per_mode = int(node_count * component_count * 8.0 * overhead_multiplier)
-    safe_ram_fraction = 0.12
+
+    if bytes_per_mode >= VERY_LARGE_MODE_BYTES_THRESHOLD:
+        mode_size_cap = 1
+    elif bytes_per_mode >= LARGE_MODE_BYTES_THRESHOLD:
+        mode_size_cap = 2
+    else:
+        mode_size_cap = RAM_MAX_MODES_PER_BATCH
 
     if available_bytes > 0:
-        safe_bytes = int(max(64 * 1024 * 1024, available_bytes * safe_ram_fraction))
+        safe_bytes = int(max(RAM_MIN_SAFE_BYTES, available_bytes * RAM_SAFETY_FRACTION))
         estimate = int(float(safe_bytes) / float(max(bytes_per_mode, 1)))
     else:
         estimate = 1
 
     if estimate < 1:
         estimate = 1
-    if estimate > 25:
-        estimate = 25
+    if available_bytes > 0 and available_bytes < LOW_RAM_BACKPRESSURE_BYTES:
+        mode_size_cap = min(mode_size_cap, 1)
+    if estimate > mode_size_cap:
+        estimate = mode_size_cap
     if estimate > remaining_modes:
         estimate = remaining_modes
+
+    return estimate, available_bytes
+
+
+def estimate_merge_group_limit(pending_count):
+    if pending_count <= 0:
+        return 1, -1
+
+    available_bytes = get_available_ram_bytes()
+    if available_bytes <= 0:
+        estimate = MERGE_GROUP_LIMIT_UNKNOWN_RAM
+    elif available_bytes < LOW_RAM_BACKPRESSURE_BYTES:
+        estimate = MERGE_GROUP_LIMIT_LOW_RAM
+    elif available_bytes < MERGE_GROUP_MID_RAM_THRESHOLD_BYTES:
+        estimate = MERGE_GROUP_LIMIT_MID_RAM
+    elif available_bytes < MERGE_GROUP_HIGH_RAM_THRESHOLD_BYTES:
+        estimate = MERGE_GROUP_LIMIT_HIGH_RAM
+    elif available_bytes < MERGE_GROUP_VERY_HIGH_RAM_THRESHOLD_BYTES:
+        estimate = MERGE_GROUP_LIMIT_VERY_HIGH_RAM
+    else:
+        estimate = MERGE_GROUP_LIMIT_MAX
+
+    if estimate < MERGE_GROUP_LIMIT_MIN:
+        estimate = MERGE_GROUP_LIMIT_MIN
+    if estimate > MERGE_GROUP_LIMIT_MAX:
+        estimate = MERGE_GROUP_LIMIT_MAX
+    if estimate > pending_count:
+        estimate = pending_count
 
     return estimate, available_bytes
 
@@ -1094,7 +1180,7 @@ def cleanup_component_objects(component_objects):
                     obj.Delete()
                 except Exception:
                     pass
-    gc.collect()
+    force_memory_cleanup(True)
 
 
 def get_values_unit(result_object):
@@ -1135,9 +1221,13 @@ def extract_node_ids_from_result(result_object):
     raise Exception("Could not extract node IDs from PlotData.Independents.")
 
 
-def extract_aligned_values(result_object, base_node_ids, scale_factor):
+def extract_scaled_values(result_object, scale_factor):
     values_raw = result_object.PlotData.Dependents["Values"]
-    values = [float(v.Value if hasattr(v, "Value") else v) * scale_factor for v in values_raw]
+    return [float(v.Value if hasattr(v, "Value") else v) * scale_factor for v in values_raw]
+
+
+def extract_aligned_values(result_object, base_node_ids, scale_factor, return_order_match=False):
+    values = extract_scaled_values(result_object, scale_factor)
     current_node_ids = extract_node_ids_from_result(result_object)
 
     if len(current_node_ids) == len(base_node_ids):
@@ -1146,14 +1236,19 @@ def extract_aligned_values(result_object, base_node_ids, scale_factor):
             if current_node_ids[0] != base_node_ids[0] or current_node_ids[-1] != base_node_ids[-1]:
                 is_same_order = False
         if is_same_order:
+            if return_order_match:
+                return values, True
             return values
 
     value_map = {}
     n = min(len(current_node_ids), len(values))
     for i in xrange(n):
         value_map[int(current_node_ids[i])] = values[i]
+    aligned_values = [value_map.get(int(nid), 0.0) for nid in base_node_ids]
 
-    return [value_map.get(int(nid), 0.0) for nid in base_node_ids]
+    if return_order_match:
+        return aligned_values, False
+    return aligned_values
 
 
 def get_node_coordinates(node_ids, progress_dialog=None):
@@ -1216,6 +1311,24 @@ def write_batch_csv(path, batch_modes, component_names, node_ids, batch_data):
                 mode_components = batch_data[mode]
                 for comp_idx in xrange(comp_count):
                     row.append(mode_components[comp_idx][row_index])
+            writer.writerow(row)
+
+
+def write_mode_csv(path, mode, component_names, node_ids, mode_component_values):
+    with open(path, "wb") as f:
+        writer = csv.writer(f)
+
+        header = ["NodeID"]
+        for comp_name in component_names:
+            header.append("{0}_Mode{1}".format(comp_name, mode))
+        writer.writerow(header)
+
+        node_count = len(node_ids)
+        comp_count = len(component_names)
+        for row_index in xrange(node_count):
+            row = [node_ids[row_index]]
+            for comp_idx in xrange(comp_count):
+                row.append(mode_component_values[comp_idx][row_index])
             writer.writerow(row)
 
 
@@ -1318,13 +1431,30 @@ def merge_batches_into_output(temp_dir, base_csv_path, batch_files, output_csv_p
     current_base = base_csv_path
     pending = list(batch_files)
     pass_index = 0
-    group_limit = 40  # avoids opening too many files at once
-    total_passes = int(math.ceil(float(len(pending)) / float(group_limit)))
+    previous_group_limit = -1
 
     while len(pending) > 0:
+        group_limit, merge_available_ram = estimate_merge_group_limit(len(pending))
+        if group_limit != previous_group_limit:
+            log_message(
+                "Merge chunk size selected: {0} files/pass (available RAM: {1}).".format(
+                    group_limit,
+                    format_available_ram_text(merge_available_ram),
+                ),
+                progress_dialog,
+            )
+            previous_group_limit = group_limit
+
+        apply_low_ram_backpressure(
+            progress_dialog,
+            "before merge pass {0}".format(pass_index + 1),
+        )
+
         pass_index += 1
         group = pending[:group_limit]
         pending = pending[group_limit:]
+        remaining_passes = int(math.ceil(float(len(pending)) / float(max(group_limit, 1))))
+        total_passes = pass_index + remaining_passes
 
         next_base = os.path.join(temp_dir, "merge_pass_{0:03d}.csv".format(pass_index))
         msg = "Merging temporary CSVs (pass {0}/{1}, files in pass: {2})".format(
@@ -1351,7 +1481,7 @@ def merge_batches_into_output(temp_dir, base_csv_path, batch_files, output_csv_p
         for fp in group:
             safe_delete_file(fp)
         current_base = next_base
-        gc.collect()
+        force_memory_cleanup()
 
     if os.path.exists(output_csv_path):
         os.remove(output_csv_path)
@@ -1509,7 +1639,7 @@ def run_extraction(
             base_csv_path = os.path.join(temp_dir, "base_coords.csv")
             write_base_coordinate_csv(base_csv_path, node_ids, node_coords)
             del node_coords
-            gc.collect()
+            force_memory_cleanup()
 
             use_solution_eval = should_use_solution_evaluate(solution, len(component_objects))
             if result_kind == RESULT_KIND_FORCE_MOMENT:
@@ -1546,10 +1676,13 @@ def run_extraction(
                 )
                 log_message(msg, progress_dialog)
 
-                batch_data = {}
                 for local_idx in xrange(len(batch_modes)):
                     mode = int(batch_modes[local_idx])
                     global_mode_idx = mode_cursor + local_idx + 1
+                    apply_low_ram_backpressure(
+                        progress_dialog,
+                        "before extracting mode {0}".format(mode),
+                    )
                     mode_msg = "Extracting [{0}] mode {1}/{2} (set {3})".format(
                         result_kind_label,
                         global_mode_idx,
@@ -1585,12 +1718,25 @@ def run_extraction(
                             obj.EvaluateAllResults()
 
                     mode_component_values = []
-                    for comp_idx in xrange(comp_count):
-                        obj = component_objects[comp_idx]
-                        aligned = extract_aligned_values(obj, node_ids, scale_factors[comp_idx])
-                        mode_component_values.append(aligned)
+                    first_component_values, first_is_base_order = extract_aligned_values(
+                        component_objects[0],
+                        node_ids,
+                        scale_factors[0],
+                        return_order_match=True,
+                    )
+                    mode_component_values.append(first_component_values)
 
-                    batch_data[mode] = mode_component_values
+                    for comp_idx in xrange(1, comp_count):
+                        obj = component_objects[comp_idx]
+                        if first_is_base_order:
+                            values = extract_scaled_values(obj, scale_factors[comp_idx])
+                        else:
+                            values = extract_aligned_values(obj, node_ids, scale_factors[comp_idx])
+                        mode_component_values.append(values)
+
+                    mode_file = os.path.join(temp_dir, "mode_{0:05d}.csv".format(mode))
+                    write_mode_csv(mode_file, mode, component_names, node_ids, mode_component_values)
+                    batch_files.append(mode_file)
 
                     for obj in component_objects:
                         try:
@@ -1600,15 +1746,16 @@ def run_extraction(
 
                     del mode_component_values
                     if global_mode_idx % 2 == 0:
-                        gc.collect()
-
-                batch_file = os.path.join(temp_dir, "batch_{0:04d}.csv".format(batch_index))
-                write_batch_csv(batch_file, batch_modes, component_names, node_ids, batch_data)
-                batch_files.append(batch_file)
-                del batch_data
-                gc.collect()
+                        force_memory_cleanup(True)
+                    else:
+                        force_memory_cleanup()
+                    apply_low_ram_backpressure(
+                        progress_dialog,
+                        "after extracting mode {0}".format(mode),
+                    )
 
                 mode_cursor += len(batch_modes)
+                force_memory_cleanup()
 
         output_name = RESULT_OUTPUT_FILES[result_kind]
         if output_name_suffix is not None and str(output_name_suffix).strip() != "":
@@ -1646,7 +1793,7 @@ def run_extraction(
         cleanup_component_objects(temp_objects)
         cleanup_temp_folder(temp_dir)
         restore_ui_interaction_state()
-        gc.collect()
+        force_memory_cleanup(True)
 
 
 def main():
@@ -1771,7 +1918,7 @@ def main():
                     all_output_csvs.append(output_csv)
 
                     # Explicit cleanup between result kinds for stable memory behavior.
-                    gc.collect()
+                    force_memory_cleanup(True)
                     time.sleep(0.1)
 
                 job_end = time.time()
@@ -1825,7 +1972,7 @@ def main():
                 # Release references and force collection between jobs.
                 solution = None
                 mode_ids = []
-                gc.collect()
+                force_memory_cleanup(True)
                 time.sleep(0.1)
                 restore_ui_interaction_state()
 
