@@ -134,6 +134,8 @@ def test_complete_workflow():
   - [ ] Deformation outputs become available
 - [ ] Load steady-state stress file (.txt) [Optional]
   - [ ] Checkbox enables/disables controls
+  - [ ] Tooltip shows expected tab-delimited header (`Node Number`, `SX/SY/SZ/SXY/SYZ/SXZ`)
+  - [ ] Tooltip mentions ANSYS Vector Principal Stress export compatibility and required export settings
   - [ ] Valid file loads successfully
   - [ ] Invalid file shows error
   - [ ] Data stored correctly
@@ -274,8 +276,11 @@ def test_complete_workflow():
 - [ ] Current settings displayed
 - [ ] RAM allocation adjustable (10-95%)
 - [ ] Precision selection works (Single/Double)
+- [ ] Force Software OpenGL toggle works
 - [ ] OK applies settings
 - [ ] Cancel discards changes
+- [ ] Restart note appears when Software OpenGL state changes
+- [ ] Re-opening dialog shows persisted RAM/precision/Software OpenGL values
 - [ ] Console confirms settings applied
 
 ### Drag and Drop Tests

@@ -20,8 +20,9 @@ TEST STEPS:
 6. Load deformations .csv file using the now-visible button
 7. Enable Include Steady-State Stress Field checkbox and verify steady-state file controls appear
 8. Load steady-state .txt file using the now-visible button
-9. Verify all file paths display correctly in read-only text fields
-10. Attempt to type in file path fields to confirm they are read-only
+9. Hover over Include Steady-State Stress Field checkbox and verify tooltip lists expected TXT header and ANSYS export requirements
+10. Verify all file paths display correctly in read-only text fields
+11. Attempt to type in file path fields to confirm they are read-only
 
 EXPECTED RESULTS:
 
@@ -31,6 +32,7 @@ EXPECTED RESULTS:
 - Read Modal Coordinate File accepts both .mcf and .pch
 - Stress output checkboxes (Von-Mises, Max Principal, Min Principal) become enabled after stress file loads
 - Deformation output checkboxes (Deformation, Velocity, Acceleration) become enabled after deformations file loads
+- Steady-state tooltip documents required tab-delimited header (`Node Number`, `SX/SY/SZ/SXY/SYZ/SXZ`) and ANSYS export settings (Remove Duplicate Nodes, Include Node Numbers, Include Node Location, Show Tensor Components = Yes)
 - All file input fields remain read-only and reject keyboard input
 - Optional file controls (steady-state, deformations) are hidden until checkboxes enabled
 
@@ -136,39 +138,43 @@ TEST NO: 4
 
 TITLE: Advanced Settings and Performance Tuning
 
-DESCRIPTION: Validates performance tuning controls including RAM allocation and solver precision selection
+DESCRIPTION: Validates performance tuning controls including RAM allocation, solver precision selection, and Software OpenGL compatibility mode
 
 INPUTS:
 
 - Application launched with default settings
 - Target RAM Allocation: 95% (increased from default 90%)
 - Target Solver Precision: Single (changed from default Double)
+- Target Software OpenGL: On
 
 TEST STEPS:
 
 1. Navigate to Settings menu and click Advanced to open Advanced Settings dialog
-2. Observe and verify current settings display shows default values (RAM: 90%, Precision: Double)
+2. Observe and verify current settings display shows default values (RAM: 90%, Precision: Double, Software OpenGL: Off)
 3. Change RAM Allocation spinbox from 90 to 95
 4. Open Solver Precision dropdown and select Single from available options
-5. Click OK button to apply settings
-6. Verify confirmation dialog appears with message about settings being applied
-7. Re-open Advanced Settings dialog via Settings > Advanced
-8. Confirm all changes persisted (RAM: 95%, Precision: Single)
-9. Modify settings again and click Cancel to test discard behavior
-10. Re-open dialog and verify changes were NOT saved when Cancel was used
+5. Enable Force Software OpenGL checkbox
+6. Click OK button to apply settings
+7. Verify confirmation dialog appears with message about settings being applied and restart requirement for Software OpenGL
+8. Re-open Advanced Settings dialog via Settings > Advanced
+9. Confirm all changes persisted (RAM: 95%, Precision: Single, Software OpenGL: On)
+10. Disable Force Software OpenGL and change RAM value, then click Cancel to test discard behavior
+11. Re-open dialog and verify Software OpenGL and RAM remained unchanged when Cancel was used
 
 EXPECTED RESULTS:
 
 - Advanced Settings dialog opens showing current settings label at top
-- Current settings display reads: "Current settings: Precision: Double, RAM Limit: 90%"
+- Current settings display includes Precision, RAM Limit, and Software OpenGL state/source
 - RAM spinbox accepts values from 10 to 95 (validated at boundaries)
 - Solver Precision dropdown offers exactly two options: Single and Double
+- Force Software OpenGL checkbox is present and toggles state
 - OK button closes dialog and displays confirmation message box
-- Confirmation message states: "New advanced settings have been applied. They will be used for the next solve operation."
+- Confirmation message includes: "RAM/precision will be used for the next solve operation."
+- Confirmation includes restart note when Software OpenGL state is changed
 - Cancel button closes dialog without applying changes
 - Settings persist across dialog re-opening when OK is used
 - Settings do NOT persist when Cancel is used
-- Console shows applied settings when next SOLVE is executed with lines like "Solver Precision: Single" and "RAM Allocation: 95%"
+- Console shows applied settings when next SOLVE is executed with lines like "Solver Precision: Single", "RAM Allocation: 95%", and "Software OpenGL (next launch): On"
 
 REQUIREMENT NO: N/A
 

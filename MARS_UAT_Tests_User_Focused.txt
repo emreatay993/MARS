@@ -20,7 +20,8 @@ TEST STEPS:
 6. Load deformations .csv file using the now-visible button
 7. Enable Include Steady-State Stress Field checkbox and verify steady-state file controls appear
 8. Load steady-state .txt file using the now-visible button
-9. Verify all file paths display correctly in read-only text fields
+9. Hover over Include Steady-State Stress Field checkbox and verify tooltip lists expected TXT header and ANSYS export requirements
+10. Verify all file paths display correctly in read-only text fields
 
 EXPECTED RESULTS:
 
@@ -30,6 +31,7 @@ EXPECTED RESULTS:
 - Read Modal Coordinate File accepts both .mcf and .pch
 - Stress output checkboxes (Von-Mises, Max Principal, Min Principal) become enabled after stress file loads
 - Deformation output checkboxes (Deformation, Velocity, Acceleration) become enabled after deformations file loads
+- Steady-state tooltip documents required tab-delimited header and ANSYS export settings (Remove Duplicate Nodes, Include Node Numbers, Include Node Location, Show Tensor Components = Yes)
 - Optional file controls (steady-state, deformations) are hidden until checkboxes enabled
 
 REQUIREMENT NO: N/A
@@ -132,33 +134,37 @@ TEST NO: 4
 
 TITLE: Advanced Settings and Performance Tuning
 
-DESCRIPTION: Validates performance tuning controls including RAM allocation and solver precision selection
+DESCRIPTION: Validates performance tuning controls including RAM allocation, solver precision selection, and Software OpenGL compatibility mode
 
 INPUTS:
 
 - Application launched with default settings
 - Target RAM Allocation: 95% (increased from default 90%)
 - Target Solver Precision: Single (changed from default Double)
+- Target Software OpenGL: On
 
 TEST STEPS:
 
 1. Navigate to Settings menu and click Advanced to open Advanced Settings dialog
-2. Observe current settings display shows default values (RAM: 90%, Precision: Double)
+2. Observe current settings display shows default values (RAM: 90%, Precision: Double, Software OpenGL: Off)
 3. Change RAM Allocation spinbox from 90 to 95
 4. Open Solver Precision dropdown and select Single from available options
-5. Click OK button to apply settings
-6. Verify confirmation dialog appears with message about settings being applied
-7. Re-open Advanced Settings dialog via Settings > Advanced
-8. Confirm all changes persisted (RAM: 95%, Precision: Single)
+5. Enable Force Software OpenGL checkbox
+6. Click OK button to apply settings
+7. Verify confirmation dialog appears with message about settings being applied and restart requirement for Software OpenGL
+8. Re-open Advanced Settings dialog via Settings > Advanced
+9. Confirm all changes persisted (RAM: 95%, Precision: Single, Software OpenGL: On)
 
 EXPECTED RESULTS:
 
 - Advanced Settings dialog opens showing current settings label at top
 - RAM spinbox accepts values from 10 to 95
 - Solver Precision dropdown offers Single and Double options
+- Force Software OpenGL checkbox is present and toggles state
 - OK button closes dialog and displays confirmation message
+- Confirmation includes restart note when Software OpenGL state is changed
 - Settings persist across dialog re-opening
-- Console shows applied settings when next SOLVE is executed
+- Console shows applied settings when next SOLVE is executed (including Software OpenGL next-launch state)
 
 REQUIREMENT NO: N/A
 

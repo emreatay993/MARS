@@ -74,6 +74,9 @@
 ### Steady-State Stress
 - [ ] Check "Include Steady-State Stress Field"
 - [ ] Button and path field appear
+- [ ] Tooltip documents expected TXT header (`Node Number`, `SX/SY/SZ/SXY/SYZ/SXZ`)
+- [ ] Tooltip mentions ANSYS Vector Principal Stress export compatibility
+- [ ] Tooltip lists ANSYS export settings (Remove Duplicate Nodes/Include Node Numbers/Include Node Location/Show Tensor Components = Yes)
 - [ ] Click button, select .txt file
 - [ ] File loads successfully
 - [ ] Uncheck → controls hide
@@ -334,9 +337,13 @@
 - [ ] Dialog shows current settings
 - [ ] Adjust RAM allocation (e.g., 80%)
 - [ ] Change precision (Single ↔ Double)
+- [ ] Toggle "Force Software OpenGL (GPU compatibility mode)"
 - [ ] Click OK
 - [ ] Console confirms changes
 - [ ] Next solve uses new settings
+- [ ] Software OpenGL change shows restart note in confirmation message
+- [ ] Re-open dialog and verify RAM/precision/Software OpenGL persisted
+- [ ] Make a change and click Cancel; verify persisted values are unchanged
 
 ---
 

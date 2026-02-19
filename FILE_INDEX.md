@@ -5,21 +5,21 @@ All counts below were refreshed from the live tree.
 
 ## Snapshot (Current - v0.98)
 
-- 50 Python files under `src/` (excluding `__pycache__`)
-- 15,710 Python lines in `src/`
-- UI layer: 32 Python files and 10,083 lines
+- 51 Python files under `src/` (excluding `__pycache__`)
+- 15,903 Python lines in `src/`
+- UI layer: 32 Python files and 10,150 lines
 - Solver + core numerics: 8 Python files and 3,727 lines
 - File I/O layer: 4 Python files and 1,451 lines
-- Utility layer: 4 Python files and 388 lines
+- Utility layer: 5 Python files and 501 lines
 - Additional non-Python files in `src/`: 85 (spec/lint config, material CSV, and currently checked-in output artifacts)
 
 ---
 
-## Root Modules (2 files - 61 lines)
+## Root Modules (2 files - 74 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/main.py` | 54 | Application entry point (Qt setup, DPI settings, and launching `ApplicationController`) |
+| `src/main.py` | 67 | Application entry point (Qt setup, persisted settings bootstrap, and launching `ApplicationController`) |
 | `src/__init__.py` | 7 | Package marker |
 
 ---
@@ -57,14 +57,14 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Shell (5 files - 1,851 lines)
+## UI Shell (5 files - 1,880 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/application_controller.py` | 250 | Main window controller: menu/navigation setup, tab wiring, and cross-tab signal routing |
+| `src/ui/application_controller.py` | 259 | Main window controller: menu/navigation setup, tab wiring, advanced settings dialog flow, and cross-tab signal routing |
 | `src/ui/display_tab.py` | 756 | Display tab widget delegating rendering, interaction, animation, export, and result selection (including mode-skip passthrough) to handler classes |
 | `src/ui/solver_tab.py` | 634 | Solver tab widget delegating loading, validation, solving, UI-state logic, and logging, including skip-first/skip-last mode controls |
-| `src/ui/tooltips.py` | 209 | Centralized HTML tooltip text for solver controls, including skip-first/skip-last mode guidance |
+| `src/ui/tooltips.py` | 229 | Centralized HTML tooltip text for solver controls, including skip-first/skip-last guidance and detailed steady-state format/ANSYS export notes |
 | `src/ui/__init__.py` | 2 | Package marker |
 
 ---
@@ -88,7 +88,7 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Handlers (15 files - 5,134 lines)
+## UI Handlers (15 files - 5,143 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
@@ -105,7 +105,7 @@ All counts below were refreshed from the live tree.
 | `src/ui/handlers/log_handler.py` | 131 | Structured console logging for file loads and material/temperature updates |
 | `src/ui/handlers/navigator_handler.py` | 54 | Project directory navigation and opening selected files |
 | `src/ui/handlers/plotting_handler.py` | 63 | Plotly WebView rendering and temp-file cleanup |
-| `src/ui/handlers/settings_handler.py` | 34 | Runtime application of advanced settings (RAM %, precision, dtype updates) |
+| `src/ui/handlers/settings_handler.py` | 43 | Runtime application/persistence of advanced settings (RAM %, precision, dtype updates, Software OpenGL preference) |
 | `src/ui/handlers/ui_state_handler.py` | 550 | Solver-tab checkbox/state coordination, skip-first/skip-last UI state handling, mutual exclusions, and plot update triggers |
 
 ---
@@ -119,22 +119,23 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Widgets (5 files - 1,275 lines)
+## UI Widgets (5 files - 1,304 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
 | `src/ui/widgets/console.py` | 67 | Buffered stdout-to-`QTextEdit` logger |
-| `src/ui/widgets/dialogs.py` | 202 | Advanced settings and hotspot result dialogs |
+| `src/ui/widgets/dialogs.py` | 231 | Advanced settings dialog (RAM/precision/Software OpenGL) and hotspot result dialog |
 | `src/ui/widgets/editable_table.py` | 269 | Spreadsheet-style editable table with copy/paste and blank-row behavior |
 | `src/ui/widgets/plotting.py` | 732 | Matplotlib and Plotly plotting widgets for time-history and max/min-over-time results |
 | `src/ui/widgets/__init__.py` | 5 | Package initializer |
 
 ---
 
-## Utils Package (4 files - 388 lines)
+## Utils Package (5 files - 501 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
+| `src/utils/app_settings.py` | 113 | Persistent app settings load/save helpers (`~/.mars_settings.json`) and environment override parsing for Software OpenGL |
 | `src/utils/constants.py` | 56 | Global solver/runtime defaults and display constants |
 | `src/utils/file_utils.py` | 235 | `.mcf` unwrapping and NASTRAN `.pch` modal-coordinate parsing |
 | `src/utils/node_utils.py` | 95 | Robust node-id normalization and index lookup across mixed input formats |
@@ -154,7 +155,7 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Test Code Snapshot (`tests/`)
 
-- 15 Python files, 1,560 lines total
+- 15 Python files, 1,563 lines total
 - Unit tests: `tests/test_data_models.py`, `tests/test_file_utils.py`, `tests/test_node_utils.py`, `tests/test_plasticity.py`, `tests/test_validators.py`
 - Display/solver regression tests: `tests/test_solver_single_node_time_axis.py`, `tests/test_display_handlers_regressions.py`
 - Performance/tooling scripts under `tests/performance/`
@@ -163,9 +164,9 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Totals
 
-- **`src/` Python total**: 50 files, 15,710 lines
-- **UI total**: 32 files, 10,083 lines
+- **`src/` Python total**: 51 files, 15,903 lines
+- **UI total**: 32 files, 10,150 lines
 - **Core + solver total**: 8 files, 3,727 lines
-- **I/O + utils total**: 8 files, 1,839 lines
+- **I/O + utils total**: 9 files, 1,952 lines
 
 Update this file whenever modules are added/removed so architectural docs stay trustworthy.

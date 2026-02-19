@@ -20,7 +20,8 @@ TEST ADIMLARI:
 6. Artık görünür olan düğmeyi kullanarak deformations .csv dosyasını yükleyin
 7. Include Steady-State Stress Field checkbox'ını etkinleştirin ve steady-state dosya kontrollerinin göründüğünü doğrulayın
 8. Artık görünür olan düğmeyi kullanarak steady-state .txt dosyasını yükleyin
-9. Tüm dosya yollarının salt okunur metin alanlarında doğru şekilde görüntülendiğini doğrulayın
+9. Include Steady-State Stress Field checkbox'ı üzerinde bekleyin ve tooltip'in beklenen TXT başlığını ve ANSYS export gereksinimlerini listelediğini doğrulayın
+10. Tüm dosya yollarının salt okunur metin alanlarında doğru şekilde görüntülendiğini doğrulayın
 
 BEKLENEN SONUÇLAR:
 
@@ -30,6 +31,7 @@ BEKLENEN SONUÇLAR:
 - Read Modal Coordinate File, .mcf ve .pch dosyalarını kabul eder
 - Stress çıktı checkbox'ları (Von-Mises, Max Principal, Min Principal), stress dosyası yüklendikten sonra etkinleşir
 - Deformation çıktı checkbox'ları (Deformation, Velocity, Acceleration), deformations dosyası yüklendikten sonra etkinleşir
+- Steady-state tooltip'i gerekli tab-delimited başlığı ve ANSYS export ayarlarını belirtir (Remove Duplicate Nodes, Include Node Numbers, Include Node Location, Show Tensor Components = Yes)
 - Opsiyonel dosya kontrolleri (steady-state, deformations), checkbox'lar etkinleştirilene kadar gizlidir
 
 GEREKSINIM NO: N/A
@@ -133,33 +135,37 @@ TEST NO: 4
 
 BAŞLIK: Gelişmiş Ayarlar ve Performans Ayarlaması
 
-AÇIKLAMA: RAM tahsisi ve solver hassasiyet seçimi dahil olmak üzere performans ayarlama kontrollerini doğrular
+AÇIKLAMA: RAM tahsisi, solver hassasiyet seçimi ve Software OpenGL uyumluluk modu dahil olmak üzere performans ayarlama kontrollerini doğrular
 
 GİRDİLER:
 
 - Varsayılan ayarlarla başlatılmış uygulama
 - Hedef RAM Allocation: %95 (varsayılan %90'dan artırılmıştır)
 - Hedef Solver Precision: Single (varsayılan Double'dan değiştirilmiştir)
+- Hedef Software OpenGL: On
 
 TEST ADIMLARI:
 
 1. Settings menüsüne gidin ve Advanced Settings diyaloğunu açmak için Advanced'e tıklayın
-2. Mevcut ayarlar görüntüsünün varsayılan değerleri gösterdiğini gözlemleyin (RAM: %90, Precision: Double)
+2. Mevcut ayarlar görüntüsünün varsayılan değerleri gösterdiğini gözlemleyin (RAM: %90, Precision: Double, Software OpenGL: Off)
 3. RAM Allocation spinbox'ını 90'dan 95'e değiştirin
 4. Solver Precision dropdown'unu açın ve mevcut seçeneklerden Single'ı seçin
-5. Ayarları uygulamak için OK düğmesine tıklayın
-6. Ayarların uygulandığına dair mesaj içeren onay diyalogunun göründüğünü doğrulayın
-7. Settings > Advanced üzerinden Advanced Settings diyalogunu yeniden açın
-8. Tüm değişikliklerin kalıcı olduğunu onaylayın (RAM: %95, Precision: Single)
+5. Force Software OpenGL checkbox'ını etkinleştirin
+6. Ayarları uygulamak için OK düğmesine tıklayın
+7. Ayarların uygulandığına ve Software OpenGL için yeniden başlatma gerektiğine dair onay diyalogunun göründüğünü doğrulayın
+8. Settings > Advanced üzerinden Advanced Settings diyalogunu yeniden açın
+9. Tüm değişikliklerin kalıcı olduğunu onaylayın (RAM: %95, Precision: Single, Software OpenGL: On)
 
 BEKLENEN SONUÇLAR:
 
 - Advanced Settings diyalogu en üstte mevcut ayarlar etiketini göstererek açılır
 - RAM spinbox'ı 10'dan 95'e kadar değerleri kabul eder
 - Solver Precision dropdown Single ve Double seçeneklerini sunar
+- Force Software OpenGL checkbox'ı görünür ve aç/kapa çalışır
 - OK düğmesi diyalogu kapatır ve onay mesajı görüntüler
+- Software OpenGL değiştirildiğinde onay mesajı yeniden başlatma notu içerir
 - Ayarlar, diyalog yeniden açıldığında kalıcıdır
-- Console, bir sonraki SOLVE çalıştırıldığında uygulanan ayarları gösterir
+- Console, bir sonraki SOLVE çalıştırıldığında uygulanan ayarları (Software OpenGL next-launch durumu dahil) gösterir
 
 GEREKSINIM NO: N/A
 

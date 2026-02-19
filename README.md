@@ -169,6 +169,7 @@ pytest tests/test_validators.py -v
 - Access via **Settings → Advanced** menu
 - **RAM Allocation**: Adjust percentage (10-95%) for large datasets
 - **Solver Precision**: Choose Single (faster) or Double (more accurate)
+- **Force Software OpenGL**: Enable GPU compatibility mode for problematic OpenGL drivers (saved in `~/.mars_settings.json`; restart required)
 
 #### Plasticity Correction
 - Apply Neuber or Glinka corrections to account for local yielding at notches
@@ -344,7 +345,7 @@ RAM_PERCENT = 0.9           # RAM allocation (90% of available)
 DEFAULT_PRECISION = 'Double'  # 'Single' or 'Double'
 ```
 
-Or use **Settings → Advanced** menu at runtime (persists to `~/.mars_settings.json`).
+Or use **Settings → Advanced** menu at runtime (persists to `~/.mars_settings.json`), including Software OpenGL compatibility mode.
 
 ### UI Customization
 
@@ -416,7 +417,8 @@ pip install -r requirements.txt
 If users can hover and read node values but cannot see node points, try:
 
 1. In **Display → Visualization Controls**, enable **Compatibility Rendering**.
-2. Restart MARS with software OpenGL enabled:
+2. Enable **Settings → Advanced → Force Software OpenGL** and restart MARS.
+3. Alternatively restart MARS with software OpenGL environment variable enabled:
 
 ```bash
 # Windows PowerShell

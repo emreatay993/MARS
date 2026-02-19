@@ -264,6 +264,12 @@ Node Number	SX (MPa)	SY (MPa)	SZ (MPa)	SXY (MPa)	SYZ (MPa)	SXZ (MPa)
 
 **Note**: `Node Number` must correspond to the same node set used in the modal stress file.
 
+Compatible with exported text files from **ANSYS Mechanical Vector Principal Stress** objects when these export options are set:
+- Remove Duplicate Nodes = Yes
+- Include Node Numbers = Yes
+- Include Node Location = Yes
+- Show Tensor Components = Yes
+
 ### Effect on Results
 
 - Steady-state stress is added to the reconstructed transient stress at each time step
@@ -583,7 +589,7 @@ Access advanced settings via **Settings → Advanced** in the menu bar.
 
 | Setting | Range | Recommendation |
 |---------|-------|----------------|
-| **RAM Allocation (%)** | 10% - 95% | Default: 70% |
+| **RAM Allocation (%)** | 10% - 95% | Default: 90% |
 
 - **Increase to 90%**: For very large models (>1M data points)
 - **Decrease to 50%**: When running other memory-intensive applications
@@ -600,14 +606,26 @@ Access advanced settings via **Settings → Advanced** in the menu bar.
 - Very sensitive stress gradients
 - Critical aerospace components
 
+### Software OpenGL (GPU Compatibility Mode)
+
+| Setting | Options | Recommendation |
+|---------|---------|----------------|
+| **Force Software OpenGL** | On / Off | Keep Off unless GPU/OpenGL rendering issues occur |
+
+- When enabled, MARS uses software OpenGL instead of the default GPU driver path
+- Useful when node cloud rendering fails while hover/tooltips still work
+- Stored in `~/.mars_settings.json` and restored on next launch
+- `MARS_SOFTWARE_OPENGL` environment variable can override per launch
+
 ### Applying Settings
 
 1. Modify desired parameters
 2. Click **OK**
 3. Settings apply to the next SOLVE operation
 4. Settings persist across sessions
+5. If Software OpenGL changed, restart MARS for full effect
 
-[**Image Placeholder**: Advanced Settings dialog showing RAM slider and precision controls]
+[**Image Placeholder**: Advanced Settings dialog showing RAM, precision, and Software OpenGL controls]
 
 ---
 
@@ -1378,6 +1396,7 @@ This chapter provides solutions to common issues encountered while using MARS.
 | No color on nodes | Missing scalar column | Ensure output was selected before solving |
 | Only "Selected Time" appears in result dropdowns after clicking Update | Older build replaced the result catalog | Use current build; Max/Min/Time-of entries are preserved |
 | Contour view appears perspective-distorted | Perspective camera projection | Use current build; orthographic projection is enabled by default |
+| Node values hover correctly but cloud is not visible | GPU/OpenGL driver compatibility issue | Enable Compatibility Rendering in Display tab; if needed enable Settings → Advanced → Force Software OpenGL and restart |
 | Animation setup error | Multiple outputs selected | Select **one** output type for animation |
 | Animation won't play | No deformations | Load deformation file and re-solve |
 | Animation very slow | Too many frames | Increase "Every nth" value |
@@ -1502,6 +1521,12 @@ Node Number	SX (MPa)	SY (MPa)	SZ (MPa)	SXY (MPa)	SYZ (MPa)	SXZ (MPa)
 1001	100.5	200.3	150.2	25.1	30.5	15.2
 ```
 
+**ANSYS compatibility note**: Exports from **ANSYS Mechanical Vector Principal Stress** objects are accepted when configured as:
+- Remove Duplicate Nodes = Yes
+- Include Node Numbers = Yes
+- Include Node Location = Yes
+- Show Tensor Components = Yes
+
 ---
 
 ### Temperature Field File (.txt)
@@ -1572,6 +1597,9 @@ A: Start with Neuber (faster). Use Glinka if you need more conservative energy-b
 
 **Q: How can I speed up large analyses?**  
 A: Go to Settings → Advanced. Increase RAM allocation, use Single precision, or reduce output scope.
+
+**Q: How do I handle GPU/OpenGL compatibility issues?**  
+A: Enable Compatibility Rendering in Display tab first. If needed, enable Settings → Advanced → Force Software OpenGL and restart MARS.
 
 **Q: What do "Skip first n modes" and "Skip last n modes" do?**  
 A: They exclude leading/trailing modal ranges from reconstruction. Use first-skip for rigid-body low modes and last-skip for high-frequency modes outside your target response band.

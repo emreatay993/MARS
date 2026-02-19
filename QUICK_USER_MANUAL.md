@@ -29,7 +29,7 @@ Confirm the main window shows **Main Window** and **Display** tabs, and the Navi
 1. **Set Project Directory**: `File → Select Project Directory` or use Navigator.
 2. **Load Modal Coordinates**: Solver tab → *Read Modal Coordinate File (.mcf)*.
 3. **Load Modal Stress**: Solver tab → *Read Modal Stress File (.csv)*.
-4. *(Optional)* **Load Steady-State**: Check *Include Steady-State* → pick `.txt`.
+4. *(Optional)* **Load Steady-State**: Check *Include Steady-State* → pick tab-delimited `.txt` with `Node Number` and `SX/SY/SZ/SXY/SYZ/SXZ` columns (also supports ANSYS Mechanical Vector Principal Stress text exports when exported with duplicate removal, node numbers/location, and tensor components enabled).
 5. *(Optional)* **Load Deformations**: Check *Include Deformations* → pick `.csv`.
 6. **Choose Outputs**: Select Von Mises / principal stress / deformation / velocity / acceleration / damage.
 7. *(Optional)* **Skip Modes**: Set *Skip first n modes* and/or *Skip last n modes* to exclude rigid-body, erroneous, or out-of-band high-frequency modes.
@@ -47,12 +47,16 @@ Confirm the main window shows **Main Window** and **Display** tabs, and the Navi
 
 Access via `Settings → Advanced`:
 
-- **RAM Allocation (%)**: 10-95%, default 70%. Increase for large datasets; decrease if multitasking.
+- **RAM Allocation (%)**: 10-95%, default 90%. Increase for large datasets; decrease if multitasking.
 - **Solver Precision**: 
   - *Single* = faster, less memory (~7 digits accuracy)
   - *Double* = slower, 2× memory (~15 digits accuracy)
+- **Force Software OpenGL (GPU compatibility mode)**:
+  - Uses software OpenGL on next launch for problematic driver/OpenGL paths
+  - Persists across sessions in `~/.mars_settings.json`
+  - Requires app restart to take full effect
 
-Changes apply on next SOLVE. Use defaults unless experiencing performance issues.
+RAM/precision changes apply on next SOLVE. Use defaults unless experiencing performance issues.
 
 ---
 
@@ -114,7 +118,7 @@ Outputs default to the solver's configured directory; update it before running i
 | Time history x-axis shows indices | Re-run with current build; axis now reads from modal coordinate seconds automatically. |
 | Result dropdown only shows selected component after `Update` | Use latest build; existing max/min/time-of modes should remain available alongside `Selected Time`. |
 | Contours look distorted with depth perspective | Use current build; display camera is now orthographic by default. |
-| Node cloud invisible but hover shows values | Enable **Compatibility Rendering** in Display tab. If needed, restart with `MARS_SOFTWARE_OPENGL=1`. |
+| Node cloud invisible but hover shows values | Enable **Compatibility Rendering** in Display tab. If needed, enable **Settings → Advanced → Force Software OpenGL** and restart. (`MARS_SOFTWARE_OPENGL=1` also works as a launch-time override.) |
 | Animation fails | Reduce frame count / adjust range; confirm deformation data exists. |
 | Solver too slow | Increase RAM allocation, switch to Single precision, or reduce output scope. |
 | Temperature file error | Use CSV format with `NodeID, Temperature` columns (not tab-delimited .txt). |

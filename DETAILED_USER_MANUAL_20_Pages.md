@@ -106,6 +106,17 @@ Tip: If your CSV also contains X,Y,Z, hover on the Display tab will show Node ID
 
 This adds static bias to the reconstructed stresses.
 
+Expected steady-state TXT format:
+```
+Node Number	SX (MPa)	SY (MPa)	SZ (MPa)	SXY (MPa)	SYZ (MPa)	SXZ (MPa)
+```
+
+Compatible with exported text files from **ANSYS Mechanical Vector Principal Stress** objects when these export options are enabled:
+- Remove Duplicate Nodes = Yes
+- Include Node Numbers = Yes
+- Include Node Location = Yes
+- Show Tensor Components = Yes
+
 [Image Placeholder: Steady-state toggle revealing file input]
 
 ---
@@ -267,7 +278,7 @@ Access via **Settings → Advanced** in the menu bar. This dialog controls globa
 
 ### RAM Allocation
 
-- **Set RAM Allocation (%)**: Control how much system memory MARS can use (default: 70%)
+- **Set RAM Allocation (%)**: Control how much system memory MARS can use (default: 90%)
 - Range: 10% to 95%
 - **When to adjust**:
   - Increase to 90% for large datasets (millions of data points)
@@ -280,12 +291,21 @@ Access via **Settings → Advanced** in the menu bar. This dialog controls globa
 - **Double Precision**: Slower, uses 2× memory, provides maximum accuracy (~15 significant digits)
 - **When to use Double**: Extremely sensitive stress gradients, fatigue life > 10⁶ cycles, or critical aerospace components
 
+### Software OpenGL (GPU Compatibility Mode)
+
+- **Force Software OpenGL**: Starts MARS with software OpenGL instead of the default GPU driver path
+- Use it when node cloud rendering fails or GPU/OpenGL drivers are unstable
+- Setting is saved in `~/.mars_settings.json`
+- Requires application restart to take full effect
+- `MARS_SOFTWARE_OPENGL=1` can still be used as a launch-time environment override
+
 ### Applying Changes
 
 1) Modify desired settings
 2) Click OK
 3) Settings take effect on the next SOLVE operation
 4) Current settings are saved and persist across sessions
+5) If Software OpenGL was changed, restart MARS
 
 **Tip**: Start with default settings. Only adjust if experiencing performance issues or running very large models.
 
@@ -510,6 +530,7 @@ Keep exports in project-specific folders for traceability.
 | Plasticity won't enable | Von Mises not selected or temp field missing | Select Von Mises output and load temperature file |
 | Corrected stress > elastic | Material data incorrect or solver didn't converge | Check material curves and increase max iterations |
 | Solver very slow | RAM allocation too low or precision too high | Go to Settings → Advanced; increase RAM % or switch to Single precision |
+| Node cloud invisible but hover works | GPU/OpenGL compatibility path issue | Enable Display tab Compatibility Rendering; if needed enable Settings → Advanced → Force Software OpenGL and restart |
 | Temperature file error | Wrong format or missing columns | Ensure CSV format with NodeID and Temperature columns (see Page 13) |
 
 [Image Placeholder: Troubleshooting grid]
@@ -588,6 +609,9 @@ A: Start with Neuber (faster); use Glinka if you need energy-based conservatism.
 
 Q: How do I speed up large analyses?
 A: Go to Settings → Advanced. Increase RAM allocation to 90%, switch to Single precision, or reduce output scope.
+
+Q: What should I do if Display rendering fails on my GPU?
+A: Enable Compatibility Rendering in Display tab first. If needed, enable Settings → Advanced → Force Software OpenGL and restart MARS.
 
 Q: What do "Skip first n modes" and "Skip last n modes" do?
 A: They exclude leading and trailing modal ranges from analysis. Use first-skip for rigid-body/invalid low modes and last-skip for high-frequency modes you intentionally want to ignore.
