@@ -2159,6 +2159,74 @@ def create_job_output_folder(base_output_dir, job_id):
         run_idx += 1
 
 
+def collect_job_container_folders(job_records):
+    folders = []
+    seen = {}
+    if job_records is None:
+        return folders
+
+    for job in job_records:
+        if job is None:
+            continue
+
+        output_dir = str(job.get("output_dir", "")).strip()
+        if output_dir == "":
+            continue
+
+        try:
+            folder = os.path.abspath(os.path.dirname(output_dir))
+        except Exception:
+            folder = os.path.dirname(output_dir)
+
+        if folder == "" or not os.path.isdir(folder):
+            continue
+
+        key = folder.lower()
+        if key in seen:
+            continue
+
+        seen[key] = True
+        folders.append(folder)
+
+    return folders
+
+
+def open_folder_in_explorer(folder_path, progress_dialog=None):
+    folder = str(folder_path).strip()
+    if folder == "":
+        return False
+    if not os.path.isdir(folder):
+        return False
+
+    try:
+        os.startfile(folder)
+        return True
+    except Exception:
+        pass
+
+    try:
+        clr.AddReference("System")
+        from System.Diagnostics import Process
+        Process.Start(folder)
+        return True
+    except Exception as ex:
+        log_message(
+            "Could not open folder in file explorer: {0}. Detail: {1}".format(folder, str(ex)),
+            progress_dialog,
+        )
+        return False
+
+
+def open_job_container_folders(job_records, progress_dialog=None):
+    folders = collect_job_container_folders(job_records)
+    opened_folders = []
+    for folder in folders:
+        if open_folder_in_explorer(folder, progress_dialog):
+            opened_folders.append(folder)
+            log_message("Opened job container folder: {0}".format(folder), progress_dialog)
+    return opened_folders
+
+
 def write_job_metadata_file(
     job_output_dir,
     job_record,
@@ -2913,6 +2981,7 @@ def main():
             MessageBoxButtons.OK,
             MessageBoxIcon.Information if (len(failed_jobs) == 0 and len(cancelled_jobs) == 0) else MessageBoxIcon.Warning,
         )
+        open_job_container_folders(pending_jobs, dialog)
 
     dlg = ExtractOptionsDialog(modal_analyses, nodal_named_selections, run_from_dialog)
     dlg.ShowDialog()
