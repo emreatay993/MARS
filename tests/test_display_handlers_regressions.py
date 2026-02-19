@@ -304,7 +304,7 @@ class FakeInteractionPlotter:
         self.render_calls += 1
 
 
-def test_go_to_node_keeps_camera_position_and_updates_focal_point(monkeypatch):
+def test_go_to_node_preserves_full_camera_tuple(monkeypatch):
     points = np.array([[0.0, 0.0, 0.0], [4.0, 5.0, 6.0]])
     node_ids = np.array([1001, 1002])
     mesh = FakeInteractionMesh(points=points, node_ids=node_ids)
@@ -339,9 +339,9 @@ def test_go_to_node_keeps_camera_position_and_updates_focal_point(monkeypatch):
 
     handler.go_to_node()
 
-    # Camera location remains unchanged, while focal point targets the node.
+    # Camera tuple is fully preserved.
     assert np.allclose(plotter.camera_position[0], initial_camera_position[0])
-    assert np.allclose(plotter.camera_position[1], points[1])
+    assert np.allclose(plotter.camera_position[1], initial_camera_position[1])
     assert np.allclose(plotter.camera_position[2], initial_camera_position[2])
     assert plotter.fly_to_calls == 0
     assert state.target_node_id == 1002

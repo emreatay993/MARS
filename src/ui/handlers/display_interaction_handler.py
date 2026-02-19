@@ -473,7 +473,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
     # Node navigation & tracking
     # ------------------------------------------------------------------
     def go_to_node(self, checked: bool = False) -> None:
-        """Prompt for a Node ID and move the camera to that node."""
+        """Prompt for a Node ID and mark/track that node without changing view."""
         if not self.tab.current_mesh or 'NodeID' not in self.tab.current_mesh.array_names:
             QMessageBox.warning(
                 self.tab, "Action Unavailable",
@@ -528,10 +528,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
             self.set_state_attr("target_node_id", int(node_id))
             self.set_state_attr("last_goto_node_id", int(node_id))
 
-            self._focus_camera_on_point_preserve_position(
-                point_coords,
-                camera_position=camera_before_focus,
-            )
+            self._restore_camera_position(camera_before_focus)
 
         except Exception as exc:
             QMessageBox.critical(self.tab, "Error", f"Could not go to node {node_id}: {exc}")
@@ -604,32 +601,12 @@ class DisplayInteractionHandler(DisplayBaseHandler):
             tuple(np.asarray(cam_view_up, dtype=float)),
         )
 
-    def _focus_camera_on_point_preserve_position(
-        self,
-        point_coords: np.ndarray,
-        camera_position: Optional[tuple] = None,
-    ) -> None:
-        """
-        Retarget camera focus to a node while keeping camera position.
-        """
-        if camera_position is None:
-            camera_position = self._capture_camera_position()
-
-        if isinstance(camera_position, (tuple, list)) and len(camera_position) == 3:
-            cam_pos, _cam_focal, cam_view_up = camera_position
-            self.tab.plotter.camera_position = (
-                tuple(np.asarray(cam_pos, dtype=float)),
-                tuple(np.asarray(point_coords, dtype=float)),
-                tuple(np.asarray(cam_view_up, dtype=float)),
-            )
-            self.tab.plotter.render()
+    def _restore_camera_position(self, camera_position: Optional[tuple]) -> None:
+        """Restore previously captured camera tuple when available."""
+        if not isinstance(camera_position, (tuple, list)) or len(camera_position) != 3:
             return
-
-        camera = getattr(self.tab.plotter, "camera", None)
-        if camera is not None and hasattr(camera, "SetFocalPoint"):
-            coords = np.asarray(point_coords, dtype=float)
-            camera.SetFocalPoint(float(coords[0]), float(coords[1]), float(coords[2]))
-            self.tab.plotter.render()
+        self.tab.plotter.camera_position = camera_position
+        self.tab.plotter.render()
 
     @staticmethod
     def _add_section_title(menu: QMenu, title: str) -> None:

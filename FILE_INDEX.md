@@ -6,8 +6,8 @@ All counts below were refreshed from the live tree.
 ## Snapshot (Current - v0.98)
 
 - 51 Python files under `src/` (excluding `__pycache__`)
-- 15,903 Python lines in `src/`
-- UI layer: 32 Python files and 10,150 lines
+- 15,927 Python lines in `src/`
+- UI layer: 32 Python files and 10,174 lines
 - Solver + core numerics: 8 Python files and 3,727 lines
 - File I/O layer: 4 Python files and 1,451 lines
 - Utility layer: 5 Python files and 501 lines
@@ -88,7 +88,7 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Handlers (15 files - 5,143 lines)
+## UI Handlers (15 files - 5,167 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
@@ -97,7 +97,7 @@ All counts below were refreshed from the live tree.
 | `src/ui/handlers/display_base_handler.py` | 26 | Base helper for syncing `DisplayTab` attributes with shared `DisplayState` |
 | `src/ui/handlers/display_export_handler.py` | 103 | Export current display results to CSV and APDL initial conditions |
 | `src/ui/handlers/display_file_handler.py` | 104 | Direct CSV visualization-file ingestion and scalar binding |
-| `src/ui/handlers/display_interaction_handler.py` | 594 | Context menu, box selection, hotspot analysis, point picking, and tracked-node workflows |
+| `src/ui/handlers/display_interaction_handler.py` | 618 | Context menu, box selection, hotspot analysis, point picking, and tracked-node workflows (including camera-stable Go To Node behavior) |
 | `src/ui/handlers/display_results_handler.py` | 574 | Result catalog normalization, selector combo management, and applying selected solver datasets to mesh/scalar bar |
 | `src/ui/handlers/display_state.py` | 54 | Shared display runtime dataclass for mesh, camera, animation, interaction, and selector state |
 | `src/ui/handlers/display_visualization_handler.py` | 397 | Render pipeline, camera-widget lifecycle, hover annotations, scalar range updates, and scalar-field application |
@@ -155,7 +155,7 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Test Code Snapshot (`tests/`)
 
-- 15 Python files, 1,563 lines total
+- 15 Python files, 1,651 lines total
 - Unit tests: `tests/test_data_models.py`, `tests/test_file_utils.py`, `tests/test_node_utils.py`, `tests/test_plasticity.py`, `tests/test_validators.py`
 - Display/solver regression tests: `tests/test_solver_single_node_time_axis.py`, `tests/test_display_handlers_regressions.py`
 - Performance/tooling scripts under `tests/performance/`
@@ -164,8 +164,8 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Totals
 
-- **`src/` Python total**: 51 files, 15,903 lines
-- **UI total**: 32 files, 10,150 lines
+- **`src/` Python total**: 51 files, 15,927 lines
+- **UI total**: 32 files, 10,174 lines
 - **Core + solver total**: 8 files, 3,727 lines
 - **I/O + utils total**: 9 files, 1,952 lines
 
