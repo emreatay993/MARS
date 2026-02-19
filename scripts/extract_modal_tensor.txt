@@ -1447,6 +1447,7 @@ class ExtractOptionsDialog(Form):
             self._show_warning("No pending jobs found. Use 'Submit Jobs' before running.", "No Pending Jobs")
             return
 
+        run_cancel_was_requested = False
         self.reset_cancel_request()
         self._is_running = True
         self._set_extract_controls_enabled(False)
@@ -1462,10 +1463,13 @@ class ExtractOptionsDialog(Form):
             self.update_progress(err)
             self._show_error(err, "Modal Extractor Error")
         finally:
+            run_cancel_was_requested = bool(self._cancel_requested)
             self._is_running = False
             self.TopMost = False
             self.reset_cancel_request()
             self._set_extract_controls_enabled(True)
+            if run_cancel_was_requested:
+                self.progress_bar.Value = 0
             Application.DoEvents()
 
     def _on_cancel_clicked(self, sender, args):
