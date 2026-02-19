@@ -489,6 +489,8 @@ class DisplayInteractionHandler(DisplayBaseHandler):
             return
 
         try:
+            # Capture camera before adding actors.
+            camera_before_focus = self._capture_camera_position()
             self.clear_goto_node_markers()
 
             node_indices = np.where(self.tab.current_mesh['NodeID'] == node_id)[0]
@@ -526,7 +528,10 @@ class DisplayInteractionHandler(DisplayBaseHandler):
             self.set_state_attr("target_node_id", int(node_id))
             self.set_state_attr("last_goto_node_id", int(node_id))
 
-            self._focus_camera_on_point_preserve_position(point_coords)
+            self._focus_camera_on_point_preserve_position(
+                point_coords,
+                camera_position=camera_before_focus,
+            )
 
         except Exception as exc:
             QMessageBox.critical(self.tab, "Error", f"Could not go to node {node_id}: {exc}")
@@ -586,14 +591,30 @@ class DisplayInteractionHandler(DisplayBaseHandler):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
-    def _focus_camera_on_point_preserve_position(self, point_coords: np.ndarray) -> None:
-        """
-        Re-target the camera to a node while preserving current camera position.
-
-        This prevents the abrupt view reset seen with `fly_to`, but still points
-        the active view direction toward the selected node.
-        """
+    def _capture_camera_position(self) -> Optional[tuple]:
+        """Return a detached camera-position tuple suitable for later restoration."""
         camera_position = getattr(self.tab.plotter, "camera_position", None)
+        if not isinstance(camera_position, (tuple, list)) or len(camera_position) != 3:
+            return None
+
+        cam_pos, cam_focal, cam_view_up = camera_position
+        return (
+            tuple(np.asarray(cam_pos, dtype=float)),
+            tuple(np.asarray(cam_focal, dtype=float)),
+            tuple(np.asarray(cam_view_up, dtype=float)),
+        )
+
+    def _focus_camera_on_point_preserve_position(
+        self,
+        point_coords: np.ndarray,
+        camera_position: Optional[tuple] = None,
+    ) -> None:
+        """
+        Retarget camera focus to a node while keeping camera position.
+        """
+        if camera_position is None:
+            camera_position = self._capture_camera_position()
+
         if isinstance(camera_position, (tuple, list)) and len(camera_position) == 3:
             cam_pos, _cam_focal, cam_view_up = camera_position
             self.tab.plotter.camera_position = (

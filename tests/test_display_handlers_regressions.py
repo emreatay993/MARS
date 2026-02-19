@@ -273,8 +273,10 @@ class FakeInteractionMesh:
 
 
 class FakeInteractionPlotter:
-    def __init__(self, camera_position):
+    def __init__(self, camera_position, reset_on_first_label=False):
         self.camera_position = camera_position
+        self._reset_on_first_label = reset_on_first_label
+        self._label_calls = 0
         self.render_calls = 0
         self.fly_to_calls = 0
 
@@ -282,6 +284,14 @@ class FakeInteractionPlotter:
         return object()
 
     def add_point_labels(self, *_args, **_kwargs):
+        self._label_calls += 1
+        if self._reset_on_first_label and self._label_calls == 1:
+            # Mimic a first-call camera change.
+            self.camera_position = (
+                (100.0, 100.0, 100.0),
+                (0.0, 0.0, 0.0),
+                (0.0, 1.0, 0.0),
+            )
         return object()
 
     def remove_actor(self, *_args, **_kwargs):
@@ -299,7 +309,10 @@ def test_go_to_node_keeps_camera_position_and_updates_focal_point(monkeypatch):
     node_ids = np.array([1001, 1002])
     mesh = FakeInteractionMesh(points=points, node_ids=node_ids)
     initial_camera_position = ((10.0, 20.0, 30.0), (1.0, 2.0, 3.0), (0.0, 0.0, 1.0))
-    plotter = FakeInteractionPlotter(camera_position=initial_camera_position)
+    plotter = FakeInteractionPlotter(
+        camera_position=initial_camera_position,
+        reset_on_first_label=True,
+    )
 
     tab = SimpleNamespace(
         current_mesh=mesh,
