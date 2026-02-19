@@ -132,16 +132,17 @@ Under Outputs:
 - Deformation / Velocity / Acceleration — require deformations loaded
 - Damage Index / Potential Damage — appears when Von-Mises is selected (if enabled)
 
-### Skip First n Modes
+### Skip First/Last n Modes
 
-Use **Skip first n modes** to exclude initial modes from the analysis. The dropdown appears after loading the modal coordinate file.
+Use **Skip first n modes** and **Skip last n modes** to exclude modal ranges from the analysis. These dropdowns appear after loading the modal coordinate file.
 
 **When to use:**
 - Skip **rigid-body modes** (modes with near-zero frequency that represent free translation/rotation)
 - Skip modes with erroneous data from FEA export
-- Typical values: 0 (include all), 6 (skip 6 rigid-body modes for free-free structures)
+- Skip trailing high-frequency modes that are outside your analysis band
+- Typical values: first=0 and last=0 (include all), or first=6 and last=0 for free-free structures
 
-**Warning**: Skipping modes that contribute to the response will reduce accuracy. Review modal participation factors from your FEA tool before deciding.
+**Warning**: Skipping modes that contribute to the response will reduce accuracy. Ensure `skip_first + skip_last < total_modes`, and review modal participation factors from your FEA tool before deciding.
 
 [Image Placeholder: Outputs group with checkboxes annotated]
 
@@ -464,7 +465,7 @@ Use box selection to focus on sub-assemblies.
 3) (Optional) Load steady-state .txt
 4) (Optional) Load deformations .csv
 5) Choose outputs
-6) (Optional) Set Skip first n modes
+6) (Optional) Set Skip first n modes and/or Skip last n modes
 7) SOLVE
 8) Display → adjust legend → hotspots → screenshots/exports
 
@@ -588,8 +589,8 @@ A: Start with Neuber (faster); use Glinka if you need energy-based conservatism.
 Q: How do I speed up large analyses?
 A: Go to Settings → Advanced. Increase RAM allocation to 90%, switch to Single precision, or reduce output scope.
 
-Q: What does "Skip first n modes" do?
-A: Excludes the first n modes from analysis. Use this to skip rigid-body modes (usually 6 for free-free structures) or modes with bad data.
+Q: What do "Skip first n modes" and "Skip last n modes" do?
+A: They exclude leading and trailing modal ranges from analysis. Use first-skip for rigid-body/invalid low modes and last-skip for high-frequency modes you intentionally want to ignore.
 
 Q: Why can't I see all files in the Navigator?
 A: Navigator automatically filters to show only .mcf, .csv, and .txt files relevant to MARS workflows.

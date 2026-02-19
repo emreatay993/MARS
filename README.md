@@ -144,7 +144,7 @@ pytest tests/test_validators.py -v
 3. **Configure Analysis**
    - Select outputs: Von Mises, Principal Stresses, Deformation, etc.
    - Optional: Enable Plasticity Correction (Neuber/Glinka methods) for notch stress reduction
-   - Optional: Adjust "Skip first n modes"
+   - Optional: Adjust "Skip first n modes" and/or "Skip last n modes"
    - Optional: For damage analysis, enter fatigue parameters
 
 4. **Run Analysis**
@@ -180,8 +180,9 @@ pytest tests/test_validators.py -v
 
 #### Mode Skipping
 - Exclude rigid body modes or low-frequency modes
-- Select "Skip first n modes" from dropdown
-- Modes are excluded from analysis
+- Use "Skip first n modes" to remove leading modes (e.g., rigid-body modes)
+- Use "Skip last n modes" to remove trailing high-frequency modes
+- Keep at least one mode: `skip_first + skip_last < total_modes`
 
 #### Time Point Analysis
 - Display results at a specific time instant

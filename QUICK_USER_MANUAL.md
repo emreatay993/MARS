@@ -32,7 +32,7 @@ Confirm the main window shows **Main Window** and **Display** tabs, and the Navi
 4. *(Optional)* **Load Steady-State**: Check *Include Steady-State* → pick `.txt`.
 5. *(Optional)* **Load Deformations**: Check *Include Deformations* → pick `.csv`.
 6. **Choose Outputs**: Select Von Mises / principal stress / deformation / velocity / acceleration / damage.
-7. *(Optional)* **Skip Modes**: Set *Skip first n modes* to exclude rigid-body or erroneous modes (typically 0 or 6).
+7. *(Optional)* **Skip Modes**: Set *Skip first n modes* and/or *Skip last n modes* to exclude rigid-body, erroneous, or out-of-band high-frequency modes.
 8. *(Optional)* **Enable Plasticity Correction**: Check box, select method (Neuber/Glinka), enter material profile and temperature field CSV.
 9. *(Optional)* **Time History Mode**: Check box, enter `NodeID`.
 10. *(Optional)* **Set Fatigue Parameters**: Provide `σ'f` and `b` when damage is enabled.

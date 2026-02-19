@@ -126,7 +126,7 @@ def test_complete_workflow():
   - [ ] Invalid file shows error message
   - [ ] Node IDs extracted correctly
   - [ ] Coordinates extracted if present
-  - [ ] Skip modes combo populated
+  - [ ] Skip first/last modes combos populated
 - [ ] Load deformations file (.csv) [Optional]
   - [ ] Checkbox enables/disables controls
   - [ ] Valid file loads successfully
@@ -139,10 +139,10 @@ def test_complete_workflow():
   - [ ] Data stored correctly
 
 ### Mode Skipping Tests
-- [ ] Skip modes combo appears after stress file load
-- [ ] Selecting different skip values shows console message
+- [ ] Skip first/last modes combos appear after stress file load
+- [ ] Selecting different skip values shows console message with first+last details
 - [ ] Skipping modes affects calculation correctly
-- [ ] Cannot skip more modes than available (shows error)
+- [ ] Cannot skip first+last modes greater than or equal to available modes (shows error)
 
 ### Time History Mode Tests
 - [ ] Checkbox toggles single node group visibility

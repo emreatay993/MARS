@@ -196,7 +196,7 @@ Time  Mode1     Mode2     Mode3
 
 ### What Happens After Loading
 
-- The **Skip first n modes** dropdown becomes available
+- The **Skip first n modes** and **Skip last n modes** dropdowns become available
 - Stress-related output checkboxes become enabled (if stress file is also loaded)
 - The number of modes and time steps is recorded
 - The **Plot (Modal Coordinates)** tab becomes available in the Main Window
@@ -388,32 +388,35 @@ For each selected output, MARS writes **max**, **min**, and **time-of-max/min** 
 
 ---
 
-## Chapter 11 – Skip First n Modes
+## Chapter 11 – Skip First/Last n Modes
 
-This feature allows you to exclude the first n modes from the analysis – useful for omitting rigid-body modes or modes with erroneous data.
+This feature allows you to exclude leading and/or trailing modal ranges from the analysis.
+Use leading skip for rigid-body or invalid low modes, and trailing skip for high-frequency modes you intentionally want to ignore.
 
 ### When to Use This Feature
 
 | Scenario | Recommended Setting |
 |----------|---------------------|
-| Fixed boundary model (no rigid-body motion) | 0 (include all modes) |
-| Free-free model (6 rigid-body modes) | 6 (skip rigid-body modes) |
-| First mode has corrupted data | 1 or more as needed |
+| Fixed boundary model (no rigid-body motion) | first=0, last=0 (include all modes) |
+| Free-free model (6 rigid-body modes) | first=6, last=0 |
+| First mode has corrupted data | first=1+, last=0 |
+| Ignore upper-band modal noise | first=0, last=1+ |
 
 ### How to Use
 
 1. Load the modal coordinate file
-2. The **Skip first n modes** dropdown appears
-3. Select the number of modes to skip (0 to n)
+2. The **Skip first n modes** and **Skip last n modes** dropdowns appear
+3. Select how many leading and trailing modes to skip (0 to n)
 
 ### Important Notes
 
 - Skipped modes are completely excluded from stress/displacement reconstruction
 - Verify with your FEA tool which modes are rigid-body modes
 - Over-skipping will miss significant modal contributions
+- Keep at least one active mode: `skip_first + skip_last < total_modes`
 - Mode counts must align across the modal coordinate file and any stress/deformation/force-moment files
 
-[**Image Placeholder**: Skip first n modes dropdown showing options 0-6]
+[**Image Placeholder**: Skip first/last n modes dropdowns showing options]
 
 ---
 
@@ -1570,8 +1573,8 @@ A: Start with Neuber (faster). Use Glinka if you need more conservative energy-b
 **Q: How can I speed up large analyses?**  
 A: Go to Settings → Advanced. Increase RAM allocation, use Single precision, or reduce output scope.
 
-**Q: What does "Skip first n modes" do?**  
-A: It excludes the first n modes from reconstruction. Use this to skip rigid-body modes (typically 6 for free-free structures).
+**Q: What do "Skip first n modes" and "Skip last n modes" do?**  
+A: They exclude leading/trailing modal ranges from reconstruction. Use first-skip for rigid-body low modes and last-skip for high-frequency modes outside your target response band.
 
 **Q: Why can't I see all files in Navigator?**  
 A: Navigator automatically filters to show only .mcf, .csv, and .txt files relevant to MARS.

@@ -45,7 +45,7 @@ AÇIKLAMA: Çıktı seçimini, skip modes dahil solver konfigürasyon parametrel
 GİRDİLER:
 
 - Modal coordinate ve stress dosyaları başarıyla yüklenmiştir
-- Skip modes: 6 (6 rijit-cisim modu olan free-free yapı için)
+- Skip modes: first=6, last=0 (6 rijit-cisim modu olan free-free yapı için)
 - Time history için Node ID: 1001
 - Tam çıktı testi için deformations dosyası yüklenmiştir
 
@@ -53,7 +53,7 @@ TEST ADIMLARI:
 
 1. Birden fazla çıktı seçeneği seçin: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
 2. Damage Index / Potential Damage checkbox'ının gizli olduğunu ve fatigue alanlarının görünmediğini doğrulayın
-3. Skip first n modes dropdown'unu açın ve rijit-cisim modlarını hariç tutmak için 6'yı seçin
+3. Skip first n modes = 6 ve Skip last n modes = 0 ayarlarını yaparak yalnızca rijit-cisim modlarını hariç tutun
 4. Enable Time History Mode checkbox'ını etkinleştirin ve Node ID alanıyla Scoping bölümünün göründüğünü doğrulayın
 5. Scoping alanına Node ID 1001'i girin
 6. SOLVE düğmesinin etkin olduğunu doğrulayın (gerekli dosyalar ve en az bir çıktı seçildiğinde etkin olmalıdır)
@@ -66,7 +66,7 @@ BEKLENEN SONUÇLAR:
 
 - Seçilen tüm çıktı checkbox'ları işaretlidir ve etkin kalır
 - Damage Index / Potential Damage checkbox'ı gizli kalır (özellik benchmark sürecinde)
-- Skip modes dropdown, .mcf dosyasından gelen maksimum mod sayısına kadar 0'dan başlayan değerleri gösterir
+- Skip first/last modes dropdown'ları, .mcf dosyasından gelen maksimum mod sayısına kadar 0'dan başlayan değerleri gösterir
 - Time History Mode scoping kontrolleri, checkbox etkinleştirildiğinde görünür
 - Minimum gereksinimler karşılandığında SOLVE düğmesi etkinleşir
 - Progress bar, çalıştırma sırasında %0'dan %100'e düzgün bir şekilde ilerler

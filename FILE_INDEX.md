@@ -6,30 +6,30 @@ All counts below were refreshed from the live tree.
 ## Snapshot (Current - v0.98)
 
 - 50 Python files under `src/` (excluding `__pycache__`)
-- 15,356 Python lines in `src/`
-- UI layer: 32 Python files and 9,744 lines
-- Solver + core numerics: 8 Python files and 3,724 lines
+- 15,710 Python lines in `src/`
+- UI layer: 32 Python files and 10,083 lines
+- Solver + core numerics: 8 Python files and 3,727 lines
 - File I/O layer: 4 Python files and 1,451 lines
 - Utility layer: 4 Python files and 388 lines
 - Additional non-Python files in `src/`: 85 (spec/lint config, material CSV, and currently checked-in output artifacts)
 
 ---
 
-## Root Modules (2 files - 49 lines)
+## Root Modules (2 files - 61 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/main.py` | 42 | Application entry point (Qt setup, DPI settings, and launching `ApplicationController`) |
+| `src/main.py` | 54 | Application entry point (Qt setup, DPI settings, and launching `ApplicationController`) |
 | `src/__init__.py` | 7 | Package marker |
 
 ---
 
-## Core Package (5 files - 1,186 lines)
+## Core Package (5 files - 1,189 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/core/computation.py` | 332 | `AnalysisEngine` facade that configures `MSUPSmartSolverTransient`, handles mode filtering, and runs batch/time-history workflows |
-| `src/core/data_models.py` | 282 | Dataclasses for modal/stress/deformation/force-moment/steady-state data, material profile, temperature field, solver config, and analysis result |
+| `src/core/computation.py` | 333 | `AnalysisEngine` facade that configures `MSUPSmartSolverTransient`, handles mode filtering (skip first/last), and runs batch/time-history workflows |
+| `src/core/data_models.py` | 284 | Dataclasses for modal/stress/deformation/force-moment/steady-state data, material profile, temperature field, solver config, and analysis result |
 | `src/core/plasticity.py` | 238 | Converts material profile + temperature field inputs into runtime plasticity data (`MaterialDB`) |
 | `src/core/visualization.py` | 332 | `VisualizationManager`, `AnimationManager`, and `HotspotDetector` domain logic for display operations |
 | `src/core/__init__.py` | 2 | Package initializer |
@@ -57,24 +57,24 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Shell (5 files - 1,758 lines)
+## UI Shell (5 files - 1,851 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
 | `src/ui/application_controller.py` | 250 | Main window controller: menu/navigation setup, tab wiring, and cross-tab signal routing |
-| `src/ui/display_tab.py` | 682 | Display tab widget delegating rendering, interaction, animation, export, and result selection to handler classes |
-| `src/ui/solver_tab.py` | 630 | Solver tab widget delegating loading, validation, solving, UI-state logic, and logging |
-| `src/ui/tooltips.py` | 194 | Centralized HTML tooltip text for solver controls |
+| `src/ui/display_tab.py` | 756 | Display tab widget delegating rendering, interaction, animation, export, and result selection (including mode-skip passthrough) to handler classes |
+| `src/ui/solver_tab.py` | 634 | Solver tab widget delegating loading, validation, solving, UI-state logic, and logging, including skip-first/skip-last mode controls |
+| `src/ui/tooltips.py` | 209 | Centralized HTML tooltip text for solver controls, including skip-first/skip-last mode guidance |
 | `src/ui/__init__.py` | 2 | Package marker |
 
 ---
 
-## UI Builders (3 files - 889 lines)
+## UI Builders (3 files - 910 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/builders/display_ui.py` | 347 | Builder for display layouts (visualization controls, result selectors, time-point tools, animation controls) |
-| `src/ui/builders/solver_ui.py` | 540 | Builder for solver layouts (file inputs, outputs, fatigue/plasticity options, plots, console, progress controls) |
+| `src/ui/builders/display_ui.py` | 356 | Builder for display layouts (visualization controls, result selectors, time-point tools, animation controls) |
+| `src/ui/builders/solver_ui.py` | 552 | Builder for solver layouts (file inputs, outputs, skip-first/skip-last controls, fatigue/plasticity options, plots, console, progress controls) |
 | `src/ui/builders/__init__.py` | 2 | Package initializer |
 
 ---
@@ -88,25 +88,25 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Handlers (15 files - 4,912 lines)
+## UI Handlers (15 files - 5,134 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/handlers/analysis_handler.py` | 1521 | Main solve orchestration: config validation, threaded solve execution, batch/time-history handling, time-point calculation, animation precomputation, and display result-catalog building |
-| `src/ui/handlers/display_animation_handler.py` | 565 | Animation playback lifecycle, frame updates, save/export, and memory-estimation logic |
+| `src/ui/handlers/analysis_handler.py` | 1565 | Main solve orchestration: config validation (including skip-first/skip-last checks), threaded solve execution, batch/time-history handling, time-point calculation, animation precomputation, and display result-catalog building |
+| `src/ui/handlers/display_animation_handler.py` | 567 | Animation playback lifecycle, frame updates, save/export, memory-estimation logic, and animation requests with mode-skip parameters |
 | `src/ui/handlers/display_base_handler.py` | 26 | Base helper for syncing `DisplayTab` attributes with shared `DisplayState` |
 | `src/ui/handlers/display_export_handler.py` | 103 | Export current display results to CSV and APDL initial conditions |
 | `src/ui/handlers/display_file_handler.py` | 104 | Direct CSV visualization-file ingestion and scalar binding |
 | `src/ui/handlers/display_interaction_handler.py` | 594 | Context menu, box selection, hotspot analysis, point picking, and tracked-node workflows |
 | `src/ui/handlers/display_results_handler.py` | 574 | Result catalog normalization, selector combo management, and applying selected solver datasets to mesh/scalar bar |
-| `src/ui/handlers/display_state.py` | 53 | Shared display runtime dataclass for mesh, camera, animation, interaction, and selector state |
-| `src/ui/handlers/display_visualization_handler.py` | 270 | Render pipeline, camera-widget lifecycle, hover annotations, scalar range updates, and scalar-field application |
+| `src/ui/handlers/display_state.py` | 54 | Shared display runtime dataclass for mesh, camera, animation, interaction, and selector state |
+| `src/ui/handlers/display_visualization_handler.py` | 397 | Render pipeline, camera-widget lifecycle, hover annotations, scalar range updates, and scalar-field application |
 | `src/ui/handlers/file_handler.py` | 318 | Solver-tab file dialog and background loader orchestration (including `.mcf`/`.pch`) |
 | `src/ui/handlers/log_handler.py` | 131 | Structured console logging for file loads and material/temperature updates |
 | `src/ui/handlers/navigator_handler.py` | 54 | Project directory navigation and opening selected files |
 | `src/ui/handlers/plotting_handler.py` | 63 | Plotly WebView rendering and temp-file cleanup |
 | `src/ui/handlers/settings_handler.py` | 34 | Runtime application of advanced settings (RAM %, precision, dtype updates) |
-| `src/ui/handlers/ui_state_handler.py` | 502 | Solver-tab checkbox/state coordination, mutual exclusions, and plot update triggers |
+| `src/ui/handlers/ui_state_handler.py` | 550 | Solver-tab checkbox/state coordination, skip-first/skip-last UI state handling, mutual exclusions, and plot update triggers |
 
 ---
 
@@ -119,11 +119,11 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Widgets (5 files - 1,272 lines)
+## UI Widgets (5 files - 1,275 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/widgets/console.py` | 64 | Buffered stdout-to-`QTextEdit` logger |
+| `src/ui/widgets/console.py` | 67 | Buffered stdout-to-`QTextEdit` logger |
 | `src/ui/widgets/dialogs.py` | 202 | Advanced settings and hotspot result dialogs |
 | `src/ui/widgets/editable_table.py` | 269 | Spreadsheet-style editable table with copy/paste and blank-row behavior |
 | `src/ui/widgets/plotting.py` | 732 | Matplotlib and Plotly plotting widgets for time-history and max/min-over-time results |
@@ -163,9 +163,9 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Totals
 
-- **`src/` Python total**: 50 files, 15,356 lines
-- **UI total**: 32 files, 9,744 lines
-- **Core + solver total**: 8 files, 3,724 lines
+- **`src/` Python total**: 50 files, 15,710 lines
+- **UI total**: 32 files, 10,083 lines
+- **Core + solver total**: 8 files, 3,727 lines
 - **I/O + utils total**: 8 files, 1,839 lines
 
 Update this file whenever modules are added/removed so architectural docs stay trustworthy.

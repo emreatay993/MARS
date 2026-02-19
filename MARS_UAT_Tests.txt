@@ -47,7 +47,7 @@ DESCRIPTION: Validates output selection, solver configuration parameters includi
 INPUTS:
 
 - Modal coordinate and stress files loaded successfully
-- Skip modes: 6 (for free-free structure with 6 rigid-body modes)
+- Skip modes: first=6, last=0 (for free-free structure with 6 rigid-body modes)
 - Node ID for time history: 1001
 - Deformations file loaded for full output testing
 
@@ -55,7 +55,7 @@ TEST STEPS:
 
 1. Select multiple output options: Von-Mises Stress, Max Principal Stress, Min Principal Stress, Deformation
 2. Verify Damage Index / Potential Damage checkbox is hidden and fatigue parameter controls are not shown
-3. Open Skip first n modes dropdown and select 6 to exclude rigid-body modes
+3. Set Skip first n modes = 6 and Skip last n modes = 0 to exclude rigid-body modes only
 4. Enable Time History Mode checkbox and verify Scoping section appears with Node ID field
 5. Enter Node ID 1001 in Scoping field
 6. Verify SOLVE button is enabled (should be enabled when required files and at least one output selected)
@@ -68,7 +68,7 @@ EXPECTED RESULTS:
 
 - All selected output checkboxes are checked and remain enabled
 - Damage Index / Potential Damage checkbox remains hidden (workflow is benchmark-gated)
-- Skip modes dropdown shows values from 0 to maximum mode count from .mcf file
+- Skip first/last modes dropdowns show values from 0 to maximum mode count from .mcf file
 - Time History Mode scoping controls appear when checkbox enabled
 - SOLVE button becomes enabled when minimum requirements met (coordinate file, stress file, at least one output)
 - Progress bar advances smoothly from 0% to 100% during execution
@@ -562,7 +562,7 @@ TEST STEPS:
 2. Verify all output checkboxes are disabled and appear grayed out
 3. Verify Plasticity Correction Options group is not visible
 4. Load modal coordinate file only
-5. Verify Skip first n modes dropdown populates with values 0 through (number of modes)
+5. Verify Skip first n modes and Skip last n modes dropdowns populate with values 0 through (number of modes)
 6. Load modal stress file
 7. Verify stress-related output checkboxes become enabled (Von-Mises, Max Principal, Min Principal)
 8. Verify deformation-related checkboxes remain disabled
@@ -583,8 +583,8 @@ TEST STEPS:
 EXPECTED RESULTS:
 
 - All output checkboxes appear disabled (grayed) before files loaded
-- Skip first n modes dropdown is hidden until coordinate file loaded
-- After coordinate file load, skip modes dropdown appears with values 0 to N
+- Skip first/last n modes dropdowns are hidden until coordinate file loaded
+- After coordinate file load, skip modes dropdowns appear with values 0 to N
 - Stress output checkboxes enable only after stress file loaded
 - Deformation output checkboxes enable only after deformations file loaded
 - File path text fields are read-only and reject all keyboard input attempts

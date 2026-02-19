@@ -58,8 +58,8 @@
 - [ ] Console shows: "Successfully validated and loaded..."
 - [ ] Console shows: "Node IDs tensor shape"
 - [ ] Console shows: "Normal stress components extracted"
-- [ ] "Skip first n modes" combo appears
-- [ ] Combo populated with 0 to N_modes
+- [ ] "Skip first n modes" and "Skip last n modes" combos appear
+- [ ] Both combos populated with 0 to N_modes
 - [ ] Output checkboxes become enabled
 
 ### Invalid File
@@ -92,12 +92,11 @@
 
 ## 5. Mode Skipping
 
-- [ ] Combo shows "0" to "N" (N = number of modes)
+- [ ] Both combos show "0" to "N" (N = number of modes)
 - [ ] Select different values
-- [ ] Console shows: "[INFO] Skip Modes option is set to X"
-- [ ] Console shows: "Modes to be used: Y (from mode X+1 to N)"
-- [ ] Selecting "0" → all modes used
-- [ ] Selecting "N" → error when solving
+- [ ] Console shows first/last skip values and active mode range
+- [ ] Selecting first=0 and last=0 → all modes used
+- [ ] Selecting first+last >= N → error when solving
 
 ---
 
