@@ -506,6 +506,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
                 point_size=self.tab.point_size.value() * 2,
                 render_points_as_spheres=True,
                 opacity=0.3,
+                reset_camera=False,
             )
 
             label_point_data = pv.PolyData([point_coords])
@@ -513,7 +514,8 @@ class DisplayInteractionHandler(DisplayBaseHandler):
                 label_point_data, [f"Node {node_id}"],
                 name="target_node_label",
                 font_size=16, text_color='red',
-                always_visible=True, show_points=False
+                always_visible=True, show_points=False,
+                reset_camera=False,
             )
 
             self.set_state_attr("marker_poly", marker_poly)
@@ -524,7 +526,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
             self.set_state_attr("target_node_id", int(node_id))
             self.set_state_attr("last_goto_node_id", int(node_id))
 
-            self.tab.plotter.fly_to(point_coords)
+            self._focus_camera_on_point_preserve_position(point_coords)
 
         except Exception as exc:
             QMessageBox.critical(self.tab, "Error", f"Could not go to node {node_id}: {exc}")
@@ -584,6 +586,30 @@ class DisplayInteractionHandler(DisplayBaseHandler):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+    def _focus_camera_on_point_preserve_position(self, point_coords: np.ndarray) -> None:
+        """
+        Re-target the camera to a node while preserving current camera position.
+
+        This prevents the abrupt view reset seen with `fly_to`, but still points
+        the active view direction toward the selected node.
+        """
+        camera_position = getattr(self.tab.plotter, "camera_position", None)
+        if isinstance(camera_position, (tuple, list)) and len(camera_position) == 3:
+            cam_pos, _cam_focal, cam_view_up = camera_position
+            self.tab.plotter.camera_position = (
+                tuple(np.asarray(cam_pos, dtype=float)),
+                tuple(np.asarray(point_coords, dtype=float)),
+                tuple(np.asarray(cam_view_up, dtype=float)),
+            )
+            self.tab.plotter.render()
+            return
+
+        camera = getattr(self.tab.plotter, "camera", None)
+        if camera is not None and hasattr(camera, "SetFocalPoint"):
+            coords = np.asarray(point_coords, dtype=float)
+            camera.SetFocalPoint(float(coords[0]), float(coords[1]), float(coords[2]))
+            self.tab.plotter.render()
+
     @staticmethod
     def _add_section_title(menu: QMenu, title: str) -> None:
         """Insert a styled section title into the context menu."""

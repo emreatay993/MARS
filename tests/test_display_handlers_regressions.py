@@ -12,6 +12,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from ui.handlers.display_results_handler import DisplayResultsHandler
+from ui.handlers.display_interaction_handler import DisplayInteractionHandler
 from ui.handlers.display_visualization_handler import DisplayVisualizationHandler
 
 
@@ -257,3 +258,77 @@ def test_update_visualization_falls_back_to_camera_parallel_projection():
     assert plotter.enable_parallel_projection_calls == 1
     assert plotter.camera.parallel_projection is True
     assert plotter.camera.calls == 1
+
+
+class FakeInteractionMesh:
+    def __init__(self, points, node_ids):
+        self.points = np.asarray(points, dtype=float)
+        self._node_ids = np.asarray(node_ids, dtype=int)
+        self.array_names = ["NodeID"]
+
+    def __getitem__(self, key):
+        if key == "NodeID":
+            return self._node_ids
+        raise KeyError(key)
+
+
+class FakeInteractionPlotter:
+    def __init__(self, camera_position):
+        self.camera_position = camera_position
+        self.render_calls = 0
+        self.fly_to_calls = 0
+
+    def add_points(self, *_args, **_kwargs):
+        return object()
+
+    def add_point_labels(self, *_args, **_kwargs):
+        return object()
+
+    def remove_actor(self, *_args, **_kwargs):
+        return None
+
+    def fly_to(self, *_args, **_kwargs):
+        self.fly_to_calls += 1
+
+    def render(self):
+        self.render_calls += 1
+
+
+def test_go_to_node_keeps_camera_position_and_updates_focal_point(monkeypatch):
+    points = np.array([[0.0, 0.0, 0.0], [4.0, 5.0, 6.0]])
+    node_ids = np.array([1001, 1002])
+    mesh = FakeInteractionMesh(points=points, node_ids=node_ids)
+    initial_camera_position = ((10.0, 20.0, 30.0), (1.0, 2.0, 3.0), (0.0, 0.0, 1.0))
+    plotter = FakeInteractionPlotter(camera_position=initial_camera_position)
+
+    tab = SimpleNamespace(
+        current_mesh=mesh,
+        plotter=plotter,
+        point_size=FakeSpinBox(5.0),
+    )
+    state = SimpleNamespace(
+        target_node_marker_actor=None,
+        target_node_label_actor=None,
+        marker_poly=None,
+        label_point_data=None,
+        target_node_index=None,
+        target_node_id=None,
+        last_goto_node_id=None,
+        freeze_tracked_node=False,
+        freeze_baseline=None,
+    )
+    handler = DisplayInteractionHandler(tab=tab, state=state, hotspot_detector=None)
+
+    monkeypatch.setattr(
+        "ui.handlers.display_interaction_handler.QInputDialog.getInt",
+        lambda *_args, **_kwargs: (1002, True),
+    )
+
+    handler.go_to_node()
+
+    # Camera location remains unchanged, while focal point targets the node.
+    assert np.allclose(plotter.camera_position[0], initial_camera_position[0])
+    assert np.allclose(plotter.camera_position[1], points[1])
+    assert np.allclose(plotter.camera_position[2], initial_camera_position[2])
+    assert plotter.fly_to_calls == 0
+    assert state.target_node_id == 1002
