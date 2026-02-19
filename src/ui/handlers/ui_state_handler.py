@@ -415,35 +415,83 @@ class SolverUIHandler:
 
     def _update_skip_modes_combo(self, num_modes):
         """Update skip modes combo box."""
+        values = [str(i) for i in range(num_modes + 1)]
+
+        self.tab.skip_modes_combo.blockSignals(True)
         self.tab.skip_modes_combo.clear()
-        self.tab.skip_modes_combo.addItems([str(i) for i in range(num_modes + 1)])
+        self.tab.skip_modes_combo.addItems(values)
+        self.tab.skip_modes_combo.setCurrentIndex(0)
+        self.tab.skip_modes_combo.blockSignals(False)
+
+        self.tab.skip_last_modes_combo.blockSignals(True)
+        self.tab.skip_last_modes_combo.clear()
+        self.tab.skip_last_modes_combo.addItems(values)
+        self.tab.skip_last_modes_combo.setCurrentIndex(0)
+        self.tab.skip_last_modes_combo.blockSignals(False)
+
         self.tab.skip_modes_label.setVisible(True)
         self.tab.skip_modes_combo.setVisible(True)
+        self.tab.skip_last_modes_label.setVisible(True)
+        self.tab.skip_last_modes_combo.setVisible(True)
 
     def on_skip_modes_changed(self, text):
         """Handle skip modes selection change."""
         try:
-            if not text or not text.isdigit():
+            _ = text  # signal payload not used; both combos are read directly
+
+            first_text = self.tab.skip_modes_combo.currentText()
+            last_text = self.tab.skip_last_modes_combo.currentText()
+            if (first_text and not first_text.isdigit()) or (last_text and not last_text.isdigit()):
                 return
-            num_skipped = int(text)
+
+            num_skipped_first = int(first_text) if first_text else 0
+            num_skipped_last = int(last_text) if last_text else 0
+
             message = (
-                f"\n[INFO] Skip Modes option is set to {num_skipped}. "
-                f"The first {num_skipped} modes will be excluded from the next calculation.\n"
+                f"\n[INFO] Skip Modes options are set to first={num_skipped_first}, "
+                f"last={num_skipped_last}. "
+                f"These modes will be excluded from the next calculation.\n"
             )
-            if self.tab.stress_data and self.tab.stress_data.modal_sx is not None:
-                total_modes = self.tab.stress_data.num_modes
-                modes_used = total_modes - num_skipped
+
+            total_modes = None
+            for data_source in (
+                self.tab.stress_data,
+                self.tab.force_moment_data,
+                self.tab.deformation_data,
+                self.tab.modal_data,
+            ):
+                if data_source is not None:
+                    total_modes = data_source.num_modes
+                    break
+
+            if total_modes is not None:
+                modes_used = total_modes - num_skipped_first - num_skipped_last
                 message += (
                     f"       - Modes to be used: {modes_used} "
-                    f"(from mode {num_skipped + 1} to {total_modes})\n"
                 )
+                if modes_used > 0:
+                    first_mode = num_skipped_first + 1
+                    last_mode = total_modes - num_skipped_last
+                    message += (
+                        f"(from mode {first_mode} to {last_mode})\n"
+                    )
+                else:
+                    message += (
+                        "(none; adjust skip values)\n"
+                    )
+            else:
+                message += "\n"
+
+            if not hasattr(self.tab, 'console_textbox') or self.tab.console_textbox is None:
+                return
+
+            scroll_bar = self.tab.console_textbox.verticalScrollBar()
             self.tab.console_textbox.append(message)
-            self.tab.console_textbox.verticalScrollBar().setValue(
-                self.tab.console_textbox.verticalScrollBar().maximum()
-            )
+            if scroll_bar is not None:
+                scroll_bar.setValue(scroll_bar.maximum())
         except (ValueError, TypeError) as e:
             self.tab.console_textbox.append(
-                f"\n[DEBUG] Could not parse skip modes value: {text}. Error: {e}"
+                f"\n[DEBUG] Could not parse skip modes values. Error: {e}"
             )
 
     def _update_solve_button_state(self):

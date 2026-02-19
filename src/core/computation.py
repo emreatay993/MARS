@@ -73,8 +73,9 @@ class AnalysisEngine:
         Returns:
             MSUPSmartSolverTransient: Configured solver instance.
         """
-        # Apply mode skipping
-        mode_slice = slice(config.skip_n_modes, None)
+        # Apply mode skipping from both ends.
+        mode_stop = -config.skip_last_n_modes if config.skip_last_n_modes > 0 else None
+        mode_slice = slice(config.skip_n_modes, mode_stop)
         
         # Prepare modal coordinates
         modal_coord_filtered = self.modal_data.modal_coord[mode_slice, :]

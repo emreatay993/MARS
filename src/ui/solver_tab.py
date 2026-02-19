@@ -136,6 +136,8 @@ class SolverTab(QWidget):
         self.force_moment_file_path = self.components['force_moment_file_path']
         self.skip_modes_label = self.components['skip_modes_label']
         self.skip_modes_combo = self.components['skip_modes_combo']
+        self.skip_last_modes_label = self.components['skip_last_modes_label']
+        self.skip_last_modes_combo = self.components['skip_last_modes_combo']
         
         # Output checkboxes
         self.time_history_checkbox = self.components['time_history_checkbox']
@@ -266,6 +268,7 @@ class SolverTab(QWidget):
         
         # Skip modes
         self.skip_modes_combo.currentTextChanged.connect(self.ui_handler.on_skip_modes_changed)
+        self.skip_last_modes_combo.currentTextChanged.connect(self.ui_handler.on_skip_modes_changed)
         
         # Node entry
         self.node_line_edit.returnPressed.connect(self.on_node_entered)
@@ -345,6 +348,7 @@ class SolverTab(QWidget):
         """Handle all UI and state updates after a deformation file is loaded."""
         # 1. Clear/Update UI
         self.skip_modes_combo.clear()
+        self.skip_last_modes_combo.clear()
         self.ui_handler._update_skip_modes_combo(deform_data.num_modes)
         # Note: toggle_deformations_inputs() is already connected to the checkbox
         # which is checked, so the UI is already correct. We just update state.

@@ -133,6 +133,7 @@ class TestSolverConfig:
         assert config.calculate_max_principal_stress is False
         assert config.calculate_damage is False
         assert config.skip_n_modes == 0
+        assert config.skip_last_n_modes == 0
         assert config.time_history_mode is False
         assert config.include_steady_state is False
     
@@ -141,12 +142,14 @@ class TestSolverConfig:
         config = SolverConfig(
             calculate_von_mises=True,
             skip_n_modes=2,
+            skip_last_n_modes=1,
             fatigue_A=1000.0,
             fatigue_m=-3.0
         )
-        
+
         assert config.calculate_von_mises is True
         assert config.skip_n_modes == 2
+        assert config.skip_last_n_modes == 1
         assert config.fatigue_A == 1000.0
         assert config.fatigue_m == -3.0
 

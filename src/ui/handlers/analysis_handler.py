@@ -191,6 +191,7 @@ class SolverAnalysisHandler:
 
         # Get skip modes
         config.skip_n_modes = self._get_skip_n_modes()
+        config.skip_last_n_modes = self._get_skip_last_n_modes()
 
         # Force/moment output must remain exclusive to avoid mixed-result visualization.
         if config.calculate_force_moment and any([
@@ -226,15 +227,16 @@ class SolverAnalysisHandler:
             return None
 
         # Validate skip modes against all loaded datasets
+        total_skipped = config.skip_n_modes + config.skip_last_n_modes
         for data_source, label in [
             (self.tab.stress_data, "stress"),
             (self.tab.force_moment_data, "force/moment"),
         ]:
-            if data_source and config.skip_n_modes >= data_source.num_modes:
+            if data_source and total_skipped >= data_source.num_modes:
                 QMessageBox.critical(
                     self.tab, "Calculation Error",
-                    f"Cannot skip {config.skip_n_modes} modes as only "
-                    f"{data_source.num_modes} are available in {label} data."
+                    f"Cannot skip first={config.skip_n_modes} and last={config.skip_last_n_modes} "
+                    f"modes as only {data_source.num_modes} are available in {label} data."
                 )
                 self.tab.progress_bar.setVisible(False)
                 return None
@@ -414,6 +416,21 @@ class SolverAnalysisHandler:
             return int(self.tab.skip_modes_combo.currentText())
         except (ValueError, TypeError):
             return 0
+
+    def _get_skip_last_n_modes(self):
+        """Get number of trailing modes to skip from UI."""
+        if not self.tab.skip_last_modes_combo.isVisible():
+            return 0
+        try:
+            return int(self.tab.skip_last_modes_combo.currentText())
+        except (ValueError, TypeError):
+            return 0
+
+    @staticmethod
+    def _build_mode_slice(skip_first, skip_last):
+        """Build mode slice for skipping leading/trailing modes."""
+        mode_stop = -skip_last if skip_last > 0 else None
+        return slice(skip_first, mode_stop)
 
     def _get_output_directory(self):
         """Get output directory for results."""
@@ -949,7 +966,17 @@ class SolverAnalysisHandler:
 
             # Find nearest time index
             time_index = np.argmin(np.abs(self.tab.modal_data.time_values - selected_time))
-            mode_slice = slice(options.get('skip_n_modes', 0), None)
+            skip_first = int(options.get('skip_n_modes', 0) or 0)
+            skip_last = int(options.get('skip_last_n_modes', 0) or 0)
+            if skip_first + skip_last >= self.tab.modal_data.num_modes:
+                QMessageBox.warning(
+                    self.tab,
+                    "Invalid Skip Modes",
+                    "Skip first/last mode values exclude all available modes. "
+                    "Reduce one of the skip values and try again."
+                )
+                return
+            mode_slice = self._build_mode_slice(skip_first, skip_last)
 
             # Prepare modal deformations if needed
             modal_deformations_filtered = None
@@ -1270,6 +1297,21 @@ class SolverAnalysisHandler:
                 "• Or uncheck 'Include Steady-State Stress Field' in the solver tab"
             )
 
+        # Skip-mode validation
+        try:
+            skip_first = int(params.get('skip_n_modes', 0) or 0)
+            skip_last = int(params.get('skip_last_n_modes', 0) or 0)
+        except (TypeError, ValueError):
+            return False, "Skip mode values are invalid."
+
+        if skip_first < 0 or skip_last < 0:
+            return False, "Skip mode values cannot be negative."
+        if skip_first + skip_last >= self.tab.modal_data.num_modes:
+            return False, (
+                f"Invalid skip settings: first={skip_first}, last={skip_last}, "
+                f"available={self.tab.modal_data.num_modes}. Reduce skip values."
+            )
+
         return True, ""
 
     def perform_animation_precomputation(self, params):
@@ -1341,7 +1383,9 @@ class SolverAnalysisHandler:
                 return
 
             # Create temporary solver for animation
-            mode_slice = slice(params.get('skip_n_modes', 0), None)
+            skip_first = int(params.get('skip_n_modes', 0) or 0)
+            skip_last = int(params.get('skip_last_n_modes', 0) or 0)
+            mode_slice = self._build_mode_slice(skip_first, skip_last)
             selected_modal_coord = self.tab.modal_data.modal_coord[mode_slice, anim_indices]
 
             steady_kwargs = {}

@@ -122,6 +122,14 @@ class SolverTabUIBuilder:
         skip_modes_combo.setFixedWidth(80)
         skip_modes_combo.setVisible(False)
         skip_modes_combo.setToolTip(tooltips.SKIP_MODES_COMBO)
+
+        skip_last_modes_label = QLabel("Skip last n modes:")
+        skip_last_modes_label.setVisible(False)
+        skip_last_modes_label.setToolTip(tooltips.SKIP_LAST_MODES_LABEL)
+        skip_last_modes_combo = QComboBox()
+        skip_last_modes_combo.setFixedWidth(80)
+        skip_last_modes_combo.setVisible(False)
+        skip_last_modes_combo.setToolTip(tooltips.SKIP_LAST_MODES_COMBO)
         
         # Layout
         file_layout = QGridLayout()
@@ -140,6 +148,8 @@ class SolverTabUIBuilder:
         file_layout.addWidget(force_moment_file_path, 7, 1)
         file_layout.addWidget(skip_modes_label, 1, 2)
         file_layout.addWidget(skip_modes_combo, 1, 3)
+        file_layout.addWidget(skip_last_modes_label, 1, 4)
+        file_layout.addWidget(skip_last_modes_combo, 1, 5)
         
         file_group = QGroupBox("Input Files")
         file_group.setStyleSheet(GROUP_BOX_STYLE)
@@ -161,6 +171,8 @@ class SolverTabUIBuilder:
         self.components['force_moment_file_path'] = force_moment_file_path
         self.components['skip_modes_label'] = skip_modes_label
         self.components['skip_modes_combo'] = skip_modes_combo
+        self.components['skip_last_modes_label'] = skip_last_modes_label
+        self.components['skip_last_modes_combo'] = skip_last_modes_combo
         
         return file_group
     

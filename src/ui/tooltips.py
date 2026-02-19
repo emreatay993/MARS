@@ -161,6 +161,21 @@ SKIP_MODES_COMBO = (
     "Range is populated from the loaded data file."
 )
 
+SKIP_LAST_MODES_LABEL = (
+    "<b>Skip Last N Modes</b><br>"
+    "<hr>"
+    "Excludes the final N modes from the transient superposition.<br><br>"
+    "<b>Typical use case:</b><br>"
+    "Ignoring highest-frequency modes that are outside the analysis band "
+    "or contain noisy content."
+)
+
+SKIP_LAST_MODES_COMBO = (
+    "Number of trailing modes to skip.<br><br>"
+    "Set to 0 to keep all trailing modes.<br>"
+    "Range is populated from the loaded data file."
+)
+
 # =============================================================================
 # Plasticity Options Section
 # =============================================================================

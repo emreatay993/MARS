@@ -240,6 +240,7 @@ class SolverConfig:
         fatigue_A: Fatigue strength coefficient (for damage calculation).
         fatigue_m: Fatigue strength exponent (for damage calculation).
         skip_n_modes: Number of modes to skip from the beginning.
+        skip_last_n_modes: Number of modes to skip from the end.
         time_history_mode: Whether in time history mode (single node).
         selected_node_id: Node ID for time history mode.
         include_steady_state: Whether to include steady-state stress.
@@ -256,6 +257,7 @@ class SolverConfig:
     fatigue_A: Optional[float] = None
     fatigue_m: Optional[float] = None
     skip_n_modes: int = 0
+    skip_last_n_modes: int = 0
     time_history_mode: bool = False
     selected_node_id: Optional[int] = None
     include_steady_state: bool = False

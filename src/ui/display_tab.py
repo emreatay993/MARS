@@ -467,6 +467,8 @@ class DisplayTab(QWidget):
             'display_deformed_shape': main_tab.deformations_checkbox.isChecked(),
             'include_steady': main_tab.steady_state_checkbox.isChecked(),
             'skip_n_modes': int(main_tab.skip_modes_combo.currentText()) if main_tab.skip_modes_combo.currentText() else 0,
+            'skip_last_n_modes': int(main_tab.skip_last_modes_combo.currentText())
+            if main_tab.skip_last_modes_combo.currentText() else 0,
             'scale_factor': float(self.deformation_scale_edit.text())
         }
         
