@@ -238,10 +238,19 @@ class ApplicationController(QMainWindow):
         if dialog.exec_() == QDialog.Accepted:
             settings = dialog.get_settings()
             self.settings_handler.apply_advanced_settings(settings)
+            software_gl_changed = (
+                settings.get("software_opengl") != dialog.initial_software_opengl
+            )
+            restart_note = (
+                "\n\nSoftware OpenGL changes require an application restart."
+                if software_gl_changed
+                else ""
+            )
             QMessageBox.information(
                 self, "Settings Applied",
                 "New advanced settings have been applied.\n"
-                "They will be used for the next solve operation."
+                "RAM/precision will be used for the next solve operation."
+                f"{restart_note}"
             )
     
     def closeEvent(self, event):

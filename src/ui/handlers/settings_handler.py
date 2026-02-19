@@ -2,9 +2,13 @@
 Handles the application and management of advanced settings.
 """
 
-import numpy as np
+import os
 
 import utils.constants as constants
+from utils.app_settings import (
+    apply_solver_runtime_settings,
+    save_app_settings,
+)
 
 
 class SettingsHandler:
@@ -16,19 +20,24 @@ class SettingsHandler:
 
     def apply_advanced_settings(self, settings):
         """Apply advanced settings to global constants."""
-        # Update global settings in constants module
-        constants.RAM_PERCENT = settings["ram_percent"]
-        constants.DEFAULT_PRECISION = settings["precision"]
+        apply_solver_runtime_settings(settings, constants)
 
-        # Update derived precision variables
-        if constants.DEFAULT_PRECISION == 'Single':
-            constants.NP_DTYPE = np.float32
-            constants.RESULT_DTYPE = 'float32'
-        elif constants.DEFAULT_PRECISION == 'Double':
-            constants.NP_DTYPE = np.float64
-            constants.RESULT_DTYPE = 'float64'
+        software_opengl_enabled = bool(settings.get("software_opengl", False))
+        os.environ["MARS_SOFTWARE_OPENGL"] = "1" if software_opengl_enabled else "0"
+
+        save_app_settings(
+            {
+                "ram_percent": constants.RAM_PERCENT,
+                "precision": constants.DEFAULT_PRECISION,
+                "software_opengl": software_opengl_enabled,
+            }
+        )
 
         print("\n--- Advanced settings updated ---")
         print(f"  RAM Allocation: {constants.RAM_PERCENT * 100:.0f}%")
         print(f"  Solver Precision: {constants.DEFAULT_PRECISION}")
+        print(
+            f"  Software OpenGL (next launch): "
+            f"{'On' if software_opengl_enabled else 'Off'}"
+        )
         print("---------------------------------")

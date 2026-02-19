@@ -193,7 +193,7 @@ class DisplayTab(QWidget):
             ("version", "opengl version"),
         )
         print(
-            "Display renderer info: "
+            "\nDisplay renderer info: "
             f"Vendor={vendor}; Renderer={renderer}; Version={version}"
         )
     

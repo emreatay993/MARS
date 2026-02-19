@@ -344,7 +344,7 @@ RAM_PERCENT = 0.9           # RAM allocation (90% of available)
 DEFAULT_PRECISION = 'Double'  # 'Single' or 'Double'
 ```
 
-Or use **Settings → Advanced** menu at runtime (doesn't persist).
+Or use **Settings → Advanced** menu at runtime (persists to `~/.mars_settings.json`).
 
 ### UI Customization
 

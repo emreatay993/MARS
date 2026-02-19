@@ -13,6 +13,7 @@ from PyQt5.QtWidgets import (
 
 # Import constants module for dynamic access to runtime values
 from utils import constants
+from utils.app_settings import load_app_settings, parse_software_opengl_env
 from ui.styles.style_constants import DIALOG_STYLE, DIALOG_GROUP_BOX_STYLE
 
 
@@ -28,6 +29,19 @@ class AdvancedSettingsDialog(QDialog):
         super().__init__(parent)
         self.setWindowTitle("Advanced Settings")
         self.setMinimumWidth(400)
+
+        persisted_settings = load_app_settings()
+        env_override = parse_software_opengl_env()
+        self.initial_software_opengl = (
+            env_override
+            if env_override is not None
+            else bool(persisted_settings.get("software_opengl", False))
+        )
+        self._software_opengl_source = (
+            "Environment variable (current session)"
+            if env_override is not None
+            else "Saved preference"
+        )
         
         # Define fonts for different elements
         main_font = QFont()
@@ -40,7 +54,9 @@ class AdvancedSettingsDialog(QDialog):
         global_settings_text = (
             f"Current settings:\n"
             f"- Precision: {constants.DEFAULT_PRECISION}\n"
-            f"- RAM Limit: {constants.RAM_PERCENT * 100:.0f}%"
+            f"- RAM Limit: {constants.RAM_PERCENT * 100:.0f}%\n"
+            f"- Software OpenGL: {'On' if self.initial_software_opengl else 'Off'} "
+            f"({self._software_opengl_source})"
         )
         self.current_settings_label = QLabel(global_settings_text)
         self.current_settings_label.setProperty("class", "currentSettingsLabel")
@@ -63,12 +79,23 @@ class AdvancedSettingsDialog(QDialog):
             "Single precision is faster and uses less memory.\n"
             "Double precision is more accurate but slower."
         )
+
+        self.software_gl_checkbox = QCheckBox(
+            "Force Software OpenGL (GPU compatibility mode)"
+        )
+        self.software_gl_checkbox.setChecked(self.initial_software_opengl)
+        self.software_gl_checkbox.setToolTip(
+            "When enabled, MARS starts with software OpenGL instead of the GPU driver path.\n"
+            "Useful for systems with rendering issues.\n"
+            "Requires application restart to take full effect."
+        )
         
         # Apply font to the widgets
         self.ram_label.setFont(main_font)
         self.ram_spinbox.setFont(main_font)
         self.precision_label.setFont(main_font)
         self.precision_combobox.setFont(main_font)
+        self.software_gl_checkbox.setFont(main_font)
         
         # Layout
         layout = QGridLayout()
@@ -77,6 +104,7 @@ class AdvancedSettingsDialog(QDialog):
         layout.addWidget(self.ram_spinbox, 0, 1)
         layout.addWidget(self.precision_label, 1, 0)
         layout.addWidget(self.precision_combobox, 1, 1)
+        layout.addWidget(self.software_gl_checkbox, 2, 0, 1, 2)
         
         # GroupBox to hold the settings
         settings_group = QGroupBox("Modify Global Parameters")
@@ -108,11 +136,12 @@ class AdvancedSettingsDialog(QDialog):
         Returns the selected settings from the dialog widgets.
         
         Returns:
-            dict: Dictionary containing 'ram_percent' and 'precision'.
+            dict: Dictionary containing 'ram_percent', 'precision', and 'software_opengl'.
         """
         return {
             "ram_percent": self.ram_spinbox.value() / 100.0,
             "precision": self.precision_combobox.currentText(),
+            "software_opengl": self.software_gl_checkbox.isChecked(),
         }
 
 
