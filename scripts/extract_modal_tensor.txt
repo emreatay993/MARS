@@ -27,6 +27,7 @@ from System.Windows.Forms import (
     Application,
     Form,
     FormBorderStyle,
+    AnchorStyles,
     FormWindowState,
     ToolTip,
     Label,
@@ -35,6 +36,7 @@ from System.Windows.Forms import (
     GroupBox,
     CheckBox,
     TextBox,
+    NumericUpDown,
     Button,
     DialogResult,
     FolderBrowserDialog,
@@ -77,12 +79,17 @@ JOB_STATUS_PENDING = "Pending"
 JOB_STATUS_RUNNING = "Running"
 JOB_STATUS_COMPLETED = "Completed"
 JOB_STATUS_FAILED = "Failed"
+JOB_STATUS_CANCELLED = "Cancelled"
 
 # RAM guardrails. Values are intentionally conservative to avoid host memory pressure.
 RAM_SAFETY_FRACTION = 0.04
 RAM_MIN_SAFE_BYTES = 128 * 1024 * 1024
 RAM_MAX_MODES_PER_BATCH = 6
+# Fallback absolute free-RAM threshold (used if total RAM cannot be queried).
 LOW_RAM_BACKPRESSURE_BYTES = 3 * 1024 ** 3
+LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT = 90.0
+LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN = 1.0
+LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX = 99.0
 LARGE_MODE_BYTES_THRESHOLD = int(0.75 * 1024 ** 3)
 VERY_LARGE_MODE_BYTES_THRESHOLD = int(1.5 * 1024 ** 3)
 MERGE_GROUP_LIMIT_MIN = 8
@@ -95,7 +102,15 @@ MERGE_GROUP_LIMIT_UNKNOWN_RAM = 24
 MERGE_GROUP_MID_RAM_THRESHOLD_BYTES = 6 * 1024 ** 3
 MERGE_GROUP_HIGH_RAM_THRESHOLD_BYTES = 12 * 1024 ** 3
 MERGE_GROUP_VERY_HIGH_RAM_THRESHOLD_BYTES = 24 * 1024 ** 3
+RAM_PROBE_PERF_COUNTER_REFRESH_SEC = 120
+TOTAL_RAM_CACHE_REFRESH_SEC = 120
+SOLUTION_CHILDREN_CLEAR_INTERVAL = 1
 NUMERIC_TOKEN_PATTERN = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][-+]?\d+)?")
+
+_AVAILABLE_MB_COUNTER = None
+_AVAILABLE_MB_COUNTER_LAST_INIT = 0.0
+_TOTAL_RAM_BYTES_CACHE = -1
+_TOTAL_RAM_BYTES_LAST_REFRESH = 0.0
 
 
 class _NoOpTransaction(object):
@@ -104,6 +119,10 @@ class _NoOpTransaction(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         return False
+
+
+class UserCancelledException(Exception):
+    pass
 
 
 def begin_transaction(suspend_clicks=True):
@@ -264,6 +283,35 @@ def format_yes_no(flag):
     return "No"
 
 
+def format_mode_limit_text(mode_limit):
+    try:
+        m = int(mode_limit)
+        if m <= 0:
+            return "All"
+        return "First {0}".format(m)
+    except Exception:
+        return "All"
+
+
+def format_mode_subset_with_available(mode_limit, available_mode_count):
+    try:
+        avail = int(available_mode_count)
+    except Exception:
+        avail = -1
+
+    try:
+        requested = int(mode_limit)
+    except Exception:
+        requested = -1
+
+    if avail <= 0:
+        return format_mode_limit_text(requested)
+
+    if requested <= 0 or requested >= avail:
+        return "First {0}".format(avail)
+    return "First {0}".format(requested)
+
+
 def get_result_kind_labels(result_kinds):
     labels = []
     for result_kind in result_kinds:
@@ -277,7 +325,19 @@ def format_available_ram_text(available_ram_bytes):
     return "unknown"
 
 
+def try_dispose_dotnet_object(obj):
+    if obj is None:
+        return
+    try:
+        obj.Dispose()
+    except Exception:
+        pass
+
+
 def get_available_ram_bytes():
+    global _AVAILABLE_MB_COUNTER
+    global _AVAILABLE_MB_COUNTER_LAST_INIT
+
     try:
         from Microsoft.VisualBasic.Devices import ComputerInfo
         return int(ComputerInfo().AvailablePhysicalMemory)
@@ -287,23 +347,136 @@ def get_available_ram_bytes():
     try:
         clr.AddReference("System")
         from System.Diagnostics import PerformanceCounter
-        pc = PerformanceCounter("Memory", "Available MBytes")
-        mb = float(pc.NextValue())
+        now = time.time()
+        should_recreate_counter = (
+            _AVAILABLE_MB_COUNTER is None
+            or (RAM_PROBE_PERF_COUNTER_REFRESH_SEC > 0 and (now - _AVAILABLE_MB_COUNTER_LAST_INIT) > RAM_PROBE_PERF_COUNTER_REFRESH_SEC)
+        )
+        if should_recreate_counter:
+            try_dispose_dotnet_object(_AVAILABLE_MB_COUNTER)
+            _AVAILABLE_MB_COUNTER = PerformanceCounter("Memory", "Available MBytes")
+            _AVAILABLE_MB_COUNTER_LAST_INIT = now
+            try:
+                # First read can be stale on some hosts; warm-up once.
+                _AVAILABLE_MB_COUNTER.NextValue()
+            except Exception:
+                pass
+
+        mb = float(_AVAILABLE_MB_COUNTER.NextValue())
         return int(mb * 1024 * 1024)
     except Exception:
-        pass
+        try_dispose_dotnet_object(_AVAILABLE_MB_COUNTER)
+        _AVAILABLE_MB_COUNTER = None
+        _AVAILABLE_MB_COUNTER_LAST_INIT = 0.0
 
+    searcher = None
+    wmi_rows = None
     try:
         clr.AddReference("System.Management")
         from System.Management import ManagementObjectSearcher
         searcher = ManagementObjectSearcher("SELECT FreePhysicalMemory FROM Win32_OperatingSystem")
-        for mo in searcher.Get():
+        wmi_rows = searcher.Get()
+        for mo in wmi_rows:
             free_kb = int(mo["FreePhysicalMemory"])
             return int(free_kb * 1024)
     except Exception:
         pass
+    finally:
+        try_dispose_dotnet_object(wmi_rows)
+        try_dispose_dotnet_object(searcher)
 
     return -1
+
+
+def get_total_ram_bytes():
+    global _TOTAL_RAM_BYTES_CACHE
+    global _TOTAL_RAM_BYTES_LAST_REFRESH
+
+    now = time.time()
+    if (
+        _TOTAL_RAM_BYTES_CACHE > 0
+        and TOTAL_RAM_CACHE_REFRESH_SEC > 0
+        and (now - _TOTAL_RAM_BYTES_LAST_REFRESH) <= TOTAL_RAM_CACHE_REFRESH_SEC
+    ):
+        return _TOTAL_RAM_BYTES_CACHE
+
+    total_bytes = -1
+    try:
+        from Microsoft.VisualBasic.Devices import ComputerInfo
+        total_bytes = int(ComputerInfo().TotalPhysicalMemory)
+    except Exception:
+        pass
+
+    if total_bytes <= 0:
+        searcher = None
+        wmi_rows = None
+        try:
+            clr.AddReference("System.Management")
+            from System.Management import ManagementObjectSearcher
+            searcher = ManagementObjectSearcher("SELECT TotalVisibleMemorySize FROM Win32_OperatingSystem")
+            wmi_rows = searcher.Get()
+            for mo in wmi_rows:
+                total_kb = int(mo["TotalVisibleMemorySize"])
+                total_bytes = int(total_kb * 1024)
+                break
+        except Exception:
+            pass
+        finally:
+            try_dispose_dotnet_object(wmi_rows)
+            try_dispose_dotnet_object(searcher)
+
+    if total_bytes > 0:
+        _TOTAL_RAM_BYTES_CACHE = total_bytes
+        _TOTAL_RAM_BYTES_LAST_REFRESH = now
+
+    return total_bytes
+
+
+def is_run_cancel_requested(progress_dialog=None):
+    if progress_dialog is None:
+        return False
+    checker = getattr(progress_dialog, "is_cancel_requested", None)
+    if checker is None:
+        return False
+    try:
+        return bool(checker())
+    except Exception:
+        return False
+
+
+def raise_if_run_cancel_requested(progress_dialog=None, context_text=""):
+    if not is_run_cancel_requested(progress_dialog):
+        return
+    msg = "Extraction was cancelled by user request."
+    if context_text is not None and str(context_text).strip() != "":
+        msg += " Context: {0}".format(str(context_text))
+    raise UserCancelledException(msg)
+
+
+def clamp_low_ram_used_percent(raw_value):
+    try:
+        pct = float(raw_value)
+    except Exception:
+        pct = LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT
+
+    if pct < LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN:
+        pct = LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN
+    if pct > LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX:
+        pct = LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX
+    return pct
+
+
+def resolve_low_ram_backpressure_bytes(low_ram_used_percent):
+    used_pct = clamp_low_ram_used_percent(low_ram_used_percent)
+    total_bytes = get_total_ram_bytes()
+
+    if total_bytes > 0:
+        free_fraction = max(0.0, 1.0 - (used_pct / 100.0))
+        threshold_bytes = int(total_bytes * free_fraction)
+        threshold_bytes = max(threshold_bytes, RAM_MIN_SAFE_BYTES)
+        return threshold_bytes, used_pct, total_bytes, True
+
+    return int(LOW_RAM_BACKPRESSURE_BYTES), used_pct, total_bytes, False
 
 
 def force_memory_cleanup(wait_for_finalizers=False):
@@ -316,6 +489,12 @@ def force_memory_cleanup(wait_for_finalizers=False):
     try:
         clr.AddReference("System")
         from System import GC as DotNetGC
+        if wait_for_finalizers:
+            try:
+                from System.Runtime import GCSettings, GCLargeObjectHeapCompactionMode
+                GCSettings.LargeObjectHeapCompactionMode = GCLargeObjectHeapCompactionMode.CompactOnce
+            except Exception:
+                pass
         DotNetGC.Collect()
         if wait_for_finalizers:
             DotNetGC.WaitForPendingFinalizers()
@@ -324,11 +503,17 @@ def force_memory_cleanup(wait_for_finalizers=False):
         pass
 
 
-def apply_low_ram_backpressure(progress_dialog=None, context_text=""):
+def apply_low_ram_backpressure(progress_dialog=None, context_text="", low_ram_backpressure_bytes=None):
+    threshold_bytes = int(
+        low_ram_backpressure_bytes
+        if low_ram_backpressure_bytes is not None and low_ram_backpressure_bytes > 0
+        else LOW_RAM_BACKPRESSURE_BYTES
+    )
     available_bytes = get_available_ram_bytes()
-    if available_bytes > 0 and available_bytes < LOW_RAM_BACKPRESSURE_BYTES:
-        msg = "Low available RAM detected ({0}). Running aggressive cleanup.".format(
-            format_available_ram_text(available_bytes)
+    if available_bytes > 0 and available_bytes < threshold_bytes:
+        msg = "Low available RAM detected ({0}; trigger: {1}). Running aggressive cleanup.".format(
+            format_available_ram_text(available_bytes),
+            format_available_ram_text(threshold_bytes),
         )
         if context_text is not None and str(context_text).strip() != "":
             msg += " Context: {0}".format(str(context_text))
@@ -338,10 +523,15 @@ def apply_low_ram_backpressure(progress_dialog=None, context_text=""):
     return available_bytes
 
 
-def estimate_mode_batch_size(node_count, component_count, remaining_modes):
+def estimate_mode_batch_size(node_count, component_count, remaining_modes, low_ram_backpressure_bytes=None):
     if remaining_modes <= 0:
         return 1, -1
 
+    threshold_bytes = int(
+        low_ram_backpressure_bytes
+        if low_ram_backpressure_bytes is not None and low_ram_backpressure_bytes > 0
+        else LOW_RAM_BACKPRESSURE_BYTES
+    )
     available_bytes = get_available_ram_bytes()
     if node_count <= 0 or component_count <= 0:
         return 1, available_bytes
@@ -365,7 +555,7 @@ def estimate_mode_batch_size(node_count, component_count, remaining_modes):
 
     if estimate < 1:
         estimate = 1
-    if available_bytes > 0 and available_bytes < LOW_RAM_BACKPRESSURE_BYTES:
+    if available_bytes > 0 and available_bytes < threshold_bytes:
         mode_size_cap = min(mode_size_cap, 1)
     if estimate > mode_size_cap:
         estimate = mode_size_cap
@@ -375,14 +565,19 @@ def estimate_mode_batch_size(node_count, component_count, remaining_modes):
     return estimate, available_bytes
 
 
-def estimate_merge_group_limit(pending_count):
+def estimate_merge_group_limit(pending_count, low_ram_backpressure_bytes=None):
     if pending_count <= 0:
         return 1, -1
 
+    threshold_bytes = int(
+        low_ram_backpressure_bytes
+        if low_ram_backpressure_bytes is not None and low_ram_backpressure_bytes > 0
+        else LOW_RAM_BACKPRESSURE_BYTES
+    )
     available_bytes = get_available_ram_bytes()
     if available_bytes <= 0:
         estimate = MERGE_GROUP_LIMIT_UNKNOWN_RAM
-    elif available_bytes < LOW_RAM_BACKPRESSURE_BYTES:
+    elif available_bytes < threshold_bytes:
         estimate = MERGE_GROUP_LIMIT_LOW_RAM
     elif available_bytes < MERGE_GROUP_MID_RAM_THRESHOLD_BYTES:
         estimate = MERGE_GROUP_LIMIT_MID_RAM
@@ -601,6 +796,7 @@ class ExtractOptionsDialog(Form):
         self._named_selection_objects = named_selection_objects
         self._run_callback = run_callback
         self._is_running = False
+        self._cancel_requested = False
         self._queued_jobs = []
         self._job_items_by_id = {}
         self._next_job_id = 1
@@ -608,9 +804,10 @@ class ExtractOptionsDialog(Form):
         self.Text = "Modal Tensor Extractor"
         self.StartPosition = FormStartPosition.CenterScreen
         self.Size = Size(920, 710)
-        self.FormBorderStyle = FormBorderStyle.FixedSingle
-        self.MaximizeBox = False
-        self.MinimizeBox = False
+        self.MinimumSize = Size(920, 710)
+        self.FormBorderStyle = FormBorderStyle.Sizable
+        self.MaximizeBox = True
+        self.MinimizeBox = True
         self.TopMost = False
         self.FormClosing += self._on_form_closing
 
@@ -624,6 +821,7 @@ class ExtractOptionsDialog(Form):
         title.Text = "Modal Tensor Extractor"
         title.Location = Point(20, 15)
         title.Size = Size(860, 24)
+        title.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         title.Font = Font(title.Font, FontStyle.Bold)
         self.Controls.Add(title)
         self.tooltips.SetToolTip(
@@ -640,12 +838,14 @@ class ExtractOptionsDialog(Form):
         self.analysis_combo = ComboBox()
         self.analysis_combo.Location = Point(20, 75)
         self.analysis_combo.Size = Size(860, 24)
+        self.analysis_combo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         self.analysis_combo.DropDownStyle = ComboBoxStyle.DropDownList
         for i in xrange(len(self._analysis_objects)):
             analysis = self._analysis_objects[i]
             self.analysis_combo.Items.Add("{0}. {1}".format(i + 1, str(analysis.Name)))
         if self.analysis_combo.Items.Count > 0:
             self.analysis_combo.SelectedIndex = 0
+        self.analysis_combo.SelectedIndexChanged += self._on_analysis_selection_changed
         self.analysis_combo.Enabled = (self.analysis_combo.Items.Count > 1)
         self.Controls.Add(self.analysis_combo)
         self.tooltips.SetToolTip(
@@ -663,6 +863,7 @@ class ExtractOptionsDialog(Form):
         self.ns_combo = ComboBox()
         self.ns_combo.Location = Point(20, 135)
         self.ns_combo.Size = Size(860, 24)
+        self.ns_combo.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         self.ns_combo.DropDownStyle = ComboBoxStyle.DropDownList
         for ns in self._named_selection_objects:
             self.ns_combo.Items.Add(str(ns.Name))
@@ -679,6 +880,7 @@ class ExtractOptionsDialog(Form):
         grp.Text = "Result Types (Select one or more)"
         grp.Location = Point(20, 172)
         grp.Size = Size(860, 108)
+        grp.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         self.Controls.Add(grp)
         self.tooltips.SetToolTip(
             grp,
@@ -690,6 +892,7 @@ class ExtractOptionsDialog(Form):
         self.cb_stress.Text = RESULT_KIND_OPTIONS[0][1]
         self.cb_stress.Location = Point(16, 24)
         self.cb_stress.Size = Size(820, 22)
+        self.cb_stress.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         self.cb_stress.Checked = True
         grp.Controls.Add(self.cb_stress)
         self.tooltips.SetToolTip(
@@ -702,6 +905,7 @@ class ExtractOptionsDialog(Form):
         self.cb_deformation.Text = RESULT_KIND_OPTIONS[1][1]
         self.cb_deformation.Location = Point(16, 48)
         self.cb_deformation.Size = Size(820, 22)
+        self.cb_deformation.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         grp.Controls.Add(self.cb_deformation)
         self.tooltips.SetToolTip(
             self.cb_deformation,
@@ -713,6 +917,7 @@ class ExtractOptionsDialog(Form):
         self.cb_forces.Text = RESULT_KIND_OPTIONS[2][1]
         self.cb_forces.Location = Point(16, 72)
         self.cb_forces.Size = Size(820, 22)
+        self.cb_forces.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         grp.Controls.Add(self.cb_forces)
         self.tooltips.SetToolTip(
             self.cb_forces,
@@ -725,6 +930,7 @@ class ExtractOptionsDialog(Form):
         self.cb_use_no_graphics.Text = "Temporarily set Graphics Level of Detail to 'No Graphics' during extraction (restore afterward)"
         self.cb_use_no_graphics.Location = Point(20, 288)
         self.cb_use_no_graphics.Size = Size(860, 24)
+        self.cb_use_no_graphics.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         self.cb_use_no_graphics.Checked = True
         self.Controls.Add(self.cb_use_no_graphics)
         self.tooltips.SetToolTip(
@@ -733,15 +939,60 @@ class ExtractOptionsDialog(Form):
             "Preference set/get uses direct API first, then PreferenceMgr fallback when needed.",
         )
 
+        self.low_ram_trigger_label = Label()
+        self.low_ram_trigger_label.Text = "Low-RAM Cleanup Trigger (% used):"
+        self.low_ram_trigger_label.Location = Point(430, 320)
+        self.low_ram_trigger_label.Size = Size(250, 22)
+        self.low_ram_trigger_label.Anchor = AnchorStyles.Top | AnchorStyles.Right
+        self.Controls.Add(self.low_ram_trigger_label)
+
+        self.low_ram_trigger_textbox = TextBox()
+        self.low_ram_trigger_textbox.Location = Point(690, 319)
+        self.low_ram_trigger_textbox.Size = Size(60, 24)
+        self.low_ram_trigger_textbox.Anchor = AnchorStyles.Top | AnchorStyles.Right
+        self.low_ram_trigger_textbox.Text = "{0:.1f}".format(LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
+        self.Controls.Add(self.low_ram_trigger_textbox)
+        self.tooltips.SetToolTip(
+            self.low_ram_trigger_textbox,
+            "Cleanup threshold in terms of total RAM used percent. "
+            "Example: 90 means trigger aggressive cleanup when available RAM is ~10% or less. "
+            "Allowed range: {0:.1f}..{1:.1f}.".format(
+                LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN,
+                LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX,
+            ),
+        )
+
+        self.mode_limit_label = Label()
+        self.mode_limit_label.Text = "Extract First N Modes:"
+        self.mode_limit_label.Location = Point(430, 350)
+        self.mode_limit_label.Size = Size(250, 22)
+        self.mode_limit_label.Anchor = AnchorStyles.Top | AnchorStyles.Right
+        self.Controls.Add(self.mode_limit_label)
+
+        self.mode_limit_spinner = NumericUpDown()
+        self.mode_limit_spinner.Location = Point(690, 349)
+        self.mode_limit_spinner.Size = Size(80, 24)
+        self.mode_limit_spinner.Anchor = AnchorStyles.Top | AnchorStyles.Right
+        self.mode_limit_spinner.Minimum = 1
+        self.mode_limit_spinner.Maximum = 1
+        self.mode_limit_spinner.Value = 1
+        self.Controls.Add(self.mode_limit_spinner)
+        self.tooltips.SetToolTip(
+            self.mode_limit_spinner,
+            "Number of lowest mode indices to extract (1..N). "
+            "Default value is set to the maximum available mode count.",
+        )
+
         output_dir_label = Label()
         output_dir_label.Text = "Job Output Base Folder (optional):"
-        output_dir_label.Location = Point(20, 320)
+        output_dir_label.Location = Point(20, 350)
         output_dir_label.Size = Size(360, 22)
         self.Controls.Add(output_dir_label)
 
         self.output_dir_textbox = TextBox()
-        self.output_dir_textbox.Location = Point(20, 345)
+        self.output_dir_textbox.Location = Point(20, 375)
         self.output_dir_textbox.Size = Size(730, 24)
+        self.output_dir_textbox.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right
         self.output_dir_textbox.Text = ""
         self.Controls.Add(self.output_dir_textbox)
         self.tooltips.SetToolTip(
@@ -752,8 +1003,9 @@ class ExtractOptionsDialog(Form):
 
         self.output_dir_browse_button = Button()
         self.output_dir_browse_button.Text = "Browse..."
-        self.output_dir_browse_button.Location = Point(760, 344)
+        self.output_dir_browse_button.Location = Point(760, 374)
         self.output_dir_browse_button.Size = Size(120, 26)
+        self.output_dir_browse_button.Anchor = AnchorStyles.Top | AnchorStyles.Right
         self.output_dir_browse_button.Click += self._on_browse_output_dir_clicked
         self.Controls.Add(self.output_dir_browse_button)
         self.tooltips.SetToolTip(
@@ -763,7 +1015,7 @@ class ExtractOptionsDialog(Form):
 
         self.jobs_label = Label()
         self.jobs_label.Text = "Submitted Jobs (Read-Only Queue):"
-        self.jobs_label.Location = Point(20, 378)
+        self.jobs_label.Location = Point(20, 405)
         self.jobs_label.Size = Size(340, 22)
         self.Controls.Add(self.jobs_label)
         self.tooltips.SetToolTip(
@@ -772,8 +1024,9 @@ class ExtractOptionsDialog(Form):
         )
 
         self.jobs_table = ListView()
-        self.jobs_table.Location = Point(20, 402)
-        self.jobs_table.Size = Size(860, 134)
+        self.jobs_table.Location = Point(20, 429)
+        self.jobs_table.Size = Size(860, 107)
+        self.jobs_table.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
         self.jobs_table.View = View.Details
         self.jobs_table.FullRowSelect = True
         self.jobs_table.GridLines = True
@@ -798,6 +1051,7 @@ class ExtractOptionsDialog(Form):
         self.status_label.Text = "Ready."
         self.status_label.Location = Point(20, 544)
         self.status_label.Size = Size(860, 32)
+        self.status_label.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
         self.Controls.Add(self.status_label)
         self.tooltips.SetToolTip(
             self.status_label,
@@ -807,6 +1061,7 @@ class ExtractOptionsDialog(Form):
         self.progress_bar = ProgressBar()
         self.progress_bar.Location = Point(20, 578)
         self.progress_bar.Size = Size(860, 24)
+        self.progress_bar.Anchor = AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom
         self.progress_bar.Minimum = 0
         self.progress_bar.Maximum = 1000
         self.progress_bar.Value = 0
@@ -819,8 +1074,9 @@ class ExtractOptionsDialog(Form):
 
         self.close_button = Button()
         self.close_button.Text = "Close"
-        self.close_button.Location = Point(490, 616)
+        self.close_button.Location = Point(400, 616)
         self.close_button.Size = Size(80, 32)
+        self.close_button.Anchor = AnchorStyles.Right | AnchorStyles.Bottom
         self.close_button.Click += self._on_close_clicked
         self.Controls.Add(self.close_button)
         self.tooltips.SetToolTip(
@@ -828,10 +1084,24 @@ class ExtractOptionsDialog(Form):
             "Close this dialog. Closing is blocked while extraction is running.",
         )
 
+        self.cancel_button = Button()
+        self.cancel_button.Text = "Cancel Run"
+        self.cancel_button.Location = Point(490, 616)
+        self.cancel_button.Size = Size(80, 32)
+        self.cancel_button.Anchor = AnchorStyles.Right | AnchorStyles.Bottom
+        self.cancel_button.Click += self._on_cancel_clicked
+        self.Controls.Add(self.cancel_button)
+        self.tooltips.SetToolTip(
+            self.cancel_button,
+            "Request cancellation of the currently running extraction. "
+            "Cancellation is cooperative and occurs at safe checkpoints.",
+        )
+
         self.submit_button = Button()
         self.submit_button.Text = "Submit Jobs"
         self.submit_button.Location = Point(580, 616)
         self.submit_button.Size = Size(150, 32)
+        self.submit_button.Anchor = AnchorStyles.Right | AnchorStyles.Bottom
         self.submit_button.Click += self._on_submit_job_clicked
         self.Controls.Add(self.submit_button)
         self.tooltips.SetToolTip(
@@ -843,6 +1113,7 @@ class ExtractOptionsDialog(Form):
         self.run_button.Text = "Run Extraction Jobs"
         self.run_button.Location = Point(740, 616)
         self.run_button.Size = Size(140, 32)
+        self.run_button.Anchor = AnchorStyles.Right | AnchorStyles.Bottom
         self.run_button.Click += self._on_run_jobs_clicked
         self.Controls.Add(self.run_button)
         self.tooltips.SetToolTip(
@@ -850,6 +1121,7 @@ class ExtractOptionsDialog(Form):
             "Run all pending jobs from the queue one by one. Completed/failed jobs are not re-run automatically.",
         )
 
+        self._refresh_mode_limit_control(True)
         self._refresh_action_buttons()
 
     def _show_warning(self, text, caption):
@@ -870,11 +1142,32 @@ class ExtractOptionsDialog(Form):
             self.submit_button.Enabled = False
             self.run_button.Enabled = False
             self.close_button.Enabled = False
+            self.cancel_button.Enabled = (not self._cancel_requested)
             return
 
         self.submit_button.Enabled = True
         self.run_button.Enabled = (self._pending_jobs_count() > 0)
         self.close_button.Enabled = True
+        self.cancel_button.Enabled = False
+
+    def reset_cancel_request(self):
+        self._cancel_requested = False
+        self._refresh_action_buttons()
+
+    def is_cancel_requested(self):
+        try:
+            Application.DoEvents()
+        except Exception:
+            pass
+        return bool(self._cancel_requested)
+
+    def raise_if_cancel_requested(self, context_text=""):
+        if not self.is_cancel_requested():
+            return
+        msg = "Extraction was cancelled by user request."
+        if context_text is not None and str(context_text).strip() != "":
+            msg += " Context: {0}".format(str(context_text))
+        raise UserCancelledException(msg)
 
     def _get_job_record(self, job_id):
         for job in self._queued_jobs:
@@ -882,11 +1175,71 @@ class ExtractOptionsDialog(Form):
                 return job
         return None
 
+    def _on_analysis_selection_changed(self, sender, args):
+        self._refresh_mode_limit_control(True)
+
+    def _refresh_mode_limit_control(self, force_to_max=False):
+        if not hasattr(self, "mode_limit_spinner"):
+            return
+
+        mode_count = 1
+        analysis_obj = self.selected_analysis()
+        if analysis_obj is not None:
+            try:
+                _, mode_ids = get_analysis_solution_and_modes(analysis_obj)
+                mode_count = len(mode_ids)
+            except Exception:
+                mode_count = 1
+        if mode_count < 1:
+            mode_count = 1
+
+        try:
+            current_value = int(self.mode_limit_spinner.Value)
+        except Exception:
+            current_value = mode_count
+
+        self.mode_limit_spinner.Minimum = 1
+        self.mode_limit_spinner.Maximum = mode_count
+        if force_to_max or current_value < 1 or current_value > mode_count:
+            current_value = mode_count
+        self.mode_limit_spinner.Value = current_value
+
     def selected_base_output_dir(self):
         path_text = str(self.output_dir_textbox.Text).strip()
         if path_text == "":
             return ""
         return os.path.abspath(path_text)
+
+    def selected_low_ram_used_percent(self):
+        raw_text = str(self.low_ram_trigger_textbox.Text).strip()
+        if raw_text == "":
+            return LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT
+        try:
+            pct = float(raw_text)
+        except Exception:
+            raise Exception(
+                "Low-RAM cleanup trigger must be a number between {0:.1f} and {1:.1f}.".format(
+                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN,
+                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX,
+                )
+            )
+        if pct < LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN or pct > LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX:
+            raise Exception(
+                "Low-RAM cleanup trigger must be between {0:.1f} and {1:.1f} (% used).".format(
+                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN,
+                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX,
+                )
+            )
+        return pct
+
+    def selected_mode_limit(self):
+        try:
+            n_modes = int(self.mode_limit_spinner.Value)
+        except Exception:
+            n_modes = 1
+        if n_modes <= 0:
+            n_modes = 1
+        return n_modes
 
     def _ensure_output_base_dir(self, path_text):
         path = str(path_text).strip()
@@ -902,6 +1255,8 @@ class ExtractOptionsDialog(Form):
         selected_ns = self.selected_named_selection()
         selected_kinds = self.selected_result_kinds()
         selected_base_output_dir = self.selected_base_output_dir()
+        selected_low_ram_used_percent = LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT
+        selected_mode_limit = None
 
         if selected_analysis is None:
             self._show_warning("Please select a modal analysis environment.", "Missing Analysis")
@@ -922,6 +1277,18 @@ class ExtractOptionsDialog(Form):
             )
             return None
 
+        try:
+            selected_low_ram_used_percent = self.selected_low_ram_used_percent()
+        except Exception as ram_ex:
+            self._show_warning(str(ram_ex), "Invalid RAM Trigger")
+            return None
+
+        try:
+            selected_mode_limit = self.selected_mode_limit()
+        except Exception as mode_ex:
+            self._show_warning(str(mode_ex), "Invalid Mode Limit")
+            return None
+
         submitted_epoch = time.time()
         record = {
             "job_id": int(self._next_job_id),
@@ -931,6 +1298,10 @@ class ExtractOptionsDialog(Form):
             "named_selection_name": str(selected_ns.Name),
             "result_kinds": list(selected_kinds),
             "use_no_graphics": self.use_no_graphics_enabled(),
+            "low_ram_used_percent": float(selected_low_ram_used_percent),
+            "mode_limit": selected_mode_limit,
+            "mode_limit_max": int(self.mode_limit_spinner.Maximum),
+            "available_mode_count": -1,
             "base_output_dir": selected_base_output_dir,
             "submitted_epoch": submitted_epoch,
             "status": JOB_STATUS_PENDING,
@@ -988,6 +1359,10 @@ class ExtractOptionsDialog(Form):
         self.cb_deformation.Enabled = enabled
         self.cb_forces.Enabled = enabled
         self.cb_use_no_graphics.Enabled = enabled
+        self.low_ram_trigger_label.Enabled = enabled
+        self.low_ram_trigger_textbox.Enabled = enabled
+        self.mode_limit_label.Enabled = enabled
+        self.mode_limit_spinner.Enabled = enabled
         self.output_dir_textbox.Enabled = enabled
         self.output_dir_browse_button.Enabled = enabled
         if enabled:
@@ -996,6 +1371,7 @@ class ExtractOptionsDialog(Form):
             self.submit_button.Enabled = False
             self.run_button.Enabled = False
             self.close_button.Enabled = False
+            self.cancel_button.Enabled = (not self._cancel_requested)
 
     def _ensure_visible_foreground(self):
         # During heavy Mechanical updates (notably UDR/ENFO-ENMO evaluation),
@@ -1043,13 +1419,22 @@ class ExtractOptionsDialog(Form):
         base_output_dir = str(new_job.get("base_output_dir", "")).strip()
         if base_output_dir == "":
             base_output_dir = "(analysis ResultFileDirectory)"
+        low_ram_used_percent = clamp_low_ram_used_percent(
+            new_job.get("low_ram_used_percent", LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
+        )
+        mode_limit_text = format_mode_subset_with_available(
+            new_job.get("mode_limit", None),
+            new_job.get("mode_limit_max", -1),
+        )
 
-        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4} | Save base: {5}".format(
+        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4} | Mode limit: {5} | Low-RAM trigger: {6:.1f}% used | Save base: {7}".format(
             new_job.get("job_id", ""),
             new_job.get("analysis_name", ""),
             new_job.get("named_selection_name", ""),
             "; ".join(result_labels),
             format_yes_no(new_job.get("use_no_graphics", False)),
+            mode_limit_text,
+            low_ram_used_percent,
             base_output_dir,
         )
         self.update_progress(queue_msg, 0, 1000)
@@ -1062,6 +1447,7 @@ class ExtractOptionsDialog(Form):
             self._show_warning("No pending jobs found. Use 'Submit Jobs' before running.", "No Pending Jobs")
             return
 
+        self.reset_cancel_request()
         self._is_running = True
         self._set_extract_controls_enabled(False)
         self.TopMost = True
@@ -1078,8 +1464,18 @@ class ExtractOptionsDialog(Form):
         finally:
             self._is_running = False
             self.TopMost = False
+            self.reset_cancel_request()
             self._set_extract_controls_enabled(True)
             Application.DoEvents()
+
+    def _on_cancel_clicked(self, sender, args):
+        if not self._is_running:
+            return
+        if self._cancel_requested:
+            return
+        self._cancel_requested = True
+        self._refresh_action_buttons()
+        self.update_progress("Cancellation requested... stopping at next safe checkpoint.")
 
     def _on_close_clicked(self, sender, args):
         if self._is_running:
@@ -1234,6 +1630,23 @@ def cleanup_component_objects(component_objects):
     force_memory_cleanup(True)
 
 
+def cleanup_solution_generated_data(solution):
+    if solution is None:
+        return
+    try:
+        children = as_list(solution.Children)
+    except Exception:
+        return
+
+    for obj in children:
+        try:
+            clear_fn = getattr(obj, "ClearGeneratedData", None)
+            if clear_fn is not None:
+                clear_fn()
+        except Exception:
+            pass
+
+
 def get_values_unit(result_object):
     try:
         return str(result_object.PlotData.Dependents["Values"].Unit)
@@ -1329,78 +1742,89 @@ def extract_aligned_values_from_text_export(
     scale_factor,
     export_path,
     component_name="",
+    progress_dialog=None,
 ):
     if base_node_ids is None or len(base_node_ids) == 0:
         raise Exception("Base node IDs are empty.")
 
     export_result_to_text_file(result_object, export_path)
 
-    base_node_id_set = set([int(nid) for nid in base_node_ids])
-    sum_map = {}
-    count_map = {}
+    try:
+        base_node_id_set = set([int(nid) for nid in base_node_ids])
+        sum_map = {}
+        count_map = {}
+        line_index = 0
 
-    with open(export_path, "rb") as f:
-        for raw_line in f:
-            try:
-                line_text = raw_line.decode("utf-8", "ignore")
-            except Exception:
-                line_text = str(raw_line)
-
-            tokens = NUMERIC_TOKEN_PATTERN.findall(line_text)
-            if len(tokens) < 2:
-                continue
-
-            try:
-                value = parse_float_token(tokens[-1])
-            except Exception:
-                continue
-
-            node_id = None
-            for i in xrange(len(tokens) - 1):
-                token = tokens[i]
+        with open(export_path, "rb") as f:
+            for raw_line in f:
+                line_index += 1
+                if line_index % 5000 == 0:
+                    raise_if_run_cancel_requested(
+                        progress_dialog,
+                        "while parsing text export for component '{0}'".format(component_name),
+                    )
                 try:
-                    node_float = parse_float_token(token)
+                    line_text = raw_line.decode("utf-8", "ignore")
+                except Exception:
+                    line_text = str(raw_line)
+
+                tokens = NUMERIC_TOKEN_PATTERN.findall(line_text)
+                if len(tokens) < 2:
+                    continue
+
+                try:
+                    value = parse_float_token(tokens[-1])
                 except Exception:
                     continue
 
-                node_int = int(node_float)
-                if abs(node_float - float(node_int)) > 1e-9:
+                node_id = None
+                for i in xrange(len(tokens) - 1):
+                    token = tokens[i]
+                    try:
+                        node_float = parse_float_token(token)
+                    except Exception:
+                        continue
+
+                    node_int = int(node_float)
+                    if abs(node_float - float(node_int)) > 1e-9:
+                        continue
+                    if node_int in base_node_id_set:
+                        node_id = node_int
+                        break
+
+                if node_id is None:
                     continue
-                if node_int in base_node_id_set:
-                    node_id = node_int
-                    break
 
-            if node_id is None:
-                continue
+                if node_id in sum_map:
+                    sum_map[node_id] += value
+                    count_map[node_id] += 1
+                else:
+                    sum_map[node_id] = value
+                    count_map[node_id] = 1
 
-            if node_id in sum_map:
-                sum_map[node_id] += value
-                count_map[node_id] += 1
+        if len(sum_map) == 0:
+            if component_name is None or str(component_name).strip() == "":
+                component_name = "(unknown)"
+            raise Exception(
+                "Text export parsing returned no usable node-value rows for component '{0}'.".format(component_name)
+            )
+
+        aligned = []
+        matched = 0
+        for nid in base_node_ids:
+            nid_int = int(nid)
+            if nid_int in sum_map:
+                matched += 1
+                aligned.append((sum_map[nid_int] / float(max(1, count_map[nid_int]))) * scale_factor)
             else:
-                sum_map[node_id] = value
-                count_map[node_id] = 1
+                aligned.append(0.0)
 
-    if len(sum_map) == 0:
-        if component_name is None or str(component_name).strip() == "":
-            component_name = "(unknown)"
-        raise Exception(
-            "Text export parsing returned no usable node-value rows for component '{0}'.".format(component_name)
-        )
+        if matched == 0:
+            raise Exception("Text export parsing found no rows matching the base node scope.")
 
-    aligned = []
-    matched = 0
-    for nid in base_node_ids:
-        nid_int = int(nid)
-        if nid_int in sum_map:
-            matched += 1
-            aligned.append((sum_map[nid_int] / float(max(1, count_map[nid_int]))) * scale_factor)
-        else:
-            aligned.append(0.0)
-
-    if matched == 0:
-        raise Exception("Text export parsing found no rows matching the base node scope.")
-
-    return aligned
+        return aligned
+    finally:
+        safe_delete_file(export_path)
 
 
 def extract_node_ids_from_result(result_object):
@@ -1422,7 +1846,9 @@ def extract_node_ids_from_result(result_object):
 
 def extract_scaled_values(result_object, scale_factor):
     values_raw = result_object.PlotData.Dependents["Values"]
-    return [float(v.Value if hasattr(v, "Value") else v) * scale_factor for v in values_raw]
+    scaled = [float(v.Value if hasattr(v, "Value") else v) * scale_factor for v in values_raw]
+    values_raw = None
+    return scaled
 
 
 def extract_aligned_values(result_object, base_node_ids, scale_factor, return_order_match=False):
@@ -1451,6 +1877,7 @@ def extract_aligned_values(result_object, base_node_ids, scale_factor, return_or
 
 
 def get_node_coordinates(node_ids, progress_dialog=None):
+    raise_if_run_cancel_requested(progress_dialog, "before coordinate extraction")
     mesh_data = get_mesh_data_global()
     coords = []
 
@@ -1462,6 +1889,8 @@ def get_node_coordinates(node_ids, progress_dialog=None):
 
     total = len(node_ids)
     for i in xrange(total):
+        if i > 0 and i % 2000 == 0:
+            raise_if_run_cancel_requested(progress_dialog, "during coordinate extraction")
         nid = int(node_ids[i])
         node = mesh_data.NodeById(nid)
         if node is None:
@@ -1565,7 +1994,13 @@ def merge_pass(base_csv_path, batch_csv_paths, output_csv_path, node_count, pass
         writer.writerow(merged_header)
 
         progress_interval = max(1, int(node_count / 20))
+        raise_if_run_cancel_requested(progress_dialog, "before merge pass {0}".format(pass_index))
         for i in xrange(node_count):
+            if i > 0 and i % progress_interval == 0:
+                raise_if_run_cancel_requested(
+                    progress_dialog,
+                    "during merge pass {0}".format(pass_index),
+                )
             base_row = base_reader.next()
             base_node = base_row[0] if len(base_row) > 0 else ""
             out_row = list(base_row)
@@ -1620,7 +2055,15 @@ def cleanup_temp_folder(temp_dir):
         pass
 
 
-def merge_batches_into_output(temp_dir, base_csv_path, batch_files, output_csv_path, node_count, progress_dialog=None):
+def merge_batches_into_output(
+    temp_dir,
+    base_csv_path,
+    batch_files,
+    output_csv_path,
+    node_count,
+    progress_dialog=None,
+    low_ram_backpressure_bytes=None,
+):
     if len(batch_files) == 0:
         if os.path.exists(output_csv_path):
             os.remove(output_csv_path)
@@ -1633,7 +2076,11 @@ def merge_batches_into_output(temp_dir, base_csv_path, batch_files, output_csv_p
     previous_group_limit = -1
 
     while len(pending) > 0:
-        group_limit, merge_available_ram = estimate_merge_group_limit(len(pending))
+        raise_if_run_cancel_requested(progress_dialog, "before merge pass scheduling")
+        group_limit, merge_available_ram = estimate_merge_group_limit(
+            len(pending),
+            low_ram_backpressure_bytes=low_ram_backpressure_bytes,
+        )
         if group_limit != previous_group_limit:
             log_message(
                 "Merge chunk size selected: {0} files/pass (available RAM: {1}).".format(
@@ -1647,6 +2094,7 @@ def merge_batches_into_output(temp_dir, base_csv_path, batch_files, output_csv_p
         apply_low_ram_backpressure(
             progress_dialog,
             "before merge pass {0}".format(pass_index + 1),
+            low_ram_backpressure_bytes=low_ram_backpressure_bytes,
         )
 
         pass_index += 1
@@ -1732,6 +2180,17 @@ def write_job_metadata_file(
         base_output_dir = "(analysis ResultFileDirectory)"
 
     result_labels = get_result_kind_labels(job_record.get("result_kinds", []))
+    low_ram_used_percent = clamp_low_ram_used_percent(
+        job_record.get("low_ram_used_percent", LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
+    )
+    try:
+        available_mode_count = int(job_record.get("available_mode_count", -1))
+    except Exception:
+        available_mode_count = -1
+    mode_limit_text = format_mode_subset_with_available(
+        job_record.get("mode_limit", None),
+        available_mode_count,
+    )
     lines = [
         "Job ID: {0}".format(job_record.get("job_id", "")),
         "Status: {0}".format(status_text),
@@ -1739,6 +2198,8 @@ def write_job_metadata_file(
         "Nodal Named Selection: {0}".format(job_record.get("named_selection_name", "")),
         "Requested Output Types: {0}".format("; ".join(result_labels)),
         "No Graphics Preference Enabled: {0}".format(format_yes_no(job_record.get("use_no_graphics", False))),
+        "Requested Mode Subset: {0}".format(mode_limit_text),
+        "Low-RAM Cleanup Trigger (% used): {0:.1f}".format(low_ram_used_percent),
         "Mode Count: {0}".format(mode_count),
         "Available RAM at Job Start: {0}".format(format_available_ram_text(available_ram_start)),
         "Job Start Time: {0}".format(format_timestamp(started_epoch)),
@@ -1748,6 +2209,9 @@ def write_job_metadata_file(
         "Output Folder: {0}".format(job_output_dir),
         "Output CSV Files:",
     ]
+
+    if available_mode_count > 0:
+        lines.insert(9, "Available Modes in Results: {0}".format(available_mode_count))
 
     if output_csv_paths is not None and len(output_csv_paths) > 0:
         for path in output_csv_paths:
@@ -1773,6 +2237,7 @@ def run_extraction(
     result_kind_label=None,
     output_dir=None,
     output_name_suffix="",
+    low_ram_used_percent=LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT,
 ):
     start_time = time.time()
     temp_objects = []
@@ -1788,11 +2253,36 @@ def run_extraction(
     if result_kind_label is None:
         result_kind_label = RESULT_KIND_LABEL_BY_ID.get(result_kind, result_kind)
 
+    low_ram_backpressure_bytes, effective_low_ram_used_percent, total_ram_bytes, used_percent_mode = (
+        resolve_low_ram_backpressure_bytes(low_ram_used_percent)
+    )
+
     try:
+        raise_if_run_cancel_requested(progress_dialog, "before extraction setup")
         msg = "Creating temporary result objects..."
         log_message(msg, progress_dialog)
         if progress_dialog is not None:
             progress_dialog.update_progress(msg, 0, 1000)
+
+        if used_percent_mode:
+            log_message(
+                "Low-RAM cleanup trigger: {0:.1f}% used "
+                "(free-RAM threshold: {1}, total RAM: {2:.2f} GiB).".format(
+                    effective_low_ram_used_percent,
+                    format_available_ram_text(low_ram_backpressure_bytes),
+                    bytes_to_gib(total_ram_bytes),
+                ),
+                progress_dialog,
+            )
+        else:
+            log_message(
+                "Low-RAM cleanup trigger fallback: free RAM below {0} "
+                "(configured used-threshold: {1:.1f}%; total RAM query unavailable).".format(
+                    format_available_ram_text(low_ram_backpressure_bytes),
+                    effective_low_ram_used_percent,
+                ),
+                progress_dialog,
+            )
 
         with begin_graphics_suspend():
             component_names, component_objects = create_component_objects(solution, named_selection, result_kind)
@@ -1844,6 +2334,7 @@ def run_extraction(
             if progress_dialog is not None:
                 progress_dialog.update_progress(msg, 5, 1000)
             node_coords = get_node_coordinates(node_ids, progress_dialog)
+            raise_if_run_cancel_requested(progress_dialog, "after coordinate extraction")
 
             temp_folder_name = "_tensor_extract_tmp_{0}".format(int(time.time()))
             temp_parent_dir = get_solution_default_io_directory(solution)
@@ -1887,8 +2378,14 @@ def run_extraction(
             mode_cursor = 0
             batch_index = 0
             while mode_cursor < total_modes:
+                raise_if_run_cancel_requested(progress_dialog, "before mode batch setup")
                 remaining = total_modes - mode_cursor
-                batch_size, available_ram = estimate_mode_batch_size(len(node_ids), comp_count, remaining)
+                batch_size, available_ram = estimate_mode_batch_size(
+                    len(node_ids),
+                    comp_count,
+                    remaining,
+                    low_ram_backpressure_bytes=low_ram_backpressure_bytes,
+                )
                 batch_modes = mode_ids[mode_cursor: mode_cursor + batch_size]
                 batch_index += 1
 
@@ -1908,9 +2405,11 @@ def run_extraction(
                 for local_idx in xrange(len(batch_modes)):
                     mode = int(batch_modes[local_idx])
                     global_mode_idx = mode_cursor + local_idx + 1
+                    raise_if_run_cancel_requested(progress_dialog, "before extracting mode {0}".format(mode))
                     apply_low_ram_backpressure(
                         progress_dialog,
                         "before extracting mode {0}".format(mode),
+                        low_ram_backpressure_bytes=low_ram_backpressure_bytes,
                     )
                     mode_msg = "Extracting [{0}] mode {1}/{2} (set {3})".format(
                         result_kind_label,
@@ -1979,6 +2478,7 @@ def run_extraction(
                                 scale_factors[0],
                                 export_path,
                                 component_name=component_names[0],
+                                progress_dialog=progress_dialog,
                             )
                             first_is_base_order = False
                     else:
@@ -1992,6 +2492,7 @@ def run_extraction(
                             scale_factors[0],
                             export_path,
                             component_name=component_names[0],
+                            progress_dialog=progress_dialog,
                         )
                         first_is_base_order = False
 
@@ -2015,6 +2516,7 @@ def run_extraction(
                                 scale_factors[comp_idx],
                                 export_path,
                                 component_name=component_names[comp_idx],
+                                progress_dialog=progress_dialog,
                             )
                         mode_component_values.append(values)
 
@@ -2028,7 +2530,14 @@ def run_extraction(
                         except Exception:
                             pass
 
+                    if use_solution_eval and (
+                        SOLUTION_CHILDREN_CLEAR_INTERVAL <= 1
+                        or (global_mode_idx % SOLUTION_CHILDREN_CLEAR_INTERVAL) == 0
+                    ):
+                        cleanup_solution_generated_data(solution)
+
                     del mode_component_values
+                    first_component_values = None
                     if global_mode_idx % 2 == 0:
                         force_memory_cleanup(True)
                     else:
@@ -2036,7 +2545,9 @@ def run_extraction(
                     apply_low_ram_backpressure(
                         progress_dialog,
                         "after extracting mode {0}".format(mode),
+                        low_ram_backpressure_bytes=low_ram_backpressure_bytes,
                     )
+                    raise_if_run_cancel_requested(progress_dialog, "after extracting mode {0}".format(mode))
 
                 mode_cursor += len(batch_modes)
                 force_memory_cleanup()
@@ -2069,6 +2580,7 @@ def run_extraction(
         log_message(msg, progress_dialog)
         if progress_dialog is not None:
             progress_dialog.update_progress(msg, 820, 1000)
+        raise_if_run_cancel_requested(progress_dialog, "before merge phase")
 
         merge_batches_into_output(
             temp_dir=temp_dir,
@@ -2077,6 +2589,7 @@ def run_extraction(
             output_csv_path=output_csv_path,
             node_count=len(node_ids),
             progress_dialog=progress_dialog,
+            low_ram_backpressure_bytes=low_ram_backpressure_bytes,
         )
 
         if progress_dialog is not None:
@@ -2117,15 +2630,27 @@ def main():
 
         completed_job_ids = []
         failed_jobs = []
+        cancelled_jobs = []
         all_output_csvs = []
+        cancellation_message = ""
 
         for job_idx in xrange(total_jobs):
+            if dialog.is_cancel_requested():
+                cancellation_message = "Cancellation requested by user. Remaining pending jobs were not started."
+                log_message(cancellation_message, dialog)
+                break
+
             job = pending_jobs[job_idx]
             job_id = int(job.get("job_id", job_idx + 1))
             selected_analysis = job.get("analysis", None)
             selected_ns = job.get("named_selection", None)
             selected_kinds = list(job.get("result_kinds", []))
             use_no_graphics_pref = bool(job.get("use_no_graphics", False))
+            low_ram_used_percent = clamp_low_ram_used_percent(
+                job.get("low_ram_used_percent", LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
+            )
+            mode_limit_requested = job.get("mode_limit", None)
+            mode_limit_text = ""
 
             if selected_analysis is None or selected_ns is None or len(selected_kinds) == 0:
                 dialog.set_job_status(job_id, JOB_STATUS_FAILED)
@@ -2150,7 +2675,33 @@ def main():
             dialog.set_job_status(job_id, JOB_STATUS_RUNNING)
 
             try:
+                dialog.raise_if_cancel_requested("before starting job {0}".format(job_id))
                 solution, mode_ids = get_analysis_solution_and_modes(selected_analysis)
+                all_mode_ids = list(mode_ids)
+                available_mode_count = len(all_mode_ids)
+                job["available_mode_count"] = available_mode_count
+                mode_ids = all_mode_ids
+
+                if mode_limit_requested is not None:
+                    try:
+                        requested_n_modes = int(mode_limit_requested)
+                    except Exception:
+                        raise Exception(
+                            "Job {0} has invalid mode limit setting: {1}".format(job_id, str(mode_limit_requested))
+                        )
+                    if requested_n_modes <= 0:
+                        raise Exception("Job {0} has non-positive mode limit setting.".format(job_id))
+                    if requested_n_modes < available_mode_count:
+                        mode_ids = all_mode_ids[:requested_n_modes]
+                    elif requested_n_modes > available_mode_count:
+                        log_message(
+                            "Job {0}: requested first {1} modes, but only {2} are available. Extracting first {2} modes.".format(
+                                job_id, requested_n_modes, available_mode_count
+                            ),
+                            dialog,
+                        )
+                mode_limit_text = format_mode_subset_with_available(mode_limit_requested, available_mode_count)
+
                 selected_base_output_dir = str(job.get("base_output_dir", "")).strip()
                 if selected_base_output_dir == "":
                     selected_base_output_dir = get_solution_default_io_directory(solution)
@@ -2177,7 +2728,7 @@ def main():
 
                 kind_labels = get_result_kind_labels(selected_kinds)
                 start_msg = (
-                    "Job {0}/{1} (ID {2}) | Analysis: {3} | NS: {4} | Result types: {5} | Modes: 1..{6}"
+                    "Job {0}/{1} (ID {2}) | Analysis: {3} | NS: {4} | Result types: {5} | Modes: 1..{6} ({7}) | Low-RAM trigger: {8:.1f}% used"
                 ).format(
                     job_idx + 1,
                     total_jobs,
@@ -2186,6 +2737,8 @@ def main():
                     selected_ns.Name,
                     "; ".join(kind_labels),
                     len(mode_ids),
+                    mode_limit_text,
+                    low_ram_used_percent,
                 )
                 log_message(start_msg, dialog)
                 log_message("Job {0} base output folder: {1}".format(job_id, selected_base_output_dir), dialog)
@@ -2199,6 +2752,9 @@ def main():
 
                 n_selected = len(selected_kinds)
                 for run_idx in xrange(n_selected):
+                    dialog.raise_if_cancel_requested(
+                        "before extraction {0}/{1} of job {2}".format(run_idx + 1, n_selected, job_id)
+                    )
                     selected_kind = selected_kinds[run_idx]
                     kind_label = RESULT_KIND_LABEL_BY_ID.get(selected_kind, selected_kind)
                     available_ram = get_available_ram_bytes()
@@ -2225,6 +2781,7 @@ def main():
                         kind_label,
                         output_dir=output_dir,
                         output_name_suffix="_job_{0}".format(job_id),
+                        low_ram_used_percent=low_ram_used_percent,
                     )
                     output_csvs.append(output_csv)
                     all_output_csvs.append(output_csv)
@@ -2232,6 +2789,8 @@ def main():
                     # Explicit cleanup between result kinds for stable memory behavior.
                     force_memory_cleanup(True)
                     time.sleep(0.1)
+
+                dialog.raise_if_cancel_requested("after extraction loop of job {0}".format(job_id))
 
                 job_end = time.time()
                 job["completed_epoch"] = job_end
@@ -2252,6 +2811,33 @@ def main():
 
                 elapsed = job_end - job_start
                 log_message("Job {0} completed in {1:.1f} s".format(job_id, elapsed), dialog)
+
+            except UserCancelledException as cancel_ex:
+                job_end = time.time()
+                cancel_text = str(cancel_ex)
+                if cancel_text is None or str(cancel_text).strip() == "":
+                    cancel_text = "Extraction cancelled by user request."
+                job["completed_epoch"] = job_end
+                job["output_csv_paths"] = list(output_csvs)
+                job["error"] = cancel_text
+                dialog.set_job_status(job_id, JOB_STATUS_CANCELLED)
+                cancelled_jobs.append((job_id, cancel_text))
+                cancellation_message = cancel_text
+                log_message("Job {0} cancelled: {1}".format(job_id, cancel_text), dialog)
+
+                if output_dir is not None:
+                    write_job_metadata_file(
+                        job_output_dir=output_dir,
+                        job_record=job,
+                        mode_count=len(mode_ids),
+                        started_epoch=job_start,
+                        completed_epoch=job_end,
+                        status_text=JOB_STATUS_CANCELLED,
+                        output_csv_paths=output_csvs,
+                        available_ram_start=available_ram_start,
+                        error_text=cancel_text,
+                    )
+                break
 
             except Exception as job_ex:
                 job_end = time.time()
@@ -2291,8 +2877,14 @@ def main():
         summary_lines = [
             "Extraction jobs completed.",
             "Completed jobs: {0}".format(len(completed_job_ids)),
+            "Cancelled jobs: {0}".format(len(cancelled_jobs)),
             "Failed jobs: {0}".format(len(failed_jobs)),
         ]
+
+        if cancellation_message != "":
+            summary_lines.append("")
+            summary_lines.append("Cancellation:")
+            summary_lines.append(cancellation_message)
 
         if len(all_output_csvs) > 0:
             summary_lines.append("")
@@ -2308,12 +2900,18 @@ def main():
             for failed_job_id, failed_err in failed_jobs:
                 summary_lines.append("Job {0}: {1}".format(failed_job_id, failed_err))
 
+        if len(cancelled_jobs) > 0:
+            summary_lines.append("")
+            summary_lines.append("Cancelled job details:")
+            for cancelled_job_id, cancelled_err in cancelled_jobs:
+                summary_lines.append("Job {0}: {1}".format(cancelled_job_id, cancelled_err))
+
         MessageBox.Show(
             dialog,
             "\n".join(summary_lines),
             "Modal Extractor",
             MessageBoxButtons.OK,
-            MessageBoxIcon.Information if len(failed_jobs) == 0 else MessageBoxIcon.Warning,
+            MessageBoxIcon.Information if (len(failed_jobs) == 0 and len(cancelled_jobs) == 0) else MessageBoxIcon.Warning,
         )
 
     dlg = ExtractOptionsDialog(modal_analyses, nodal_named_selections, run_from_dialog)
