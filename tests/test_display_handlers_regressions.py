@@ -130,6 +130,21 @@ class FakeCamera:
         self.calls += 1
 
 
+class FakeCameraWidget:
+    def __init__(self):
+        self.enabled = False
+        self.enabled_on_calls = 0
+        self.enabled_off_calls = 0
+
+    def EnabledOn(self):
+        self.enabled = True
+        self.enabled_on_calls += 1
+
+    def EnabledOff(self):
+        self.enabled = False
+        self.enabled_off_calls += 1
+
+
 class FakePlotter:
     def __init__(self, fail_on_parallel_enable=False):
         self.fail_on_parallel_enable = fail_on_parallel_enable
@@ -138,6 +153,7 @@ class FakePlotter:
         self.reset_camera_calls = 0
         self.render_calls = 0
         self.clear_calls = 0
+        self.add_camera_widget_calls = 0
 
     def clear(self):
         self.clear_calls += 1
@@ -155,6 +171,10 @@ class FakePlotter:
 
     def render(self):
         self.render_calls += 1
+
+    def add_camera_orientation_widget(self):
+        self.add_camera_widget_calls += 1
+        return FakeCameraWidget()
 
 
 class FakeResultsTab:
@@ -258,6 +278,30 @@ def test_update_visualization_falls_back_to_camera_parallel_projection():
     assert plotter.enable_parallel_projection_calls == 1
     assert plotter.camera.parallel_projection is True
     assert plotter.camera.calls == 1
+
+
+def test_add_camera_widget_is_idempotent():
+    plotter = FakePlotter()
+    tab = FakeVisualizationTab(plotter=plotter)
+    state = SimpleNamespace(
+        current_mesh=None,
+        current_actor=None,
+        data_column="",
+        camera_widget=None,
+        hover_annotation=None,
+        hover_observer=None,
+        last_hover_time=0.0,
+    )
+    handler = DisplayVisualizationHandler(tab=tab, state=state, viz_manager=None)
+
+    handler._add_camera_widget()
+    first_widget = state.camera_widget
+    handler._add_camera_widget()
+
+    assert first_widget is not None
+    assert state.camera_widget is first_widget
+    assert tab.camera_widget is first_widget
+    assert plotter.add_camera_widget_calls == 1
 
 
 class FakeInteractionMesh:

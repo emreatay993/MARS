@@ -207,6 +207,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         # If not visible, set flag for showEvent to handle it
         if self.tab.isVisible():
             # Tab is visible, add widget with minimal delay
+            self.tab._camera_widget_pending = False
             QTimer.singleShot(10, self._add_camera_widget)
         else:
             # Tab not visible yet, mark as pending for showEvent
@@ -230,6 +231,13 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
     def _add_camera_widget(self) -> None:
         """Add camera orientation widget after Qt layout has settled."""
         try:
+            existing_widget = self.state.camera_widget or getattr(self.tab, "camera_widget", None)
+            if existing_widget is not None:
+                self.state.camera_widget = existing_widget
+                self.tab.camera_widget = existing_widget
+                self.tab._camera_widget_pending = False
+                return
+
             # Render again to ensure proper sizing
             self.tab.plotter.render()
             
@@ -240,6 +248,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
             # Store reference
             self.state.camera_widget = camera_widget
             self.tab.camera_widget = camera_widget
+            self.tab._camera_widget_pending = False
         except Exception:
             pass  # Plotter may have been closed
 
