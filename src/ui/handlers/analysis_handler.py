@@ -410,19 +410,17 @@ class SolverAnalysisHandler:
 
     def _get_skip_n_modes(self):
         """Get number of modes to skip from UI."""
-        if not self.tab.skip_modes_combo.isVisible():
-            return 0
         try:
-            return int(self.tab.skip_modes_combo.currentText())
+            text = self.tab.skip_modes_combo.currentText()
+            return int(text) if text else 0
         except (ValueError, TypeError):
             return 0
 
     def _get_skip_last_n_modes(self):
         """Get number of trailing modes to skip from UI."""
-        if not self.tab.skip_last_modes_combo.isVisible():
-            return 0
         try:
-            return int(self.tab.skip_last_modes_combo.currentText())
+            text = self.tab.skip_last_modes_combo.currentText()
+            return int(text) if text else 0
         except (ValueError, TypeError):
             return 0
 
