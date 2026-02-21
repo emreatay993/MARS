@@ -46,7 +46,7 @@ THEME_BLUE = "#5b9bd5"
 
 # ===== Display Tab Constants =====
 
-DEFAULT_POINT_SIZE = 5
+DEFAULT_POINT_SIZE = 15
 """Default point size for 3D visualization."""
 
 DEFAULT_BACKGROUND_COLOR = "#FFFFFF"
