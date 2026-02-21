@@ -3,11 +3,11 @@
 This index documents the current `src/` implementation layout and line counts.
 All counts below were refreshed from the live tree.
 
-## Snapshot (Current - v0.98)
+## Snapshot (Refreshed 2026-02-21)
 
 - 51 Python files under `src/` (excluding `__pycache__`)
-- 15,927 Python lines in `src/`
-- UI layer: 32 Python files and 10,174 lines
+- 15,962 Python lines in `src/`
+- UI layer: 32 Python files and 10,209 lines
 - Solver + core numerics: 8 Python files and 3,727 lines
 - File I/O layer: 4 Python files and 1,451 lines
 - Utility layer: 5 Python files and 501 lines
@@ -88,19 +88,19 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Handlers (15 files - 5,167 lines)
+## UI Handlers (15 files - 5,202 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/handlers/analysis_handler.py` | 1565 | Main solve orchestration: config validation (including skip-first/skip-last checks), threaded solve execution, batch/time-history handling, time-point calculation, animation precomputation, and display result-catalog building |
+| `src/ui/handlers/analysis_handler.py` | 1563 | Main solve orchestration: config validation (including skip-first/skip-last checks), threaded solve execution, batch/time-history handling, time-point calculation, animation precomputation, and display result-catalog building |
 | `src/ui/handlers/display_animation_handler.py` | 567 | Animation playback lifecycle, frame updates, save/export, memory-estimation logic, and animation requests with mode-skip parameters |
-| `src/ui/handlers/display_base_handler.py` | 26 | Base helper for syncing `DisplayTab` attributes with shared `DisplayState` |
+| `src/ui/handlers/display_base_handler.py` | 72 | Base helper for syncing `DisplayTab` attributes with shared `DisplayState` |
 | `src/ui/handlers/display_export_handler.py` | 103 | Export current display results to CSV and APDL initial conditions |
 | `src/ui/handlers/display_file_handler.py` | 104 | Direct CSV visualization-file ingestion and scalar binding |
-| `src/ui/handlers/display_interaction_handler.py` | 618 | Context menu, box selection, hotspot analysis, point picking, and tracked-node workflows (including camera-stable Go To Node behavior) |
+| `src/ui/handlers/display_interaction_handler.py` | 595 | Context menu, box selection, hotspot analysis, point picking, and tracked-node workflows (including camera-stable Go To Node behavior) |
 | `src/ui/handlers/display_results_handler.py` | 574 | Result catalog normalization, selector combo management, and applying selected solver datasets to mesh/scalar bar |
 | `src/ui/handlers/display_state.py` | 54 | Shared display runtime dataclass for mesh, camera, animation, interaction, and selector state |
-| `src/ui/handlers/display_visualization_handler.py` | 397 | Render pipeline, camera-widget lifecycle, hover annotations, scalar range updates, and scalar-field application |
+| `src/ui/handlers/display_visualization_handler.py` | 411 | Render pipeline, camera-widget lifecycle, hover annotations, scalar range updates, and scalar-field application |
 | `src/ui/handlers/file_handler.py` | 318 | Solver-tab file dialog and background loader orchestration (including `.mcf`/`.pch`) |
 | `src/ui/handlers/log_handler.py` | 131 | Structured console logging for file loads and material/temperature updates |
 | `src/ui/handlers/navigator_handler.py` | 54 | Project directory navigation and opening selected files |
@@ -155,17 +155,17 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Test Code Snapshot (`tests/`)
 
-- 15 Python files, 1,651 lines total
+- 16 Python files, 1,776 lines total
 - Unit tests: `tests/test_data_models.py`, `tests/test_file_utils.py`, `tests/test_node_utils.py`, `tests/test_plasticity.py`, `tests/test_validators.py`
-- Display/solver regression tests: `tests/test_solver_single_node_time_axis.py`, `tests/test_display_handlers_regressions.py`
+- Display/solver regression tests: `tests/test_solver_single_node_time_axis.py`, `tests/test_display_handlers_regressions.py`, `tests/test_analysis_handler_skip_modes.py`
 - Performance/tooling scripts under `tests/performance/`
 
 ---
 
 ## Totals
 
-- **`src/` Python total**: 51 files, 15,927 lines
-- **UI total**: 32 files, 10,174 lines
+- **`src/` Python total**: 51 files, 15,962 lines
+- **UI total**: 32 files, 10,209 lines
 - **Core + solver total**: 8 files, 3,727 lines
 - **I/O + utils total**: 9 files, 1,952 lines
 
