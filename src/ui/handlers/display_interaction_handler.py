@@ -528,7 +528,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
             self.set_state_attr("target_node_id", int(node_id))
             self.set_state_attr("last_goto_node_id", int(node_id))
 
-            self._restore_camera_position(camera_before_focus)
+            self._restore_camera_position(camera_before_focus, render=True)
 
         except Exception as exc:
             QMessageBox.critical(self.tab, "Error", f"Could not go to node {node_id}: {exc}")
@@ -584,29 +584,6 @@ class DisplayInteractionHandler(DisplayBaseHandler):
         self.set_state_attr("target_node_id", None)
         self.set_state_attr("freeze_tracked_node", False)
         self.set_state_attr("freeze_baseline", None)
-
-    # ------------------------------------------------------------------
-    # Helpers
-    # ------------------------------------------------------------------
-    def _capture_camera_position(self) -> Optional[tuple]:
-        """Return a detached camera-position tuple suitable for later restoration."""
-        camera_position = getattr(self.tab.plotter, "camera_position", None)
-        if not isinstance(camera_position, (tuple, list)) or len(camera_position) != 3:
-            return None
-
-        cam_pos, cam_focal, cam_view_up = camera_position
-        return (
-            tuple(np.asarray(cam_pos, dtype=float)),
-            tuple(np.asarray(cam_focal, dtype=float)),
-            tuple(np.asarray(cam_view_up, dtype=float)),
-        )
-
-    def _restore_camera_position(self, camera_position: Optional[tuple]) -> None:
-        """Restore previously captured camera tuple when available."""
-        if not isinstance(camera_position, (tuple, list)) or len(camera_position) != 3:
-            return
-        self.tab.plotter.camera_position = camera_position
-        self.tab.plotter.render()
 
     @staticmethod
     def _add_section_title(menu: QMenu, title: str) -> None:

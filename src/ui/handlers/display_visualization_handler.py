@@ -125,13 +125,16 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
             },
         )
 
-    def update_visualization(self) -> None:
+    def update_visualization(self, preserve_camera: bool = False) -> None:
         """Refresh the 3D view with the current mesh."""
         mesh = self.state.current_mesh or self.tab.current_mesh
         if mesh is None:
             return
 
         plotter = self.tab.plotter
+        preserved_camera = (
+            self._capture_camera_position(plotter) if preserve_camera else None
+        )
         plotter.clear()
 
         # Use active scalars if set, otherwise fall back to first array (e.g., NodeID)
@@ -185,7 +188,8 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
 
         self.setup_hover_annotation()
 
-        plotter.reset_camera()
+        if not self._restore_camera_position(preserved_camera, plotter=plotter):
+            plotter.reset_camera()
         try:
             # Use orthographic projection for engineering contour views.
             plotter.enable_parallel_projection()
@@ -372,13 +376,14 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         self.state.last_valid_deformation_scale = value
         self.tab.last_valid_deformation_scale = value
 
-    def apply_scalar_field(self, field_name: str, values) -> bool:
+    def apply_scalar_field(self, field_name: str, values, preserve_camera: bool = True) -> bool:
         """
         Apply a scalar field to the current mesh and refresh the visualization.
 
         Args:
             field_name: Name of the scalar field to apply.
             values: Iterable of scalar values per node.
+            preserve_camera: Keep current camera state after the refresh.
 
         Returns:
             bool: True if the field was applied successfully, False otherwise.
@@ -402,5 +407,5 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         self.state.data_column = field_name
         self.tab.data_column = field_name
 
-        self.update_visualization()
+        self.update_visualization(preserve_camera=preserve_camera)
         return True

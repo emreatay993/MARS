@@ -149,6 +149,11 @@ class FakePlotter:
     def __init__(self, fail_on_parallel_enable=False):
         self.fail_on_parallel_enable = fail_on_parallel_enable
         self.camera = FakeCamera()
+        self.camera_position = (
+            (5.0, 6.0, 7.0),
+            (0.0, 0.0, 0.0),
+            (0.0, 0.0, 1.0),
+        )
         self.enable_parallel_projection_calls = 0
         self.reset_camera_calls = 0
         self.render_calls = 0
@@ -278,6 +283,35 @@ def test_update_visualization_falls_back_to_camera_parallel_projection():
     assert plotter.enable_parallel_projection_calls == 1
     assert plotter.camera.parallel_projection is True
     assert plotter.camera.calls == 1
+
+
+def test_update_visualization_preserves_camera_when_requested():
+    mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
+    plotter = FakePlotter(fail_on_parallel_enable=False)
+    initial_camera = (
+        (10.0, 20.0, 30.0),
+        (1.0, 2.0, 3.0),
+        (0.0, 0.0, 1.0),
+    )
+    plotter.camera_position = initial_camera
+    tab = FakeVisualizationTab(plotter=plotter)
+    state = SimpleNamespace(
+        current_mesh=mesh,
+        current_actor=None,
+        data_column="Result",
+        camera_widget=None,
+        hover_annotation=None,
+        hover_observer=None,
+        last_hover_time=0.0,
+    )
+    handler = DisplayVisualizationHandler(tab=tab, state=state, viz_manager=None)
+
+    handler.update_visualization(preserve_camera=True)
+
+    assert plotter.reset_camera_calls == 0
+    assert np.allclose(plotter.camera_position[0], initial_camera[0])
+    assert np.allclose(plotter.camera_position[1], initial_camera[1])
+    assert np.allclose(plotter.camera_position[2], initial_camera[2])
 
 
 def test_add_camera_widget_is_idempotent():
