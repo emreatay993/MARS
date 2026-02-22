@@ -9,6 +9,7 @@ from core.plasticity import (
     extract_poisson_ratio,
     map_temperature_field_to_nodes,
 )
+from solver.plasticity_engine import MaterialDB, apply_glinka_correction, apply_neuber_correction
 
 
 def _sample_material_profile() -> MaterialProfileData:
@@ -74,6 +75,24 @@ def test_build_material_db_handles_resampling():
     np.testing.assert_allclose(db.SIG[1], expected_resampled, rtol=1e-6)
 
 
+def test_build_material_db_preserves_long_tail_from_short_curve():
+    profile = _sample_material_profile()
+    # Fewer points, but extends much farther in plastic strain.
+    profile.plastic_curves[60.0] = pd.DataFrame(
+        {
+            "Plastic Strain": [0.0, 0.20],
+            "True Stress [MPa]": [320.0, 500.0],
+        }
+    )
+
+    db = build_material_db_from_profile(profile)
+
+    # Shared grid should include the far tail (0.20), not stop at 0.05.
+    assert db.EPSP.shape == (2, 4)
+    assert db.EPSP[0, -1] == pytest.approx(0.20)
+    assert db.SIG[1, -1] == pytest.approx(500.0)
+
+
 def test_build_material_db_requires_plastic_curves():
     empty_profile = MaterialProfileData.empty()
     with pytest.raises(PlasticityDataError):
@@ -124,7 +143,38 @@ def test_map_temperature_field_to_nodes_missing_without_default():
 
 def test_extract_poisson_ratio_fallback():
     profile = _sample_material_profile()
-    assert pytest.approx(extract_poisson_ratio(profile), 0.299)  # mean value
+    assert extract_poisson_ratio(profile) == pytest.approx(0.2975)  # mean value
 
     empty_profile = MaterialProfileData.empty()
     assert extract_poisson_ratio(empty_profile) == pytest.approx(0.3)
+
+
+def _simple_plateau_material() -> MaterialDB:
+    return MaterialDB.from_arrays(
+        temp=np.array([20.0]),
+        e_tab=np.array([200_000.0]),
+        sig=np.array([[300.0, 400.0]], dtype=float),
+        epsp=np.array([[0.0, 0.10]], dtype=float),
+    )
+
+
+def test_neuber_plateau_caps_stress_and_allows_tail_strain_growth():
+    material = _simple_plateau_material()
+    sigma_e = np.array([10_000.0], dtype=float)
+    temp = np.array([20.0], dtype=float)
+
+    corrected, epsp = apply_neuber_correction(sigma_e, temp, material, use_plateau=True)
+
+    assert corrected[0] <= 400.0 + 1e-8
+    assert epsp[0] > 0.10
+
+
+def test_glinka_plateau_caps_stress_and_allows_tail_strain_growth():
+    material = _simple_plateau_material()
+    sigma_e = np.array([10_000.0], dtype=float)
+    temp = np.array([20.0], dtype=float)
+
+    corrected, epsp = apply_glinka_correction(sigma_e, temp, material, use_plateau=True)
+
+    assert corrected[0] <= 400.0 + 1e-8
+    assert epsp[0] > 0.10

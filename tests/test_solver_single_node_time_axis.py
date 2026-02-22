@@ -11,6 +11,7 @@ import numpy as np
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from solver.engine import MSUPSmartSolverTransient
+import utils.constants as constants
 
 
 def _make_solver(time_values):
@@ -82,3 +83,32 @@ def test_force_moment_time_history_uses_physical_time_values():
     np.testing.assert_allclose(time_axis, np.array([1.0, 1.5, 2.0]))
     assert "Force Mag" in values
     assert metadata == {}
+
+
+def test_memory_estimate_accounts_for_scalar_plasticity_working_sets():
+    solver = _make_solver(None)
+    num_steps = 100
+
+    base = solver._get_memory_per_node(
+        num_steps,
+        calculate_von_mises=True,
+        calculate_max_principal_stress=False,
+        calculate_damage=False,
+        calculate_deformation=False,
+        calculate_velocity=False,
+        calculate_acceleration=False,
+        calculate_scalar_plasticity=False,
+    )
+    with_plasticity = solver._get_memory_per_node(
+        num_steps,
+        calculate_von_mises=True,
+        calculate_max_principal_stress=False,
+        calculate_damage=False,
+        calculate_deformation=False,
+        calculate_velocity=False,
+        calculate_acceleration=False,
+        calculate_scalar_plasticity=True,
+    )
+
+    expected_extra = 4 * num_steps * np.dtype(constants.NP_DTYPE).itemsize
+    assert with_plasticity - base == expected_extra

@@ -528,8 +528,8 @@ class SolverAnalysisHandler:
             else:
                 if (config.plasticity.method or '').lower() != 'ibg':
                     self.tab.console_textbox.append(
-                        "Plasticity overlay is only available with IBG in Time History; "
-                        "Neuber/Glinka do not produce per-step corrected traces."
+                        "Plasticity correction was enabled, but no Neuber/Glinka overlay "
+                        "data was produced for this result."
                     )
 
         # Ensure the time history plot tab is visible
@@ -849,12 +849,21 @@ class SolverAnalysisHandler:
                 _add_component_modes("Force/Moment", component, base_filename, label, unit)
 
         if plasticity_ctx and plasticity_ctx.method in {'neuber', 'glinka'}:
-            _add_component_modes(
+            _add_entry(
                 "Corrected Von Mises",
                 "Magnitude",
-                "corrected_von_mises",
-                "Corrected SVM",
+                "max_over_time",
+                "Corrected SVM (MPa) - Max over Time",
+                "corrected_von_mises.csv",
                 "MPa",
+            )
+            _add_entry(
+                "Corrected Von Mises",
+                "Magnitude",
+                "time_of_max",
+                "Time of Max: Corrected SVM (s)",
+                "time_of_max_corrected_von_mises.csv",
+                "s",
             )
             _add_entry(
                 "Plastic Strain",

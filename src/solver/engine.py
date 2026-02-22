@@ -179,7 +179,8 @@ class MSUPSmartSolverTransient(QObject):
 
     def _estimate_chunk_size(self, num_time_points, calculate_von_mises, calculate_max_principal_stress,
                              calculate_damage, calculate_deformation=False,
-                             calculate_velocity=False, calculate_acceleration=False):
+                             calculate_velocity=False, calculate_acceleration=False,
+                             calculate_scalar_plasticity=False):
         """
         Calculate the optimal chunk size for processing based on available memory.
         
@@ -193,7 +194,8 @@ class MSUPSmartSolverTransient(QObject):
             calculate_damage,
             calculate_deformation,
             calculate_velocity,
-            calculate_acceleration
+            calculate_acceleration,
+            calculate_scalar_plasticity
         )
         
         max_nodes_per_iteration = available_memory // memory_per_node
@@ -206,7 +208,8 @@ class MSUPSmartSolverTransient(QObject):
 
     def _get_memory_per_node(self, num_time_points, calculate_von_mises, calculate_max_principal_stress,
                              calculate_damage, calculate_deformation=False,
-                             calculate_velocity=False, calculate_acceleration=False):
+                             calculate_velocity=False, calculate_acceleration=False,
+                             calculate_scalar_plasticity=False):
         """
         Calculate memory required per node for the requested calculations.
         
@@ -232,6 +235,11 @@ class MSUPSmartSolverTransient(QObject):
         # Velocity and acceleration arrays (vel_x/y/z, acc_x/y/z, vel_mag, acc_mag)
         if calculate_velocity or calculate_acceleration:
             num_arrays += 8
+
+        if calculate_scalar_plasticity:
+            # Scalar Neuber/Glinka now solves full histories in batch, so reserve
+            # room for flattened stress/temp inputs and corrected/strain outputs.
+            num_arrays += 4
 
         # Use appropriate dtype size
         dtype_size = np.dtype(constants.NP_DTYPE).itemsize
@@ -1173,37 +1181,57 @@ class MSUPSmartSolverTransient(QObject):
     # region Main Methods
 
     def _apply_plasticity_scalar_chunk(self, plasticity_job, sigma_vm, time_values, start_idx, end_idx):
-        """Apply Neuber/Glinka corrections for the current chunk."""
+        """Apply Neuber/Glinka corrections for the current chunk.
+
+        Batch mode uses full time-history correction per node (all node-time
+        values in the chunk), then derives per-node maxima and max-over-nodes
+        trace values from corrected stresses.
+        """
         ctx = self.plasticity_context
         if ctx is None:
             return
 
         node_count = sigma_vm.shape[0]
+        time_count = sigma_vm.shape[1]
         if ctx.temperatures is not None:
             local_temperatures = ctx.temperatures[start_idx:end_idx]
         else:
             local_temperatures = np.full(node_count, ctx.default_temperature, dtype=np.float64)
 
-        peak_indices = np.argmax(sigma_vm, axis=1)
-        peak_values = sigma_vm[np.arange(node_count), peak_indices]
+        # Correct every node-time point in the chunk so corrected maxima match
+        # an elastoplastic postprocess over the full history.
+        sigma_flat = np.ascontiguousarray(sigma_vm, dtype=np.float64).reshape(-1)
+        temp_flat = np.repeat(np.asarray(local_temperatures, dtype=np.float64), time_count)
 
         if ctx.method == 'neuber':
-            corrected, plastic_strain = apply_neuber_correction(
-                peak_values, local_temperatures, ctx.material_db,
-                tol=ctx.tolerance, max_iterations=ctx.max_iterations
+            corrected_flat, plastic_strain_flat = apply_neuber_correction(
+                sigma_flat, temp_flat, ctx.material_db,
+                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                use_plateau=ctx.use_plateau,
             )
         else:
-            corrected, plastic_strain = apply_glinka_correction(
-                peak_values, local_temperatures, ctx.material_db,
-                tol=ctx.tolerance, max_iterations=ctx.max_iterations
+            corrected_flat, plastic_strain_flat = apply_glinka_correction(
+                sigma_flat, temp_flat, ctx.material_db,
+                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                use_plateau=ctx.use_plateau,
             )
 
-        plasticity_job['corrected_memmap'][start_idx:end_idx] = corrected
-        plasticity_job['time_memmap'][start_idx:end_idx] = time_values[peak_indices]
-        plasticity_job['plastic_strain_memmap'][start_idx:end_idx] = plastic_strain
+        corrected = corrected_flat.reshape(node_count, time_count)
+        plastic_strain = plastic_strain_flat.reshape(node_count, time_count)
+
+        node_peak_indices = np.argmax(corrected, axis=1)
+        node_peaks = corrected[np.arange(node_count), node_peak_indices]
+        node_peak_strain = plastic_strain[np.arange(node_count), node_peak_indices]
+
+        plasticity_job['corrected_memmap'][start_idx:end_idx] = node_peaks
+        plasticity_job['time_memmap'][start_idx:end_idx] = time_values[node_peak_indices]
+        plasticity_job['plastic_strain_memmap'][start_idx:end_idx] = node_peak_strain
 
         if self.max_over_time_svm_corrected is not None:
-            np.maximum.at(self.max_over_time_svm_corrected, peak_indices, corrected)
+            self.max_over_time_svm_corrected = np.maximum(
+                self.max_over_time_svm_corrected,
+                np.max(corrected, axis=0)
+            )
 
     def _apply_ibg_single_node(self, node_index: int, stress_components) -> Optional[dict]:
         """Run IBG correction for a single node time history."""
@@ -1327,14 +1355,21 @@ class MSUPSmartSolverTransient(QObject):
         chunk_size = 1
         num_iterations = 0
         if is_main_loop_needed:
+            scalar_plasticity_active = bool(
+                self.plasticity_context and self.plasticity_context.method in {'neuber', 'glinka'}
+            )
             chunk_size = self._estimate_chunk_size(
                 num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-                calculate_deformation, calculate_velocity, calculate_acceleration)
+                calculate_deformation, calculate_velocity, calculate_acceleration,
+                scalar_plasticity_active,
+            )
             num_iterations = (num_nodes + chunk_size - 1) // chunk_size
 
             ram_per_node = self._get_memory_per_node(
                 num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-                calculate_deformation, calculate_velocity, calculate_acceleration)
+                calculate_deformation, calculate_velocity, calculate_acceleration,
+                scalar_plasticity_active,
+            )
             ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
             print(f"Processing {num_nodes} stress/deformation nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
             print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
@@ -1474,7 +1509,11 @@ class MSUPSmartSolverTransient(QObject):
                     plasticity_info['elastic_vm'] = sigma_vm[0, :]
                     metadata['plasticity'] = plasticity_info
 
-                return _time_axis_for(sigma_vm.shape[1]), sigma_vm[0, :], metadata  # time_points, stress_values
+                vm_series = sigma_vm[0, :]
+                if plasticity_info is not None and 'corrected_vm' in plasticity_info:
+                    vm_series = np.asarray(plasticity_info['corrected_vm'], dtype=constants.NP_DTYPE)
+
+                return _time_axis_for(sigma_vm.shape[1]), vm_series, metadata  # time_points, stress_values
 
             if calculate_max_principal_stress or calculate_min_principal_stress:
                 s1, _, s3 = self.compute_principal_stresses(actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz,
