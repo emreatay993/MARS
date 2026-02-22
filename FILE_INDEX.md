@@ -3,12 +3,12 @@
 This index documents the current `src/` implementation layout and line counts.
 All counts below were refreshed from the live tree.
 
-## Snapshot (Refreshed 2026-02-21)
+## Snapshot (Refreshed 2026-02-22)
 
 - 51 Python files under `src/` (excluding `__pycache__`)
-- 15,962 Python lines in `src/`
-- UI layer: 32 Python files and 10,209 lines
-- Solver + core numerics: 8 Python files and 3,727 lines
+- 16,067 Python lines in `src/`
+- UI layer: 32 Python files and 10,219 lines
+- Solver + core numerics: 8 Python files and 3,822 lines
 - File I/O layer: 4 Python files and 1,451 lines
 - Utility layer: 5 Python files and 501 lines
 - Additional non-Python files in `src/`: 85 (spec/lint config, material CSV, and currently checked-in output artifacts)
@@ -47,12 +47,12 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## Solver Package (3 files - 2,538 lines)
+## Solver Package (3 files - 2,633 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/solver/engine.py` | 1872 | Main CPU solver (`MSUPSmartSolverTransient`): chunked stress/kinematics/force-moment processing, memmap pipelines, damage, and plasticity integration |
-| `src/solver/plasticity_engine.py` | 664 | Neuber/Glinka/IBG correction kernels and material database model |
+| `src/solver/engine.py` | 1911 | Main CPU solver (`MSUPSmartSolverTransient`): chunked stress/kinematics/force-moment processing, memmap pipelines, damage, and plasticity integration |
+| `src/solver/plasticity_engine.py` | 720 | Neuber/Glinka/IBG correction kernels and material database model |
 | `src/solver/__init__.py` | 2 | Package initializer |
 
 ---
@@ -88,11 +88,11 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Handlers (15 files - 5,202 lines)
+## UI Handlers (15 files - 5,211 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
-| `src/ui/handlers/analysis_handler.py` | 1563 | Main solve orchestration: config validation (including skip-first/skip-last checks), threaded solve execution, batch/time-history handling, time-point calculation, animation precomputation, and display result-catalog building |
+| `src/ui/handlers/analysis_handler.py` | 1572 | Main solve orchestration: config validation (including skip-first/skip-last checks), threaded solve execution, batch/time-history handling, time-point calculation, animation precomputation, and display result-catalog building |
 | `src/ui/handlers/display_animation_handler.py` | 567 | Animation playback lifecycle, frame updates, save/export, memory-estimation logic, and animation requests with mode-skip parameters |
 | `src/ui/handlers/display_base_handler.py` | 72 | Base helper for syncing `DisplayTab` attributes with shared `DisplayState` |
 | `src/ui/handlers/display_export_handler.py` | 103 | Export current display results to CSV and APDL initial conditions |
@@ -119,14 +119,14 @@ All counts below were refreshed from the live tree.
 
 ---
 
-## UI Widgets (5 files - 1,304 lines)
+## UI Widgets (5 files - 1,305 lines)
 
 | File | Lines | Description |
 |------|-------|-------------|
 | `src/ui/widgets/console.py` | 67 | Buffered stdout-to-`QTextEdit` logger |
 | `src/ui/widgets/dialogs.py` | 231 | Advanced settings dialog (RAM/precision/Software OpenGL) and hotspot result dialog |
 | `src/ui/widgets/editable_table.py` | 269 | Spreadsheet-style editable table with copy/paste and blank-row behavior |
-| `src/ui/widgets/plotting.py` | 732 | Matplotlib and Plotly plotting widgets for time-history and max/min-over-time results |
+| `src/ui/widgets/plotting.py` | 733 | Matplotlib and Plotly plotting widgets for time-history and max/min-over-time results |
 | `src/ui/widgets/__init__.py` | 5 | Package initializer |
 
 ---
@@ -155,7 +155,7 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Test Code Snapshot (`tests/`)
 
-- 16 Python files, 1,776 lines total
+- 16 Python files, 1,856 lines total
 - Unit tests: `tests/test_data_models.py`, `tests/test_file_utils.py`, `tests/test_node_utils.py`, `tests/test_plasticity.py`, `tests/test_validators.py`
 - Display/solver regression tests: `tests/test_solver_single_node_time_axis.py`, `tests/test_display_handlers_regressions.py`, `tests/test_analysis_handler_skip_modes.py`
 - Performance/tooling scripts under `tests/performance/`
@@ -164,9 +164,9 @@ Note: those artifact files are runtime outputs and are typically better kept in 
 
 ## Totals
 
-- **`src/` Python total**: 51 files, 15,962 lines
-- **UI total**: 32 files, 10,209 lines
-- **Core + solver total**: 8 files, 3,727 lines
+- **`src/` Python total**: 51 files, 16,067 lines
+- **UI total**: 32 files, 10,219 lines
+- **Core + solver total**: 8 files, 3,822 lines
 - **I/O + utils total**: 9 files, 1,952 lines
 
 Update this file whenever modules are added/removed so architectural docs stay trustworthy.
