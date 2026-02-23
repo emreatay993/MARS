@@ -71,9 +71,15 @@ class MSUPSmartSolverTransient(QObject):
         self.max_over_time_force_fx = None
         self.max_over_time_force_fy = None
         self.max_over_time_force_fz = None
+        self.max_over_time_force_shear_xy = None
+        self.max_over_time_force_shear_xz = None
+        self.max_over_time_force_shear_yz = None
         self.min_over_time_force_fx = None
         self.min_over_time_force_fy = None
         self.min_over_time_force_fz = None
+        self.min_over_time_force_shear_xy = None
+        self.min_over_time_force_shear_xz = None
+        self.min_over_time_force_shear_yz = None
         self.max_over_time_moment_mx = None
         self.max_over_time_moment_my = None
         self.max_over_time_moment_mz = None
@@ -892,9 +898,15 @@ class MSUPSmartSolverTransient(QObject):
             self.max_over_time_force_fx = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.max_over_time_force_fy = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.max_over_time_force_fz = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_force_shear_xy = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_force_shear_xz = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.max_over_time_force_shear_yz = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.min_over_time_force_fx = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.min_over_time_force_fy = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.min_over_time_force_fz = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_force_shear_xy = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_force_shear_xz = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
+            self.min_over_time_force_shear_yz = np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.max_over_time_moment_mx = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.max_over_time_moment_my = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
             self.max_over_time_moment_mz = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
@@ -924,6 +936,9 @@ class MSUPSmartSolverTransient(QObject):
                 'fx': 'element_nodal_force_fx',
                 'fy': 'element_nodal_force_fy',
                 'fz': 'element_nodal_force_fz',
+                'shear_xy': 'element_nodal_force_shear_xy',
+                'shear_xz': 'element_nodal_force_shear_xz',
+                'shear_yz': 'element_nodal_force_shear_yz',
                 'mx': 'element_nodal_moment_mx',
                 'my': 'element_nodal_moment_my',
                 'mz': 'element_nodal_moment_mz',
@@ -954,9 +969,15 @@ class MSUPSmartSolverTransient(QObject):
             self.max_over_time_force_fx = None
             self.max_over_time_force_fy = None
             self.max_over_time_force_fz = None
+            self.max_over_time_force_shear_xy = None
+            self.max_over_time_force_shear_xz = None
+            self.max_over_time_force_shear_yz = None
             self.min_over_time_force_fx = None
             self.min_over_time_force_fy = None
             self.min_over_time_force_fz = None
+            self.min_over_time_force_shear_xy = None
+            self.min_over_time_force_shear_xz = None
+            self.min_over_time_force_shear_yz = None
             self.max_over_time_moment_mx = None
             self.max_over_time_moment_my = None
             self.max_over_time_moment_mz = None
@@ -1125,6 +1146,29 @@ class MSUPSmartSolverTransient(QObject):
         job['force_time_memmap'][start_idx:end_idx] = time_values[np.argmax(force_mag, axis=1)]
         job['force_min_memmap'][start_idx:end_idx] = np.min(force_mag, axis=1)
         job['force_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(force_mag, axis=1)]
+
+        # Shear force variants from FX/FY/FZ
+        shear_xy = np.sqrt(fx ** 2 + fy ** 2)
+        shear_xz = np.sqrt(fx ** 2 + fz ** 2)
+        shear_yz = np.sqrt(fy ** 2 + fz ** 2)
+        self.max_over_time_force_shear_xy = np.maximum(self.max_over_time_force_shear_xy, np.max(shear_xy, axis=0))
+        self.max_over_time_force_shear_xz = np.maximum(self.max_over_time_force_shear_xz, np.max(shear_xz, axis=0))
+        self.max_over_time_force_shear_yz = np.maximum(self.max_over_time_force_shear_yz, np.max(shear_yz, axis=0))
+        self.min_over_time_force_shear_xy = np.minimum(self.min_over_time_force_shear_xy, np.min(shear_xy, axis=0))
+        self.min_over_time_force_shear_xz = np.minimum(self.min_over_time_force_shear_xz, np.min(shear_xz, axis=0))
+        self.min_over_time_force_shear_yz = np.minimum(self.min_over_time_force_shear_yz, np.min(shear_yz, axis=0))
+        job['shear_xy_max_memmap'][start_idx:end_idx] = np.max(shear_xy, axis=1)
+        job['shear_xy_time_memmap'][start_idx:end_idx] = time_values[np.argmax(shear_xy, axis=1)]
+        job['shear_xy_min_memmap'][start_idx:end_idx] = np.min(shear_xy, axis=1)
+        job['shear_xy_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(shear_xy, axis=1)]
+        job['shear_xz_max_memmap'][start_idx:end_idx] = np.max(shear_xz, axis=1)
+        job['shear_xz_time_memmap'][start_idx:end_idx] = time_values[np.argmax(shear_xz, axis=1)]
+        job['shear_xz_min_memmap'][start_idx:end_idx] = np.min(shear_xz, axis=1)
+        job['shear_xz_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(shear_xz, axis=1)]
+        job['shear_yz_max_memmap'][start_idx:end_idx] = np.max(shear_yz, axis=1)
+        job['shear_yz_time_memmap'][start_idx:end_idx] = time_values[np.argmax(shear_yz, axis=1)]
+        job['shear_yz_min_memmap'][start_idx:end_idx] = np.min(shear_yz, axis=1)
+        job['shear_yz_time_min_memmap'][start_idx:end_idx] = time_values[np.argmin(shear_yz, axis=1)]
 
         # Force components
         self.max_over_time_force_fx = np.maximum(self.max_over_time_force_fx, np.max(fx, axis=0))
@@ -1673,6 +1717,9 @@ class MSUPSmartSolverTransient(QObject):
             ('fx', 'element_nodal_force_fx', 'FX'),
             ('fy', 'element_nodal_force_fy', 'FY'),
             ('fz', 'element_nodal_force_fz', 'FZ'),
+            ('shear_xy', 'element_nodal_force_shear_xy', 'Shear_XY'),
+            ('shear_xz', 'element_nodal_force_shear_xz', 'Shear_XZ'),
+            ('shear_yz', 'element_nodal_force_shear_yz', 'Shear_YZ'),
             ('mx', 'element_nodal_moment_mx', 'MX'),
             ('my', 'element_nodal_moment_my', 'MY'),
             ('mz', 'element_nodal_moment_mz', 'MZ'),

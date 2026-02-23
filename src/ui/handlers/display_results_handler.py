@@ -39,7 +39,11 @@ class DisplayResultsHandler(DisplayBaseHandler):
         "Deformation": ["|U|", "UX", "UY", "UZ"],
         "Velocity": ["|V|", "VX", "VY", "VZ"],
         "Acceleration": ["|A|", "AX", "AY", "AZ"],
-        "Force/Moment": ["|F|", "FX", "FY", "FZ", "|M|", "MX", "MY", "MZ"],
+        "Force/Moment": [
+            "|F|", "FX", "FY", "FZ",
+            "Shear XY", "Shear XZ", "Shear YZ",
+            "|M|", "MX", "MY", "MZ",
+        ],
     }
 
     MODE_ORDER = list(MODE_LABELS.keys())
@@ -543,6 +547,9 @@ class DisplayResultsHandler(DisplayBaseHandler):
             ("FX", ["FX (N)", "fx"]),
             ("FY", ["FY (N)", "fy"]),
             ("FZ", ["FZ (N)", "fz"]),
+            ("Shear XY", ["Shear XY (N)", "shear_xy"]),
+            ("Shear XZ", ["Shear XZ (N)", "shear_xz"]),
+            ("Shear YZ", ["Shear YZ (N)", "shear_yz"]),
             ("|M|", ["Moment (N·mm)", "m_mag"]),
             ("MX", ["MX (N·mm)", "mx"]),
             ("MY", ["MY (N·mm)", "my"]),

@@ -241,6 +241,40 @@ def test_configure_time_point_catalog_keeps_existing_modes_and_solver_context():
     assert state.result_selection["mode"] == "selected_time"
 
 
+def test_configure_time_point_catalog_exposes_force_shear_components():
+    state = SimpleNamespace(result_catalog={}, result_selection={}, current_mesh=None)
+    tab = FakeResultsTab()
+    visual_handler = FakeVisualHandler()
+    handler = DisplayResultsHandler(tab=tab, state=state, visual_handler=visual_handler)
+
+    mesh = FakeMesh(
+        {
+            "Force (N)": np.array([10.0, 20.0, 30.0]),
+            "FX (N)": np.array([1.0, 2.0, 3.0]),
+            "FY (N)": np.array([4.0, 5.0, 6.0]),
+            "FZ (N)": np.array([7.0, 8.0, 9.0]),
+            "Shear XY (N)": np.array([4.123, 5.385, 6.708]),
+            "Shear XZ (N)": np.array([7.071, 8.246, 9.487]),
+            "Shear YZ (N)": np.array([8.062, 9.434, 10.817]),
+        },
+        active_scalars_name="Shear XY (N)",
+    )
+    state.current_mesh = mesh
+
+    handler.configure_time_point_catalog(mesh, default_field="Shear XY (N)")
+
+    force_components = state.result_catalog["Force/Moment"]
+    assert "Shear XY" in force_components
+    assert "Shear XZ" in force_components
+    assert "Shear YZ" in force_components
+    assert force_components["Shear XY"]["selected_time"]["field_name"] == "Shear XY (N)"
+    assert force_components["Shear XZ"]["selected_time"]["field_name"] == "Shear XZ (N)"
+    assert force_components["Shear YZ"]["selected_time"]["field_name"] == "Shear YZ (N)"
+    assert state.result_selection["group"] == "Force/Moment"
+    assert state.result_selection["component"] == "Shear XY"
+    assert state.result_selection["mode"] == "selected_time"
+
+
 def test_update_visualization_enables_parallel_projection():
     mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
     plotter = FakePlotter(fail_on_parallel_enable=False)

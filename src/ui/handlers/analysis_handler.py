@@ -841,6 +841,9 @@ class SolverAnalysisHandler:
                 ("FX", "element_nodal_force_fx", "FX", "N"),
                 ("FY", "element_nodal_force_fy", "FY", "N"),
                 ("FZ", "element_nodal_force_fz", "FZ", "N"),
+                ("Shear XY", "element_nodal_force_shear_xy", "Shear XY", "N"),
+                ("Shear XZ", "element_nodal_force_shear_xz", "Shear XZ", "N"),
+                ("Shear YZ", "element_nodal_force_shear_yz", "Shear YZ", "N"),
                 ("|M|", "element_nodal_moment", "Moment", "N·mm"),
                 ("MX", "element_nodal_moment_mx", "MX", "N·mm"),
                 ("MY", "element_nodal_moment_my", "MY", "N·mm"),
@@ -1212,11 +1215,17 @@ class SolverAnalysisHandler:
                     my = _to_1d(my_tp)
                     mz = _to_1d(mz_tp)
                     f_mag = np.sqrt(fx ** 2 + fy ** 2 + fz ** 2)
+                    shear_xy = np.sqrt(fx ** 2 + fy ** 2)
+                    shear_xz = np.sqrt(fx ** 2 + fz ** 2)
+                    shear_yz = np.sqrt(fy ** 2 + fz ** 2)
                     m_mag = np.sqrt(mx ** 2 + my ** 2 + mz ** 2)
                     mesh["fx"] = fx
                     mesh["fy"] = fy
                     mesh["fz"] = fz
                     mesh["f_mag"] = f_mag
+                    mesh["shear_xy"] = shear_xy
+                    mesh["shear_xz"] = shear_xz
+                    mesh["shear_yz"] = shear_yz
                     mesh["mx"] = mx
                     mesh["my"] = my
                     mesh["mz"] = mz
@@ -1225,6 +1234,9 @@ class SolverAnalysisHandler:
                     mesh["FY (N)"] = fy
                     mesh["FZ (N)"] = fz
                     mesh["Force (N)"] = f_mag
+                    mesh["Shear XY (N)"] = shear_xy
+                    mesh["Shear XZ (N)"] = shear_xz
+                    mesh["Shear YZ (N)"] = shear_yz
                     mesh["MX (N·mm)"] = mx
                     mesh["MY (N·mm)"] = my
                     mesh["MZ (N·mm)"] = mz
