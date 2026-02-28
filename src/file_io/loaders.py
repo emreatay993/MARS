@@ -299,6 +299,7 @@ def _read_csv_with_progress(filename: str, file_size_mb: float, file_type: str) 
             # No tqdm available, show periodic progress updates
             sys.stdout.flush()
             start_read = time.time()
+            progress_printed = False
             
             # Show progress updates while reading
             import threading
@@ -306,11 +307,13 @@ def _read_csv_with_progress(filename: str, file_size_mb: float, file_type: str) 
             
             def show_progress():
                 """Show periodic progress updates."""
+                nonlocal progress_printed
                 while not stop_progress.is_set():
                     elapsed = time.time() - start_read
-                    print(f"   ⏱️  Reading... {elapsed:.1f}s elapsed")
+                    print(f"\r   ⏱️  Reading... {elapsed:.1f}s elapsed", end="")
                     sys.stdout.flush()
-                    time.sleep(5.0)  # Update every 5 seconds
+                    progress_printed = True
+                    stop_progress.wait(5.0)  # Update every 5 seconds
             
             progress_thread = threading.Thread(target=show_progress, daemon=True)
             progress_thread.start()
@@ -322,6 +325,10 @@ def _read_csv_with_progress(filename: str, file_size_mb: float, file_type: str) 
             finally:
                 stop_progress.set()
                 progress_thread.join(timeout=1.0)
+                if progress_printed:
+                    # Start a new line after progress updates.
+                    print()
+                    sys.stdout.flush()
             
             read_time = time.time() - start_read
         

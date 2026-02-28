@@ -5,6 +5,7 @@ Provides a Logger class that redirects stdout to a QTextEdit widget with buffere
 """
 
 import sys
+import threading
 from PyQt5.QtCore import QObject, QTimer, pyqtSlot
 from PyQt5.QtGui import QTextCursor
 
@@ -29,6 +30,7 @@ class Logger(QObject):
         self.text_edit = text_edit
         self.terminal = sys.stdout
         self.log_buffer = ""  # Buffer for messages
+        self._buffer_lock = threading.Lock()
         self.flush_interval = flush_interval  # in milliseconds
         
         # Set up a QTimer to flush the buffer periodically
@@ -47,18 +49,46 @@ class Logger(QObject):
         if self.terminal is not None and hasattr(self.terminal, "write"):
             self.terminal.write(message)
         # Append the message to the buffer
-        self.log_buffer += message
+        with self._buffer_lock:
+            self.log_buffer += message
+
+    def _clear_last_console_line(self, cursor):
+        """
+        Clear the last visible line in the console box.
+
+        This is used when incoming text wants to update the same line.
+        """
+        cursor.movePosition(QTextCursor.End)
+        cursor.movePosition(QTextCursor.StartOfBlock, QTextCursor.KeepAnchor)
+        cursor.removeSelectedText()
+
+    def _insert_text_with_line_replacement(self, text):
+        """Insert text and replace the last line when `\\r` appears."""
+        cursor = self.text_edit.textCursor()
+        cursor.movePosition(QTextCursor.End)
+
+        segments = text.split('\r')
+        if segments:
+            cursor.insertText(segments[0])
+
+        for segment in segments[1:]:
+            self._clear_last_console_line(cursor)
+            if segment:
+                cursor.insertText(segment)
+
+        self.text_edit.setTextCursor(cursor)
+        self.text_edit.ensureCursorVisible()
     
     @pyqtSlot()
     def flush_buffer(self):
         """Flush the buffered messages to the text edit widget."""
-        if self.log_buffer:
-            # Append the buffered messages to the text edit in one update
-            self.text_edit.moveCursor(QTextCursor.End)
-            self.text_edit.insertPlainText(self.log_buffer)
-            self.text_edit.moveCursor(QTextCursor.End)
-            self.text_edit.ensureCursorVisible()
+        with self._buffer_lock:
+            if not self.log_buffer:
+                return
+            buffered = self.log_buffer
             self.log_buffer = ""
+
+        self._insert_text_with_line_replacement(buffered)
     
     def flush(self):
         """Flush the buffer (called by sys.stdout.flush())."""
