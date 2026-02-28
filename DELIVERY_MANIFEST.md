@@ -41,10 +41,10 @@ pytest tests/ -v
 - `README.md` — overview, installation, usage, architecture summary
 - `ARCHITECTURE.md` — detailed layer-by-layer explanation (already MARS-aligned)
 - `MIGRATION_GUIDE.md` — legacy MSUP → MARS mapping
-- `TRANSFORMATION_SUMMARY.md` — before/after comparison with current metrics
-- `PROJECT_COMPLETE.md`, `FINAL_DELIVERY_SUMMARY.md`, `FINAL_SUMMARY.md`, `FINAL_DELIVERY_COMPLETE.md` — completion artefacts
-- `DOCUMENTATION_UPDATE_SUMMARY.md` — log of the current refresh
-- Historical progress reports (`STATUS_REPORT.md`, `PROGRESS_SUMMARY.md`, `FINAL_PROJECT_STATE.md`, etc.) now include archival notices
+- `docs/progress_fixes/summaries_updates/TRANSFORMATION_SUMMARY.md` — before/after comparison with current metrics
+- `docs/progress_fixes/completions/PROJECT_COMPLETE.md`, `docs/progress_fixes/summaries_updates/FINAL_DELIVERY_SUMMARY.md`, `docs/progress_fixes/summaries_updates/FINAL_SUMMARY.md`, `docs/progress_fixes/completions/FINAL_DELIVERY_COMPLETE.md` — completion artefacts
+- `docs/progress_fixes/summaries_updates/DOCUMENTATION_UPDATE_SUMMARY.md` — log of the current refresh
+- Historical progress reports (`docs/progress_fixes/status_reports/STATUS_REPORT.md`, `docs/progress_fixes/progress/PROGRESS_SUMMARY.md`, `docs/progress_fixes/completions/FINAL_PROJECT_STATE.md`, etc.) now include archival notices
 
 ---
 

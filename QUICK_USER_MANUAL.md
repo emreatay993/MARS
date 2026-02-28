@@ -130,4 +130,4 @@ Use the console log for diagnostics and re-run after correcting inputs.
 - **Full walkthrough**: `DETAILED_USER_MANUAL_20_Pages.md`
 - **Algorithm & architecture deep dive**: `DETAILED_THEORY_MANUAL.md`
 
-Keep your project-specific notes alongside `PROJECT_COMPLETE.md` or `ARCHITECTURE.md` for team-wide visibility.
+Keep your project-specific notes alongside `docs/progress_fixes/completions/PROJECT_COMPLETE.md` or `ARCHITECTURE.md` for team-wide visibility.

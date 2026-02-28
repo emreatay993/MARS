@@ -20,9 +20,9 @@ The primary documentation set has been reviewed and updated to reflect the curre
 | `START_HERE.md` | Reworded the introduction for MARS, refreshed highlights, and removed outdated metrics. |
 | `MIGRATION_GUIDE.md` | Retitled as a migration path from the legacy MSUP Smart Solver to MARS and clarified terminology. |
 | `TRANSFORMATION_SUMMARY.md` | Rewritten with accurate before/after comparisons and current module references. |
-| `PROJECT_COMPLETE.md` | Summarised final deliverables with up-to-date counts and highlights. |
+| `../completions/PROJECT_COMPLETE.md` | Summarised final deliverables with up-to-date counts and highlights. |
 | `FINAL_DELIVERY_SUMMARY.md` | Condensed and aligned with the new architecture overview. |
-| `FINAL_DELIVERY_COMPLETE.md` | Updated to describe the delivered artefacts using MARS naming. |
+| `../completions/FINAL_DELIVERY_COMPLETE.md` | Updated to describe the delivered artefacts using MARS naming. |
 | `FINAL_SUMMARY.md` | Reauthored as a concise post-project recap with accurate instructions. |
 | `EXECUTIVE_SUMMARY.md` | Rewritten for stakeholders with the new objectives/outcomes framing. |
 | `FILE_INDEX.md` | Rebuilt with current line counts, module listings, and handler breakdowns. |
@@ -30,7 +30,7 @@ The primary documentation set has been reviewed and updated to reflect the curre
 | `EXECUTIVE_SUMMARY_ENGINEERING.md` | New leadership brief emphasising post-processing speed, license savings, and team workflow impact. |
 | `TESTING_GUIDE.md` & `MANUAL_TESTING_CHECKLIST.md` | Adjusted titles and expectations to reference the MARS UI. |
 
-Historical reports such as `STATUS_REPORT.md`, `PROGRESS_SUMMARY.md`, and `FINAL_PROJECT_STATE.md` now open with a note explaining that they capture earlier checkpoints.
+Historical reports such as `../status_reports/STATUS_REPORT.md`, `../progress/PROGRESS_SUMMARY.md`, and `../completions/FINAL_PROJECT_STATE.md` now open with a note explaining that they capture earlier checkpoints.
 
 ---
 

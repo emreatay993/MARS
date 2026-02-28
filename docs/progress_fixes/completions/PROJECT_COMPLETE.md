@@ -28,7 +28,7 @@
 | Utilities           | `src/utils/constants.py`, `src/utils/file_utils.py`, `src/utils/node_utils.py` | Centralised configuration, helper utilities, node lookups |
 | Solver binding      | `src/solver/engine.py`                                      | Original transient solver preserved with import updates |
 | Tests & guides      | `tests/test_*.py`, `tests/TESTING_GUIDE.md`, `tests/MANUAL_TESTING_CHECKLIST.md` | Unit coverage for utilities plus structured manual QA steps |
-| Documentation       | `README.md`, `START_HERE.md`, `ARCHITECTURE.md`, `MIGRATION_GUIDE.md`, `TRANSFORMATION_SUMMARY.md` | Updated to reference MARS naming and current module layout |
+| Documentation       | `README.md`, `START_HERE.md`, `ARCHITECTURE.md`, `MIGRATION_GUIDE.md`, `../summaries_updates/TRANSFORMATION_SUMMARY.md` | Updated to reference MARS naming and current module layout |
 
 ---
 

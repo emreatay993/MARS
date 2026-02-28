@@ -38,7 +38,7 @@ Your legacy MSUP Smart Solver codebase now lives on as **MARS: Modal Analysis Re
 
 **...test the application** → Read [tests/TESTING_GUIDE.md](tests/TESTING_GUIDE.md)
 
-**...see what changed** → Read [TRANSFORMATION_SUMMARY.md](TRANSFORMATION_SUMMARY.md)
+**...see what changed** → Read [TRANSFORMATION_SUMMARY.md](docs/progress_fixes/summaries_updates/TRANSFORMATION_SUMMARY.md)
 
 **...review the project** → Read [EXECUTIVE_SUMMARY.md](EXECUTIVE_SUMMARY.md)
 

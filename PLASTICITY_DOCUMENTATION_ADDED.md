@@ -330,9 +330,9 @@ Following the initial plasticity documentation, a comprehensive code inspection 
 
 ### Additional Deliverables Created:
 
-- `DOCUMENTATION_UPDATES_SUMMARY.md` - Detailed change log
+- `docs/progress_fixes/summaries_updates/DOCUMENTATION_UPDATES_SUMMARY.md` - Detailed change log
 - `MARS_FEATURE_CHECKLIST.md` - Complete feature reference
-- `DOCUMENTATION_COMPLETION_REPORT.md` - Validation report
+- `docs/progress_fixes/status_reports/DOCUMENTATION_COMPLETION_REPORT.md` - Validation report
 - `MARS_UAT_Tests.txt` - User acceptance tests (13 tests)
 - `MARS_UAT_Tests_User_Focused.txt` - Simplified UAT (12 tests)
 - `MARS_UAT_Tests_Turkish.txt` - Turkish version

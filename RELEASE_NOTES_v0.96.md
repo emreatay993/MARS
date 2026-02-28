@@ -88,7 +88,7 @@ Added a new checkbox control that gives users explicit control over how deformat
 **Documentation Added:**
 - `ANIMATION_DEFORMATION_MODE_IMPLEMENTATION.md` - Technical details
 - `USER_GUIDE_ANIMATION_MODES.md` - User guide with examples
-- `IMPLEMENTATION_SUMMARY.md` - Change summary
+- `docs/progress_fixes/summaries_updates/IMPLEMENTATION_SUMMARY.md` - Change summary
 
 ---
 
@@ -147,7 +147,7 @@ The **Incremental Buczynski-Glinka (IBG)** plasticity correction method has been
 - `src/ui/display_tab.py` - Removed unconditional visibility in `on_time_values_ready()`
 
 **Documentation:**
-- `BUGFIX_DEFORMATION_CONTROLS_VISIBILITY.md` - Complete fix documentation with testing checklist
+- `docs/progress_fixes/fixes/BUGFIX_DEFORMATION_CONTROLS_VISIBILITY.md` - Complete fix documentation with testing checklist
 
 ---
 

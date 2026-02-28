@@ -145,7 +145,7 @@ Executive summary and validation report
 3. `DETAILED_THEORY_MANUAL.md` - **UPDATED** (new section)
 
 ### Supporting Documentation
-4. `DOCUMENTATION_UPDATES_SUMMARY.md` - **CREATED**
+4. `../summaries_updates/DOCUMENTATION_UPDATES_SUMMARY.md` - **CREATED**
 5. `MARS_FEATURE_CHECKLIST.md` - **CREATED**
 6. `DOCUMENTATION_COMPLETION_REPORT.md` - **CREATED** (this file)
 
@@ -252,7 +252,7 @@ Executive summary and validation report
 | Updated Detailed Manual | ✅ Complete | `DETAILED_USER_MANUAL_20_Pages.md` |
 | Updated Quick Manual | ✅ Complete | `QUICK_USER_MANUAL.md` |
 | Updated Theory Manual | ✅ Complete | `DETAILED_THEORY_MANUAL.md` |
-| Change Summary | ✅ Complete | `DOCUMENTATION_UPDATES_SUMMARY.md` |
+| Change Summary | ✅ Complete | `../summaries_updates/DOCUMENTATION_UPDATES_SUMMARY.md` |
 | Feature Checklist | ✅ Complete | `MARS_FEATURE_CHECKLIST.md` |
 | Completion Report | ✅ Complete | `DOCUMENTATION_COMPLETION_REPORT.md` |
 

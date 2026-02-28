@@ -373,9 +373,9 @@ TAB_STYLE = "..."          # Tab widget appearance
 - `FILE_INDEX.md` - Complete file inventory
 
 ### Project Documentation
-- `REFACTORING_PROGRESS.md` - Detailed refactoring progress
-- `PROGRESS_SUMMARY.md` - High-level overview
-- `STATUS_REPORT.md` - Technical status report
+- `docs/progress_fixes/progress/REFACTORING_PROGRESS.md` - Detailed refactoring progress
+- `docs/progress_fixes/progress/PROGRESS_SUMMARY.md` - High-level overview
+- `docs/progress_fixes/status_reports/STATUS_REPORT.md` - Technical status report
 - `EXECUTIVE_SUMMARY_ENGINEERING.md` - Business case for adopting MARS
 - `RELEASE_NOTES_v0.97.md` - Release notes for v0.97
 

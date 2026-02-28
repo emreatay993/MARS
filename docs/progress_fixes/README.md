@@ -1,0 +1,66 @@
+# Progress & Fix Docs
+
+This folder groups progress, fix, update, status, and completion markdown files that were previously at the project root.
+
+## Folders
+
+- [fixes](fixes/): Bug-fix and fix-summary documents
+- [progress](progress/): Progress and implementation-status updates
+- [status_reports](status_reports/): Status, completion, and verification reports
+- [summaries_updates](summaries_updates/): Consolidated update and summary docs
+- [completions](completions/): Project and version completion milestones
+
+## fixes
+
+- [ANIMATION_FIX_SUMMARY.md](fixes/ANIMATION_FIX_SUMMARY.md)
+- [BUGFIX_DEFORMATION_CONTROLS_VISIBILITY.md](fixes/BUGFIX_DEFORMATION_CONTROLS_VISIBILITY.md)
+- [BUGFIX_ISSUES_8_AND_9.md](fixes/BUGFIX_ISSUES_8_AND_9.md)
+- [BUGFIX_NOTE.md](fixes/BUGFIX_NOTE.md)
+- [BUGFIX_SUMMARY_2024.md](fixes/BUGFIX_SUMMARY_2024.md)
+- [DOCUMENTATION_UPDATES_BUG_FIX.md](fixes/DOCUMENTATION_UPDATES_BUG_FIX.md)
+- [ORIENTATION_WIDGET_BUG_FIX.md](fixes/ORIENTATION_WIDGET_BUG_FIX.md)
+- [STYLESHEET_FIX_SUMMARY.md](fixes/STYLESHEET_FIX_SUMMARY.md)
+- [STYLESHEET_FIX_V2_SUMMARY.md](fixes/STYLESHEET_FIX_V2_SUMMARY.md)
+- [THREADING_BUG_FIX.md](fixes/THREADING_BUG_FIX.md)
+- [THREADING_FIX_SUMMARY.md](fixes/THREADING_FIX_SUMMARY.md)
+
+## progress
+
+- [CURRENT_IMPLEMENTATION_STATUS.md](progress/CURRENT_IMPLEMENTATION_STATUS.md)
+- [IMPLEMENTATION_STATUS.md](progress/IMPLEMENTATION_STATUS.md)
+- [LATEST_PROGRESS.md](progress/LATEST_PROGRESS.md)
+- [PROGRESS_INDICATOR_FEATURE.md](progress/PROGRESS_INDICATOR_FEATURE.md)
+- [PROGRESS_SUMMARY.md](progress/PROGRESS_SUMMARY.md)
+- [REFACTORING_PROGRESS.md](progress/REFACTORING_PROGRESS.md)
+- [UAT_UPDATES_ANIMATION_CHECKBOX.md](progress/UAT_UPDATES_ANIMATION_CHECKBOX.md)
+- [VERSION_UPDATE_v0.96.md](progress/VERSION_UPDATE_v0.96.md)
+
+## status_reports
+
+- [CALCULATION_THEORY_VERIFICATION_REPORT.md](status_reports/CALCULATION_THEORY_VERIFICATION_REPORT.md)
+- [DOCUMENTATION_AUDIT_COMPLETE.md](status_reports/DOCUMENTATION_AUDIT_COMPLETE.md)
+- [DOCUMENTATION_COMPLETION_REPORT.md](status_reports/DOCUMENTATION_COMPLETION_REPORT.md)
+- [DOCUMENTATION_STATUS_REPORT.md](status_reports/DOCUMENTATION_STATUS_REPORT.md)
+- [STATUS_REPORT.md](status_reports/STATUS_REPORT.md)
+
+## summaries_updates
+
+- [DOCUMENTATION_UPDATES_ANIMATION_CHECKBOX.md](summaries_updates/DOCUMENTATION_UPDATES_ANIMATION_CHECKBOX.md)
+- [DOCUMENTATION_UPDATES_SUMMARY.md](summaries_updates/DOCUMENTATION_UPDATES_SUMMARY.md)
+- [DOCUMENTATION_UPDATE_SUMMARY.md](summaries_updates/DOCUMENTATION_UPDATE_SUMMARY.md)
+- [FINAL_DELIVERY_SUMMARY.md](summaries_updates/FINAL_DELIVERY_SUMMARY.md)
+- [FINAL_SUMMARY.md](summaries_updates/FINAL_SUMMARY.md)
+- [FINAL_UPDATE_SUMMARY_ANIMATION_FEATURE.md](summaries_updates/FINAL_UPDATE_SUMMARY_ANIMATION_FEATURE.md)
+- [IMPLEMENTATION_SUMMARY.md](summaries_updates/IMPLEMENTATION_SUMMARY.md)
+- [LOADER_OPTIMIZATION_SUMMARY.md](summaries_updates/LOADER_OPTIMIZATION_SUMMARY.md)
+- [SESSION_SUMMARY_LOADER_OPTIMIZATIONS.md](summaries_updates/SESSION_SUMMARY_LOADER_OPTIMIZATIONS.md)
+- [TRANSFORMATION_SUMMARY.md](summaries_updates/TRANSFORMATION_SUMMARY.md)
+
+## completions
+
+- [COMPLETE_100_PERCENT.md](completions/COMPLETE_100_PERCENT.md)
+- [COMPLETION_REPORT.md](completions/COMPLETION_REPORT.md)
+- [FINAL_DELIVERY_COMPLETE.md](completions/FINAL_DELIVERY_COMPLETE.md)
+- [FINAL_PROJECT_STATE.md](completions/FINAL_PROJECT_STATE.md)
+- [PROJECT_COMPLETE.md](completions/PROJECT_COMPLETE.md)
+- [VERSION_0.96_COMPLETE.md](completions/VERSION_0.96_COMPLETE.md)

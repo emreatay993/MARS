@@ -252,7 +252,7 @@ When solver completes, MARS generates:
 - **Quick Start**: See `QUICK_USER_MANUAL.md`
 - **Detailed Guidance**: See `DETAILED_USER_MANUAL_20_Pages.md`
 - **Theory and Validation**: See `DETAILED_THEORY_MANUAL.md`
-- **Recent Updates**: See `DOCUMENTATION_UPDATES_SUMMARY.md`
+- **Recent Updates**: See `docs/progress_fixes/summaries_updates/DOCUMENTATION_UPDATES_SUMMARY.md`
 - **Architecture**: See `ARCHITECTURE.md`
 
 ---
