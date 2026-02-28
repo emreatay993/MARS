@@ -1655,18 +1655,29 @@ class MSUPSmartSolverTransient(QObject):
         except Exception as e:
             print(f"Error writing {csv_filename}: {e}")
 
+    @staticmethod
+    def _flush_copy_close_memmap(memmap_obj):
+        """Flush a memmap, copy values into RAM, and release the OS file mapping handle."""
+        if memmap_obj is None:
+            return None, None
+        try:
+            memmap_obj.flush()
+        except Exception:
+            pass
+        data_copy = np.asarray(memmap_obj, dtype=float).copy()
+        path = getattr(memmap_obj, 'filename', None)
+        mmap_obj = getattr(memmap_obj, '_mmap', None)
+        if mmap_obj is not None:
+            try:
+                mmap_obj.close()
+            except Exception:
+                pass
+        return data_copy, path
+
     def _finalize_force_moment_job(self, job_data, node_ids, node_coords):
         """Finalize the combined force/moment job and write max/min CSV outputs."""
         def _flush_memmap(memmap_obj):
-            if memmap_obj is None:
-                return None, None
-            try:
-                memmap_obj.flush()
-            except Exception:
-                pass
-            data_copy = np.asarray(memmap_obj, dtype=float).copy()
-            path = getattr(memmap_obj, 'filename', None)
-            return data_copy, path
+            return self._flush_copy_close_memmap(memmap_obj)
 
         def _finalize_series(base_key, csv_base, label):
             max_vals, max_path = _flush_memmap(job_data.get(f'{base_key}_max_memmap'))
@@ -1729,15 +1740,7 @@ class MSUPSmartSolverTransient(QObject):
     def _finalize_vector_job(self, job_data, node_ids, node_coords):
         """Finalize a vector job (magnitude + X/Y/Z components) with max/min/time CSV outputs."""
         def _finalize_memmap(memmap_obj):
-            if memmap_obj is None:
-                return None, None
-            try:
-                memmap_obj.flush()
-            except Exception:
-                pass
-            data_copy = np.asarray(memmap_obj, dtype=float).copy()
-            path = getattr(memmap_obj, 'filename', None)
-            return data_copy, path
+            return self._flush_copy_close_memmap(memmap_obj)
 
         def _finalize_entry(entry):
             max_values, max_path = _finalize_memmap(entry.get('max_memmap'))
@@ -1793,15 +1796,7 @@ class MSUPSmartSolverTransient(QObject):
     def _finalize_single_job(self, job_data, job_name, node_ids, node_coords):
         """Finalize a single max-value job (force or moment) with its own node scope."""
         def _finalize_memmap(memmap_obj):
-            if memmap_obj is None:
-                return None, None
-            try:
-                memmap_obj.flush()
-            except Exception:
-                pass
-            data_copy = np.asarray(memmap_obj, dtype=float).copy()
-            path = getattr(memmap_obj, 'filename', None)
-            return data_copy, path
+            return self._flush_copy_close_memmap(memmap_obj)
 
         max_values, max_path = _finalize_memmap(job_data.get('max_memmap'))
         time_values, time_path = _finalize_memmap(job_data.get('time_memmap'))
@@ -1832,15 +1827,7 @@ class MSUPSmartSolverTransient(QObject):
         """Flushes all memmap files and converts them to CSV."""
 
         def _finalize_memmap(memmap_obj):
-            if memmap_obj is None:
-                return None, None
-            try:
-                memmap_obj.flush()
-            except Exception:
-                pass
-            data_copy = np.asarray(memmap_obj, dtype=float).copy()
-            path = getattr(memmap_obj, 'filename', None)
-            return data_copy, path
+            return self._flush_copy_close_memmap(memmap_obj)
 
         for job_name, job_data in jobs.items():
             if job_name == 'plasticity':
