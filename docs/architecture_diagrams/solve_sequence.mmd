@@ -1,0 +1,31 @@
+sequenceDiagram
+    participant User
+    participant SolverTab
+    participant SolverAnalysisHandler
+    participant SolverThread
+    participant AnalysisEngine
+    participant Solver
+    participant DisplayTab
+
+    User->>SolverTab: Configure inputs and click Solve
+    SolverTab->>SolverAnalysisHandler: solve(config)
+    SolverAnalysisHandler->>SolverAnalysisHandler: validate/build SolverConfig
+    SolverAnalysisHandler->>SolverThread: start()
+    SolverThread->>AnalysisEngine: create_solver(config)
+    AnalysisEngine->>Solver: initialize MSUPSmartSolverTransient
+
+    alt Batch mode
+        SolverThread->>AnalysisEngine: run_batch_analysis(config)
+        AnalysisEngine->>Solver: process_results_in_batch(...)
+        Solver-->>AnalysisEngine: envelope arrays + output files
+        SolverThread-->>SolverAnalysisHandler: finished(result=None, config)
+        SolverAnalysisHandler->>DisplayTab: apply dataset catalog + scalar range
+    else Time-history mode
+        SolverThread->>AnalysisEngine: run_single_node_analysis(node_id, config)
+        AnalysisEngine->>Solver: process_results_for_a_single_node(...)
+        Solver-->>AnalysisEngine: time axis + selected output series
+        SolverThread-->>SolverAnalysisHandler: finished(AnalysisResult, config)
+        SolverAnalysisHandler->>SolverTab: update time-history plot widgets
+    end
+
+    DisplayTab-->>User: 3D view, selectors, exports, interaction tools

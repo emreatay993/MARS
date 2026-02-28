@@ -1,0 +1,15 @@
+flowchart TD
+    A[Load modal coordinate + stress files] --> B[Optionally load deformation / force-moment / steady-state / thermal data]
+    B --> C[Choose outputs and options \n skip first/last modes, plasticity, time-history or batch]
+    C --> D[Click Solve]
+    D --> E[Validate inputs and build SolverConfig]
+    E -->|Invalid| X[Show warning and stop]
+    E -->|Valid| F[Start SolverThread]
+    F --> G[AnalysisEngine creates configured MSUPSmartSolverTransient]
+    G --> H{Solve mode}
+    H -->|Batch| I[process_results_in_batch \n write max/min/time-of CSV outputs]
+    H -->|Time history| J[process_results_for_a_single_node]
+    I --> K[Build display dataset catalog]
+    J --> L[Update time-history plots]
+    K --> M[Display tab updates selectors and visualization]
+    M --> N[User explores contours, requests time-point, animation, exports]

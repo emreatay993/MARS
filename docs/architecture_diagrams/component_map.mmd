@@ -1,0 +1,34 @@
+flowchart LR
+    U[User] --> AC[ApplicationController]
+    AC --> ST[SolverTab]
+    AC --> DT[DisplayTab]
+    AC --> NAV[Navigator + Settings + Menu]
+
+    ST --> SFH[SolverFileHandler]
+    ST --> SUI[SolverUIHandler]
+    ST --> SAH[SolverAnalysisHandler]
+    ST --> SLH[SolverLogHandler]
+
+    SFH --> FLT[FileLoaderThread]
+    FLT --> LOADERS[file_io.loaders]
+
+    SAH --> STH[SolverThread]
+    STH --> AE[AnalysisEngine]
+    AE --> SOLVER[MSUPSmartSolverTransient]
+    AE --> PLAST[core.plasticity helpers]
+
+    SOLVER --> OUT[(CSV / DAT outputs)]
+    SAH --> CATALOG[Dataset catalog]
+    CATALOG --> DT
+
+    DT --> DRH[DisplayResultsHandler]
+    DT --> DVH[DisplayVisualizationHandler]
+    DT --> DAH[DisplayAnimationHandler]
+    DT --> DIH[DisplayInteractionHandler]
+    DT --> DEH[DisplayExportHandler]
+
+    DRH --> MESH[(PyVista mesh + scalar arrays)]
+    DVH --> MESH
+
+    DT -->|node picked / time point / animation request| ST
+    ST -->|initial data / time-point mesh / animation data| DT

@@ -1,172 +1,78 @@
-# File Index – MARS: Modal Analysis Response Solver
+# FILE_INDEX
 
-This index documents the current `src/` implementation layout and line counts.
-All counts below were refreshed from the live tree.
+Generated: `2026-02-28 21:33:05`
 
-## Snapshot (Refreshed 2026-02-22)
+## Scope
 
-- 51 Python files under `src/` (excluding `__pycache__`)
-- 16,067 Python lines in `src/`
-- UI layer: 32 Python files and 10,219 lines
-- Solver + core numerics: 8 Python files and 3,822 lines
-- File I/O layer: 4 Python files and 1,451 lines
-- Utility layer: 5 Python files and 501 lines
-- Additional non-Python files in `src/`: 85 (spec/lint config, material CSV, and currently checked-in output artifacts)
+- Source root: `src/`
+- Python modules indexed: `51`
+- Total Python lines (physical): `16159`
+- Line counts include blank lines and comments.
+- Descriptions come from each module's top docstring (first sentence when possible).
 
----
+## Package Totals
 
-## Root Modules (2 files - 74 lines)
+| Package | Modules | Lines |
+| --- | ---: | ---: |
+| `(root)` | 2 | 74 |
+| `core` | 5 | 1189 |
+| `file_io` | 4 | 1458 |
+| `solver` | 3 | 2667 |
+| `ui` | 32 | 10270 |
+| `utils` | 5 | 501 |
 
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/main.py` | 67 | Application entry point (Qt setup, persisted settings bootstrap, and launching `ApplicationController`) |
-| `src/__init__.py` | 7 | Package marker |
+## Module Index
 
----
-
-## Core Package (5 files - 1,189 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/core/computation.py` | 333 | `AnalysisEngine` facade that configures `MSUPSmartSolverTransient`, handles mode filtering (skip first/last), and runs batch/time-history workflows |
-| `src/core/data_models.py` | 284 | Dataclasses for modal/stress/deformation/force-moment/steady-state data, material profile, temperature field, solver config, and analysis result |
-| `src/core/plasticity.py` | 238 | Converts material profile + temperature field inputs into runtime plasticity data (`MaterialDB`) |
-| `src/core/visualization.py` | 332 | `VisualizationManager`, `AnimationManager`, and `HotspotDetector` domain logic for display operations |
-| `src/core/__init__.py` | 2 | Package initializer |
-
----
-
-## File I/O Package (4 files - 1,451 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/file_io/exporters.py` | 192 | CSV/APDL export helpers plus material profile JSON export |
-| `src/file_io/loaders.py` | 875 | Loaders for `.mcf`, `.pch`, stress/deformation/force-moment/steady-state files, temperature fields, and material profiles (with large-file progress/throughput tracking) |
-| `src/file_io/validators.py` | 377 | Validation routines for all supported input formats including PCH and material-profile payloads |
-| `src/file_io/__init__.py` | 7 | Package initializer |
-
----
-
-## Solver Package (3 files - 2,633 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/solver/engine.py` | 1911 | Main CPU solver (`MSUPSmartSolverTransient`): chunked stress/kinematics/force-moment processing, memmap pipelines, damage, and plasticity integration |
-| `src/solver/plasticity_engine.py` | 720 | Neuber/Glinka/IBG correction kernels and material database model |
-| `src/solver/__init__.py` | 2 | Package initializer |
-
----
-
-## UI Shell (5 files - 1,880 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/ui/application_controller.py` | 259 | Main window controller: menu/navigation setup, tab wiring, advanced settings dialog flow, and cross-tab signal routing |
-| `src/ui/display_tab.py` | 756 | Display tab widget delegating rendering, interaction, animation, export, and result selection (including mode-skip passthrough) to handler classes |
-| `src/ui/solver_tab.py` | 634 | Solver tab widget delegating loading, validation, solving, UI-state logic, and logging, including skip-first/skip-last mode controls |
-| `src/ui/tooltips.py` | 229 | Centralized HTML tooltip text for solver controls, including skip-first/skip-last guidance and detailed steady-state format/ANSYS export notes |
-| `src/ui/__init__.py` | 2 | Package marker |
-
----
-
-## UI Builders (3 files - 910 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/ui/builders/display_ui.py` | 356 | Builder for display layouts (visualization controls, result selectors, time-point tools, animation controls) |
-| `src/ui/builders/solver_ui.py` | 552 | Builder for solver layouts (file inputs, outputs, skip-first/skip-last controls, fatigue/plasticity options, plots, console, progress controls) |
-| `src/ui/builders/__init__.py` | 2 | Package initializer |
-
----
-
-## UI Dialogs (2 files - 475 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/ui/dialogs/material_profile_dialog.py` | 470 | Dialog for editing/importing/exporting temperature-dependent material properties and plastic curves |
-| `src/ui/dialogs/__init__.py` | 5 | Package initializer |
-
----
-
-## UI Handlers (15 files - 5,211 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/ui/handlers/analysis_handler.py` | 1572 | Main solve orchestration: config validation (including skip-first/skip-last checks), threaded solve execution, batch/time-history handling, time-point calculation, animation precomputation, and display result-catalog building |
-| `src/ui/handlers/display_animation_handler.py` | 567 | Animation playback lifecycle, frame updates, save/export, memory-estimation logic, and animation requests with mode-skip parameters |
-| `src/ui/handlers/display_base_handler.py` | 72 | Base helper for syncing `DisplayTab` attributes with shared `DisplayState` |
-| `src/ui/handlers/display_export_handler.py` | 103 | Export current display results to CSV and APDL initial conditions |
-| `src/ui/handlers/display_file_handler.py` | 104 | Direct CSV visualization-file ingestion and scalar binding |
-| `src/ui/handlers/display_interaction_handler.py` | 595 | Context menu, box selection, hotspot analysis, point picking, and tracked-node workflows (including camera-stable Go To Node behavior) |
-| `src/ui/handlers/display_results_handler.py` | 574 | Result catalog normalization, selector combo management, and applying selected solver datasets to mesh/scalar bar |
-| `src/ui/handlers/display_state.py` | 54 | Shared display runtime dataclass for mesh, camera, animation, interaction, and selector state |
-| `src/ui/handlers/display_visualization_handler.py` | 411 | Render pipeline, camera-widget lifecycle, hover annotations, scalar range updates, and scalar-field application |
-| `src/ui/handlers/file_handler.py` | 318 | Solver-tab file dialog and background loader orchestration (including `.mcf`/`.pch`) |
-| `src/ui/handlers/log_handler.py` | 131 | Structured console logging for file loads and material/temperature updates |
-| `src/ui/handlers/navigator_handler.py` | 54 | Project directory navigation and opening selected files |
-| `src/ui/handlers/plotting_handler.py` | 63 | Plotly WebView rendering and temp-file cleanup |
-| `src/ui/handlers/settings_handler.py` | 43 | Runtime application/persistence of advanced settings (RAM %, precision, dtype updates, Software OpenGL preference) |
-| `src/ui/handlers/ui_state_handler.py` | 550 | Solver-tab checkbox/state coordination, skip-first/skip-last UI state handling, mutual exclusions, and plot update triggers |
-
----
-
-## UI Styles (2 files - 438 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/ui/styles/style_constants.py` | 432 | Centralized Qt stylesheet constants (menus, tabs, controls, dialogs, context menu, tooltip style) |
-| `src/ui/styles/__init__.py` | 6 | Package initializer |
-
----
-
-## UI Widgets (5 files - 1,305 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/ui/widgets/console.py` | 67 | Buffered stdout-to-`QTextEdit` logger |
-| `src/ui/widgets/dialogs.py` | 231 | Advanced settings dialog (RAM/precision/Software OpenGL) and hotspot result dialog |
-| `src/ui/widgets/editable_table.py` | 269 | Spreadsheet-style editable table with copy/paste and blank-row behavior |
-| `src/ui/widgets/plotting.py` | 733 | Matplotlib and Plotly plotting widgets for time-history and max/min-over-time results |
-| `src/ui/widgets/__init__.py` | 5 | Package initializer |
-
----
-
-## Utils Package (5 files - 501 lines)
-
-| File | Lines | Description |
-|------|-------|-------------|
-| `src/utils/app_settings.py` | 113 | Persistent app settings load/save helpers (`~/.mars_settings.json`) and environment override parsing for Software OpenGL |
-| `src/utils/constants.py` | 56 | Global solver/runtime defaults and display constants |
-| `src/utils/file_utils.py` | 235 | `.mcf` unwrapping and NASTRAN `.pch` modal-coordinate parsing |
-| `src/utils/node_utils.py` | 95 | Robust node-id normalization and index lookup across mixed input formats |
-| `src/utils/__init__.py` | 2 | Package initializer |
-
----
-
-## Non-Python Files Inside `src/` (85 files)
-
-Current tree includes:
-- `src/MARS.spec`, `src/.pylintrc`, `src/youngs_modulus.csv`
-- 82 `.csv`/`.dat` solver output artifacts currently under `src/ui/handlers/`
-
-Note: those artifact files are runtime outputs and are typically better kept in a dedicated output directory outside source modules.
-
----
-
-## Test Code Snapshot (`tests/`)
-
-- 16 Python files, 1,856 lines total
-- Unit tests: `tests/test_data_models.py`, `tests/test_file_utils.py`, `tests/test_node_utils.py`, `tests/test_plasticity.py`, `tests/test_validators.py`
-- Display/solver regression tests: `tests/test_solver_single_node_time_axis.py`, `tests/test_display_handlers_regressions.py`, `tests/test_analysis_handler_skip_modes.py`
-- Performance/tooling scripts under `tests/performance/`
-
----
-
-## Totals
-
-- **`src/` Python total**: 51 files, 16,067 lines
-- **UI total**: 32 files, 10,219 lines
-- **Core + solver total**: 8 files, 3,822 lines
-- **I/O + utils total**: 9 files, 1,952 lines
-
-Update this file whenever modules are added/removed so architectural docs stay trustworthy.
+| Path | Module | Lines | Classes | Functions | Description |
+| --- | --- | ---: | ---: | ---: | --- |
+| `src/__init__.py` | `src.__init__` | 7 | 0 | 0 | MARS: Modal Analysis Response Solver Modernised successor to the legacy MSUP Smart Solver for transient structural analysis. |
+| `src/core/__init__.py` | `src.core.__init__` | 2 | 0 | 0 | Core business logic and computation modules. |
+| `src/core/computation.py` | `src.core.computation` | 333 | 1 | 0 | Analysis engine wrapper for MARS (Modal Analysis Response Solver). |
+| `src/core/data_models.py` | `src.core.data_models` | 284 | 10 | 0 | Data models for MARS (Modal Analysis Response Solver). |
+| `src/core/plasticity.py` | `src.core.plasticity` | 238 | 1 | 7 | Utilities for preparing plasticity solver inputs. |
+| `src/core/visualization.py` | `src.core.visualization` | 332 | 3 | 0 | Visualization management classes for MARS (Modal Analysis Response Solver). |
+| `src/file_io/__init__.py` | `src.file_io.__init__` | 7 | 0 | 0 | File I/O operations for loading and exporting data. |
+| `src/file_io/exporters.py` | `src.file_io.exporters` | 192 | 0 | 7 | Export helpers for MARS (Modal Analysis Response Solver). |
+| `src/file_io/loaders.py` | `src.file_io.loaders` | 882 | 0 | 18 | File loading helpers for MARS (Modal Analysis Response Solver). |
+| `src/file_io/validators.py` | `src.file_io.validators` | 377 | 1 | 7 | File validation helpers for MARS (Modal Analysis Response Solver). |
+| `src/main.py` | `src.main` | 67 | 0 | 1 | Entry point for the MARS: Modal Analysis Response Solver application. |
+| `src/solver/__init__.py` | `src.solver.__init__` | 2 | 0 | 0 | Solver engine for transient analysis computations. |
+| `src/solver/engine.py` | `src.solver.engine` | 1945 | 2 | 0 | No module docstring. |
+| `src/solver/plasticity_engine.py` | `src.solver.plasticity_engine` | 720 | 1 | 23 | Plasticity correction solvers for Neuber, Glinka, and IBG methods. |
+| `src/ui/__init__.py` | `src.ui.__init__` | 2 | 0 | 0 | GUI components and user interface modules. |
+| `src/ui/application_controller.py` | `src.ui.application_controller` | 259 | 1 | 0 | Main window for the MARS: Modal Analysis Response Solver application. |
+| `src/ui/builders/__init__.py` | `src.ui.builders.__init__` | 2 | 0 | 0 | UI builders for constructing complex widget layouts. |
+| `src/ui/builders/display_ui.py` | `src.ui.builders.display_ui` | 356 | 1 | 0 | UI Builder for the Display Tab. |
+| `src/ui/builders/solver_ui.py` | `src.ui.builders.solver_ui` | 552 | 1 | 0 | UI Builder for the Solver Tab. |
+| `src/ui/dialogs/__init__.py` | `src.ui.dialogs.__init__` | 5 | 0 | 0 | Dialog components for the UI package. |
+| `src/ui/dialogs/material_profile_dialog.py` | `src.ui.dialogs.material_profile_dialog` | 470 | 1 | 0 | Material profile dialog providing editors for temperature-dependent properties. |
+| `src/ui/display_tab.py` | `src.ui.display_tab` | 756 | 1 | 0 | Refactored Display Tab for 3D visualization. |
+| `src/ui/handlers/analysis_handler.py` | `src.ui.handlers.analysis_handler` | 1584 | 2 | 0 | Analysis Handler for the SolverTab. |
+| `src/ui/handlers/display_animation_handler.py` | `src.ui.handlers.display_animation_handler` | 567 | 1 | 0 | Animation lifecycle management for the Display tab. |
+| `src/ui/handlers/display_base_handler.py` | `src.ui.handlers.display_base_handler` | 72 | 1 | 0 | Base utilities for Display tab handler classes. |
+| `src/ui/handlers/display_export_handler.py` | `src.ui.handlers.display_export_handler` | 103 | 1 | 0 | Export-related functionality for the Display tab. |
+| `src/ui/handlers/display_file_handler.py` | `src.ui.handlers.display_file_handler` | 104 | 1 | 0 | File loading logic for the Display tab. |
+| `src/ui/handlers/display_interaction_handler.py` | `src.ui.handlers.display_interaction_handler` | 595 | 1 | 0 | Node interaction, picking, and hotspot analysis for the Display tab. |
+| `src/ui/handlers/display_results_handler.py` | `src.ui.handlers.display_results_handler` | 581 | 1 | 0 | Helpers for applying solver output datasets to the Display tab. |
+| `src/ui/handlers/display_state.py` | `src.ui.handlers.display_state` | 54 | 1 | 0 | Shared state container for the Display tab. |
+| `src/ui/handlers/display_visualization_handler.py` | `src.ui.handlers.display_visualization_handler` | 411 | 1 | 0 | Visualization updates and rendering helpers for the Display tab. |
+| `src/ui/handlers/file_handler.py` | `src.ui.handlers.file_handler` | 318 | 2 | 0 | File loading handler for the SolverTab. |
+| `src/ui/handlers/log_handler.py` | `src.ui.handlers.log_handler` | 131 | 1 | 0 | Log Handler for the SolverTab. |
+| `src/ui/handlers/navigator_handler.py` | `src.ui.handlers.navigator_handler` | 55 | 1 | 0 | Handles user interactions with the File Navigator dock, such as selecting project directories and opening files. |
+| `src/ui/handlers/plotting_handler.py` | `src.ui.handlers.plotting_handler` | 64 | 1 | 0 | Handles plotting operations, such as loading Plotly figures into WebViews and managing temporary files. |
+| `src/ui/handlers/settings_handler.py` | `src.ui.handlers.settings_handler` | 43 | 1 | 0 | Handles the application and management of advanced settings. |
+| `src/ui/handlers/ui_state_handler.py` | `src.ui.handlers.ui_state_handler` | 550 | 1 | 0 | UI State Handler for the SolverTab. |
+| `src/ui/solver_tab.py` | `src.ui.solver_tab` | 634 | 1 | 0 | Solver tab implementation for MARS (Modal Analysis Response Solver). |
+| `src/ui/styles/__init__.py` | `src.ui.styles.__init__` | 6 | 0 | 0 | UI Styles module for MARS GUI. |
+| `src/ui/styles/style_constants.py` | `src.ui.styles.style_constants` | 432 | 0 | 0 | Centralized style constants for MARS GUI. |
+| `src/ui/tooltips.py` | `src.ui.tooltips` | 229 | 0 | 0 | Centralized tooltip text definitions for the MARS GUI. |
+| `src/ui/widgets/__init__.py` | `src.ui.widgets.__init__` | 5 | 0 | 0 | Reusable UI widgets. |
+| `src/ui/widgets/console.py` | `src.ui.widgets.console` | 97 | 1 | 0 | Console logger widget for MARS (Modal Analysis Response Solver). |
+| `src/ui/widgets/dialogs.py` | `src.ui.widgets.dialogs` | 231 | 2 | 0 | Dialog widgets for MARS (Modal Analysis Response Solver). |
+| `src/ui/widgets/editable_table.py` | `src.ui.widgets.editable_table` | 269 | 1 | 0 | Generic editable table widget with copy/paste helpers and trailing blank row. |
+| `src/ui/widgets/plotting.py` | `src.ui.widgets.plotting` | 733 | 3 | 0 | Plotting widgets for MARS (Modal Analysis Response Solver). |
+| `src/utils/__init__.py` | `src.utils.__init__` | 2 | 0 | 0 | Utility functions and helpers. |
+| `src/utils/app_settings.py` | `src.utils.app_settings` | 113 | 0 | 6 | Persistent application settings helpers for MARS. |
+| `src/utils/constants.py` | `src.utils.constants` | 56 | 0 | 0 | Global constants, configuration settings, and UI styles for MARS (Modal Analysis Response Solver). |
+| `src/utils/file_utils.py` | `src.utils.file_utils` | 235 | 0 | 2 | File utility helpers for MARS (Modal Analysis Response Solver). |
+| `src/utils/node_utils.py` | `src.utils.node_utils` | 95 | 0 | 2 | Node-related utility helpers for MARS (Modal Analysis Response Solver). |
