@@ -71,9 +71,16 @@ RESULT_OUTPUT_FILES = {
     RESULT_KIND_FORCE_MOMENT: "modal_element_nodal_forces_moments_w_coords.csv",
 }
 
+EXPECTED_RESULT_UNIT_LABELS = {
+    RESULT_KIND_STRESS: "MPa",
+    RESULT_KIND_DEFORMATION: "mm",
+}
+
 PREF_LEVEL_OF_DETAIL = "PID_Level_Of_Detail"
 PREF_LEVEL_OF_DETAIL_NO_GRAPHICS = "0"
 ANALYSIS_TYPE_MODAL_VALUE = 5
+UNIT_SYSTEM_STANDARD_NMM_VALUE = 2
+UNIT_SYSTEM_STANDARD_NMM_LABEL = "StandardNMM (kg, N, mm)"
 
 JOB_STATUS_PENDING = "Pending"
 JOB_STATUS_RUNNING = "Running"
@@ -85,11 +92,12 @@ JOB_STATUS_CANCELLED = "Cancelled"
 RAM_SAFETY_FRACTION = 0.04
 RAM_MIN_SAFE_BYTES = 128 * 1024 * 1024
 RAM_MAX_MODES_PER_BATCH = 6
-# Fallback absolute free-RAM threshold (used if total RAM cannot be queried).
-LOW_RAM_BACKPRESSURE_BYTES = 3 * 1024 ** 3
-LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT = 90.0
-LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN = 1.0
-LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX = 99.0
+# Trigger aggressive cleanup when free RAM falls to or below this percentage.
+LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT = 60.0
+LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN = 1.0
+LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX = 99.0
+# Fallback absolute free-RAM threshold (used only if total RAM cannot be queried).
+LOW_RAM_BACKPRESSURE_FALLBACK_BYTES = 3 * 1024 ** 3
 LARGE_MODE_BYTES_THRESHOLD = int(0.75 * 1024 ** 3)
 VERY_LARGE_MODE_BYTES_THRESHOLD = int(1.5 * 1024 ** 3)
 MERGE_GROUP_LIMIT_MIN = 8
@@ -247,6 +255,206 @@ def restore_no_graphics_preference_mode(pref_state, progress_dialog=None):
         )
 
 
+def normalize_unit_system_value(unit_system_value):
+    if unit_system_value is None:
+        return None
+
+    for attr_name in ("Value", "value__"):
+        try:
+            attr_value = getattr(unit_system_value, attr_name)
+            return int(attr_value)
+        except Exception:
+            pass
+
+    try:
+        return int(unit_system_value)
+    except Exception:
+        pass
+
+    return None
+
+
+def format_unit_system_value(unit_system_value):
+    if unit_system_value is None:
+        return "unknown"
+
+    try:
+        text = str(unit_system_value)
+        if text is not None and text.strip() != "":
+            return text
+    except Exception:
+        pass
+
+    normalized = normalize_unit_system_value(unit_system_value)
+    if normalized is None:
+        return "unknown"
+    return "ID {0}".format(normalized)
+
+
+def resolve_standard_nmm_unit_system_for_application():
+    candidate_names = ["MechanicalUnitSystem", "MechanicalUnitSystemEnum"]
+    for type_name in candidate_names:
+        enum_type = globals().get(type_name, None)
+        if enum_type is None:
+            continue
+        try:
+            return getattr(enum_type, "StandardNMM")
+        except Exception:
+            pass
+    return UNIT_SYSTEM_STANDARD_NMM_VALUE
+
+
+def resolve_standard_nmm_unit_system_for_project():
+    candidate_names = ["WBUnitSystemType", "MechanicalUnitSystem", "MechanicalUnitSystemEnum"]
+    for type_name in candidate_names:
+        enum_type = globals().get(type_name, None)
+        if enum_type is None:
+            continue
+        try:
+            return getattr(enum_type, "StandardNMM")
+        except Exception:
+            pass
+    return UNIT_SYSTEM_STANDARD_NMM_VALUE
+
+
+def enter_standard_nmm_unit_system(progress_dialog=None):
+    original_active = None
+    original_project = None
+
+    try:
+        original_active = ExtAPI.Application.ActiveUnitSystem
+    except Exception:
+        pass
+
+    try:
+        original_project = ExtAPI.DataModel.Project.UnitSystem
+    except Exception:
+        pass
+
+    target_app_unit = resolve_standard_nmm_unit_system_for_application()
+    target_project_unit = resolve_standard_nmm_unit_system_for_project()
+    app_set_error = None
+    project_set_error = None
+
+    try:
+        ExtAPI.Application.ActiveUnitSystem = target_app_unit
+    except Exception as ex:
+        app_set_error = ex
+
+    try:
+        ExtAPI.DataModel.Project.UnitSystem = target_project_unit
+    except Exception as ex:
+        project_set_error = ex
+
+    current_active = None
+    current_project = None
+    try:
+        current_active = ExtAPI.Application.ActiveUnitSystem
+    except Exception:
+        pass
+
+    try:
+        current_project = ExtAPI.DataModel.Project.UnitSystem
+    except Exception:
+        pass
+
+    active_ok = normalize_unit_system_value(current_active) == UNIT_SYSTEM_STANDARD_NMM_VALUE
+    project_ok = normalize_unit_system_value(current_project) == UNIT_SYSTEM_STANDARD_NMM_VALUE
+    if not active_ok and not project_ok:
+        detail_parts = []
+        if app_set_error is not None:
+            detail_parts.append("ActiveUnitSystem failed: {0}".format(str(app_set_error)))
+        if project_set_error is not None:
+            detail_parts.append("Project.UnitSystem failed: {0}".format(str(project_set_error)))
+        if len(detail_parts) == 0:
+            detail_parts.append(
+                "Current ActiveUnitSystem={0}, Project.UnitSystem={1}".format(
+                    format_unit_system_value(current_active),
+                    format_unit_system_value(current_project),
+                )
+            )
+        raise Exception(
+            "Could not enforce Mechanical unit system to {0}. {1}".format(
+                UNIT_SYSTEM_STANDARD_NMM_LABEL,
+                " | ".join(detail_parts),
+            )
+        )
+
+    log_message(
+        "Forced Mechanical unit system to {0}. ActiveUnitSystem={1}, Project.UnitSystem={2}.".format(
+            UNIT_SYSTEM_STANDARD_NMM_LABEL,
+            format_unit_system_value(current_active),
+            format_unit_system_value(current_project),
+        ),
+        progress_dialog,
+    )
+
+    return {
+        "original_active": original_active,
+        "original_project": original_project,
+        "restore_active": (
+            original_active is not None
+            and normalize_unit_system_value(original_active) != normalize_unit_system_value(current_active)
+        ),
+        "restore_project": (
+            original_project is not None
+            and normalize_unit_system_value(original_project) != normalize_unit_system_value(current_project)
+        ),
+    }
+
+
+def restore_unit_system_state(unit_state, progress_dialog=None):
+    if unit_state is None:
+        return
+
+    active_restore_error = None
+    project_restore_error = None
+
+    if unit_state.get("restore_active", False):
+        try:
+            ExtAPI.Application.ActiveUnitSystem = unit_state.get("original_active", None)
+        except Exception as ex:
+            active_restore_error = ex
+
+    if unit_state.get("restore_project", False):
+        try:
+            ExtAPI.DataModel.Project.UnitSystem = unit_state.get("original_project", None)
+        except Exception as ex:
+            project_restore_error = ex
+
+    current_active = None
+    current_project = None
+    try:
+        current_active = ExtAPI.Application.ActiveUnitSystem
+    except Exception:
+        pass
+
+    try:
+        current_project = ExtAPI.DataModel.Project.UnitSystem
+    except Exception:
+        pass
+
+    if active_restore_error is None and project_restore_error is None:
+        log_message(
+            "Restored Mechanical unit system. ActiveUnitSystem={0}, Project.UnitSystem={1}.".format(
+                format_unit_system_value(current_active),
+                format_unit_system_value(current_project),
+            ),
+            progress_dialog,
+        )
+        return
+
+    warning_parts = []
+    if active_restore_error is not None:
+        warning_parts.append("ActiveUnitSystem restore failed: {0}".format(str(active_restore_error)))
+    if project_restore_error is not None:
+        warning_parts.append("Project.UnitSystem restore failed: {0}".format(str(project_restore_error)))
+    log_message(
+        "Warning: could not fully restore Mechanical unit system. {0}".format(" | ".join(warning_parts)),
+        progress_dialog,
+    )
+
+
 def log_message(msg, progress_dialog=None):
     stamp = time.strftime("%H:%M:%S")
     line = "[{0}] {1}".format(stamp, msg)
@@ -322,6 +530,12 @@ def get_result_kind_labels(result_kinds):
 def format_available_ram_text(available_ram_bytes):
     if available_ram_bytes > 0:
         return "{0:.2f} GiB".format(bytes_to_gib(available_ram_bytes))
+    return "unknown"
+
+
+def format_available_ram_percent_text(available_ram_percent):
+    if available_ram_percent >= 0.0:
+        return "{0:.1f}%".format(available_ram_percent)
     return "unknown"
 
 
@@ -432,6 +646,23 @@ def get_total_ram_bytes():
     return total_bytes
 
 
+def get_available_ram_percent(available_bytes=None, total_bytes=None):
+    if available_bytes is None or available_bytes <= 0:
+        available_bytes = get_available_ram_bytes()
+    if total_bytes is None or total_bytes <= 0:
+        total_bytes = get_total_ram_bytes()
+
+    if available_bytes > 0 and total_bytes > 0:
+        pct = (float(available_bytes) * 100.0) / float(total_bytes)
+        if pct < 0.0:
+            pct = 0.0
+        if pct > 100.0:
+            pct = 100.0
+        return pct, total_bytes
+
+    return -1.0, total_bytes
+
+
 def is_run_cancel_requested(progress_dialog=None):
     if progress_dialog is None:
         return False
@@ -453,30 +684,63 @@ def raise_if_run_cancel_requested(progress_dialog=None, context_text=""):
     raise UserCancelledException(msg)
 
 
-def clamp_low_ram_used_percent(raw_value):
+def clamp_low_ram_free_percent(raw_value):
     try:
         pct = float(raw_value)
     except Exception:
-        pct = LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT
+        pct = LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
 
-    if pct < LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN:
-        pct = LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN
-    if pct > LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX:
-        pct = LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX
+    if pct < LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN:
+        pct = LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN
+    if pct > LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX:
+        pct = LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX
     return pct
 
 
-def resolve_low_ram_backpressure_bytes(low_ram_used_percent):
-    used_pct = clamp_low_ram_used_percent(low_ram_used_percent)
-    total_bytes = get_total_ram_bytes()
+def get_job_low_ram_free_percent(job_record):
+    if job_record is None:
+        return LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
 
-    if total_bytes > 0:
-        free_fraction = max(0.0, 1.0 - (used_pct / 100.0))
-        threshold_bytes = int(total_bytes * free_fraction)
-        threshold_bytes = max(threshold_bytes, RAM_MIN_SAFE_BYTES)
-        return threshold_bytes, used_pct, total_bytes, True
+    if "low_ram_free_percent" in job_record:
+        return clamp_low_ram_free_percent(job_record.get("low_ram_free_percent"))
 
-    return int(LOW_RAM_BACKPRESSURE_BYTES), used_pct, total_bytes, False
+    # Legacy compatibility for already-created in-memory jobs that still store "% used".
+    if "low_ram_used_percent" in job_record:
+        try:
+            legacy_used_pct = float(job_record.get("low_ram_used_percent"))
+            return clamp_low_ram_free_percent(100.0 - legacy_used_pct)
+        except Exception:
+            pass
+
+    return LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
+
+
+def evaluate_low_ram_condition(low_ram_free_percent, available_bytes=None, total_bytes=None):
+    threshold_percent = clamp_low_ram_free_percent(low_ram_free_percent)
+    if available_bytes is None or available_bytes <= 0:
+        available_bytes = get_available_ram_bytes()
+    available_percent, total_bytes = get_available_ram_percent(available_bytes, total_bytes)
+
+    if available_percent >= 0.0:
+        return {
+            "triggered": (available_percent <= threshold_percent),
+            "threshold_percent": threshold_percent,
+            "available_percent": available_percent,
+            "available_bytes": available_bytes,
+            "total_bytes": total_bytes,
+            "percent_mode": True,
+            "fallback_bytes": LOW_RAM_BACKPRESSURE_FALLBACK_BYTES,
+        }
+
+    return {
+        "triggered": (available_bytes > 0 and available_bytes < LOW_RAM_BACKPRESSURE_FALLBACK_BYTES),
+        "threshold_percent": threshold_percent,
+        "available_percent": -1.0,
+        "available_bytes": available_bytes,
+        "total_bytes": total_bytes,
+        "percent_mode": False,
+        "fallback_bytes": LOW_RAM_BACKPRESSURE_FALLBACK_BYTES,
+    }
 
 
 def force_memory_cleanup(wait_for_finalizers=False):
@@ -503,18 +767,22 @@ def force_memory_cleanup(wait_for_finalizers=False):
         pass
 
 
-def apply_low_ram_backpressure(progress_dialog=None, context_text="", low_ram_backpressure_bytes=None):
-    threshold_bytes = int(
-        low_ram_backpressure_bytes
-        if low_ram_backpressure_bytes is not None and low_ram_backpressure_bytes > 0
-        else LOW_RAM_BACKPRESSURE_BYTES
-    )
-    available_bytes = get_available_ram_bytes()
-    if available_bytes > 0 and available_bytes < threshold_bytes:
-        msg = "Low available RAM detected ({0}; trigger: {1}). Running aggressive cleanup.".format(
-            format_available_ram_text(available_bytes),
-            format_available_ram_text(threshold_bytes),
-        )
+def apply_low_ram_backpressure(progress_dialog=None, context_text="", low_ram_free_percent=None):
+    ram_state = evaluate_low_ram_condition(low_ram_free_percent)
+    available_bytes = ram_state.get("available_bytes", -1)
+    if ram_state.get("triggered", False):
+        if ram_state.get("percent_mode", False):
+            msg = "Low available RAM detected ({0} free, {1} available; trigger: <= {2:.1f}% free). Running aggressive cleanup.".format(
+                format_available_ram_percent_text(ram_state.get("available_percent", -1.0)),
+                format_available_ram_text(available_bytes),
+                ram_state.get("threshold_percent", LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT),
+            )
+        else:
+            msg = "Low available RAM detected ({0} available; fallback trigger: below {1}; configured trigger: <= {2:.1f}% free, total RAM query unavailable). Running aggressive cleanup.".format(
+                format_available_ram_text(available_bytes),
+                format_available_ram_text(ram_state.get("fallback_bytes", LOW_RAM_BACKPRESSURE_FALLBACK_BYTES)),
+                ram_state.get("threshold_percent", LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT),
+            )
         if context_text is not None and str(context_text).strip() != "":
             msg += " Context: {0}".format(str(context_text))
         log_message(msg, progress_dialog)
@@ -523,15 +791,10 @@ def apply_low_ram_backpressure(progress_dialog=None, context_text="", low_ram_ba
     return available_bytes
 
 
-def estimate_mode_batch_size(node_count, component_count, remaining_modes, low_ram_backpressure_bytes=None):
+def estimate_mode_batch_size(node_count, component_count, remaining_modes, low_ram_free_percent=None):
     if remaining_modes <= 0:
         return 1, -1
 
-    threshold_bytes = int(
-        low_ram_backpressure_bytes
-        if low_ram_backpressure_bytes is not None and low_ram_backpressure_bytes > 0
-        else LOW_RAM_BACKPRESSURE_BYTES
-    )
     available_bytes = get_available_ram_bytes()
     if node_count <= 0 or component_count <= 0:
         return 1, available_bytes
@@ -555,7 +818,8 @@ def estimate_mode_batch_size(node_count, component_count, remaining_modes, low_r
 
     if estimate < 1:
         estimate = 1
-    if available_bytes > 0 and available_bytes < threshold_bytes:
+    ram_state = evaluate_low_ram_condition(low_ram_free_percent, available_bytes=available_bytes)
+    if ram_state.get("triggered", False):
         mode_size_cap = min(mode_size_cap, 1)
     if estimate > mode_size_cap:
         estimate = mode_size_cap
@@ -565,19 +829,14 @@ def estimate_mode_batch_size(node_count, component_count, remaining_modes, low_r
     return estimate, available_bytes
 
 
-def estimate_merge_group_limit(pending_count, low_ram_backpressure_bytes=None):
+def estimate_merge_group_limit(pending_count, low_ram_free_percent=None):
     if pending_count <= 0:
         return 1, -1
 
-    threshold_bytes = int(
-        low_ram_backpressure_bytes
-        if low_ram_backpressure_bytes is not None and low_ram_backpressure_bytes > 0
-        else LOW_RAM_BACKPRESSURE_BYTES
-    )
     available_bytes = get_available_ram_bytes()
     if available_bytes <= 0:
         estimate = MERGE_GROUP_LIMIT_UNKNOWN_RAM
-    elif available_bytes < threshold_bytes:
+    elif evaluate_low_ram_condition(low_ram_free_percent, available_bytes=available_bytes).get("triggered", False):
         estimate = MERGE_GROUP_LIMIT_LOW_RAM
     elif available_bytes < MERGE_GROUP_MID_RAM_THRESHOLD_BYTES:
         estimate = MERGE_GROUP_LIMIT_MID_RAM
@@ -940,7 +1199,7 @@ class ExtractOptionsDialog(Form):
         )
 
         self.low_ram_trigger_label = Label()
-        self.low_ram_trigger_label.Text = "Low-RAM Cleanup Trigger (% used):"
+        self.low_ram_trigger_label.Text = "Low-RAM Cleanup Trigger (% free):"
         self.low_ram_trigger_label.Location = Point(430, 320)
         self.low_ram_trigger_label.Size = Size(250, 22)
         self.low_ram_trigger_label.Anchor = AnchorStyles.Top | AnchorStyles.Right
@@ -950,15 +1209,15 @@ class ExtractOptionsDialog(Form):
         self.low_ram_trigger_textbox.Location = Point(690, 319)
         self.low_ram_trigger_textbox.Size = Size(60, 24)
         self.low_ram_trigger_textbox.Anchor = AnchorStyles.Top | AnchorStyles.Right
-        self.low_ram_trigger_textbox.Text = "{0:.1f}".format(LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
+        self.low_ram_trigger_textbox.Text = "{0:.1f}".format(LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT)
         self.Controls.Add(self.low_ram_trigger_textbox)
         self.tooltips.SetToolTip(
             self.low_ram_trigger_textbox,
-            "Cleanup threshold in terms of total RAM used percent. "
-            "Example: 90 means trigger aggressive cleanup when available RAM is ~10% or less. "
+            "Cleanup threshold in terms of total free RAM percent. "
+            "Example: 60 means trigger aggressive cleanup when free RAM falls to 60% or less. "
             "Allowed range: {0:.1f}..{1:.1f}.".format(
-                LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN,
-                LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX,
+                LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN,
+                LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX,
             ),
         )
 
@@ -1210,24 +1469,24 @@ class ExtractOptionsDialog(Form):
             return ""
         return os.path.abspath(path_text)
 
-    def selected_low_ram_used_percent(self):
+    def selected_low_ram_free_percent(self):
         raw_text = str(self.low_ram_trigger_textbox.Text).strip()
         if raw_text == "":
-            return LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT
+            return LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
         try:
             pct = float(raw_text)
         except Exception:
             raise Exception(
                 "Low-RAM cleanup trigger must be a number between {0:.1f} and {1:.1f}.".format(
-                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN,
-                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX,
+                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN,
+                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX,
                 )
             )
-        if pct < LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN or pct > LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX:
+        if pct < LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN or pct > LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX:
             raise Exception(
-                "Low-RAM cleanup trigger must be between {0:.1f} and {1:.1f} (% used).".format(
-                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MIN,
-                    LOW_RAM_BACKPRESSURE_USED_PERCENT_MAX,
+                "Low-RAM cleanup trigger must be between {0:.1f} and {1:.1f} (% free).".format(
+                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN,
+                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX,
                 )
             )
         return pct
@@ -1255,7 +1514,7 @@ class ExtractOptionsDialog(Form):
         selected_ns = self.selected_named_selection()
         selected_kinds = self.selected_result_kinds()
         selected_base_output_dir = self.selected_base_output_dir()
-        selected_low_ram_used_percent = LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT
+        selected_low_ram_free_percent = LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
         selected_mode_limit = None
 
         if selected_analysis is None:
@@ -1278,7 +1537,7 @@ class ExtractOptionsDialog(Form):
             return None
 
         try:
-            selected_low_ram_used_percent = self.selected_low_ram_used_percent()
+            selected_low_ram_free_percent = self.selected_low_ram_free_percent()
         except Exception as ram_ex:
             self._show_warning(str(ram_ex), "Invalid RAM Trigger")
             return None
@@ -1298,7 +1557,7 @@ class ExtractOptionsDialog(Form):
             "named_selection_name": str(selected_ns.Name),
             "result_kinds": list(selected_kinds),
             "use_no_graphics": self.use_no_graphics_enabled(),
-            "low_ram_used_percent": float(selected_low_ram_used_percent),
+            "low_ram_free_percent": float(selected_low_ram_free_percent),
             "mode_limit": selected_mode_limit,
             "mode_limit_max": int(self.mode_limit_spinner.Maximum),
             "available_mode_count": -1,
@@ -1419,22 +1678,20 @@ class ExtractOptionsDialog(Form):
         base_output_dir = str(new_job.get("base_output_dir", "")).strip()
         if base_output_dir == "":
             base_output_dir = "(analysis ResultFileDirectory)"
-        low_ram_used_percent = clamp_low_ram_used_percent(
-            new_job.get("low_ram_used_percent", LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
-        )
+        low_ram_free_percent = get_job_low_ram_free_percent(new_job)
         mode_limit_text = format_mode_subset_with_available(
             new_job.get("mode_limit", None),
             new_job.get("mode_limit_max", -1),
         )
 
-        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4} | Mode limit: {5} | Low-RAM trigger: {6:.1f}% used | Save base: {7}".format(
+        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4} | Mode limit: {5} | Low-RAM trigger: {6:.1f}% free | Save base: {7}".format(
             new_job.get("job_id", ""),
             new_job.get("analysis_name", ""),
             new_job.get("named_selection_name", ""),
             "; ".join(result_labels),
             format_yes_no(new_job.get("use_no_graphics", False)),
             mode_limit_text,
-            low_ram_used_percent,
+            low_ram_free_percent,
             base_output_dir,
         )
         self.update_progress(queue_msg, 0, 1000)
@@ -1634,6 +1891,16 @@ def cleanup_component_objects(component_objects):
     force_memory_cleanup(True)
 
 
+def clear_component_generated_data(component_objects):
+    if component_objects is None:
+        return
+    for obj in component_objects:
+        try:
+            obj.ClearGeneratedData()
+        except Exception:
+            pass
+
+
 def cleanup_solution_generated_data(solution):
     if solution is None:
         return
@@ -1658,17 +1925,85 @@ def get_values_unit(result_object):
         return ""
 
 
-def get_scale_factors(result_kind, component_count, unit_text):
-    factors = [1.0] * component_count
-    unit_normalized = str(unit_text).strip().lower()
+def normalize_result_unit_text(unit_text):
+    text = str(unit_text).strip().lower()
+    text = text.replace("[", "").replace("]", "")
+    text = text.replace("(", "").replace(")", "")
+    text = text.replace(" ", "")
+    text = text.replace("²", "^2")
+    text = text.replace("³", "^3")
+    return text
 
-    # Keep same conversions as previous script behavior.
+
+def is_expected_stress_unit(normalized_unit_text):
+    if normalized_unit_text == "mpa":
+        return True
+    if normalized_unit_text in ("n/mm^2", "nmm^-2", "n/mm/mm"):
+        return True
+    return False
+
+
+def is_expected_deformation_unit(normalized_unit_text):
+    return normalized_unit_text == "mm"
+
+
+def get_scale_factors(result_kind, component_count, unit_text, progress_dialog=None):
+    factors = [1.0] * component_count
+    unit_text_display = str(unit_text).strip()
+    unit_normalized = normalize_result_unit_text(unit_text)
+
     if result_kind == RESULT_KIND_STRESS:
-        if unit_normalized == "pa":
-            factors = [1e-6] * component_count  # Pa -> MPa
+        if is_expected_stress_unit(unit_normalized):
+            log_message(
+                "Validated stress result unit after unit-system switch: {0}.".format(
+                    unit_text_display if unit_text_display != "" else EXPECTED_RESULT_UNIT_LABELS[RESULT_KIND_STRESS]
+                ),
+                progress_dialog,
+            )
+        elif unit_normalized == "pa":
+            log_message(
+                "Warning: stress result unit remained '{0}' after forcing {1}. "
+                "Continuing with explicit Pa -> MPa conversion.".format(
+                    unit_text_display if unit_text_display != "" else "Pa",
+                    UNIT_SYSTEM_STANDARD_NMM_LABEL,
+                ),
+                progress_dialog,
+            )
+            factors = [1e-6] * component_count
+        else:
+            raise Exception(
+                "Unexpected stress result unit '{0}' after forcing {1}. "
+                "Expected MPa-compatible units (for example MPa or N/mm^2).".format(
+                    unit_text_display if unit_text_display != "" else "(blank)",
+                    UNIT_SYSTEM_STANDARD_NMM_LABEL,
+                )
+            )
     elif result_kind == RESULT_KIND_DEFORMATION:
-        if unit_normalized == "m":
-            factors = [1e3] * component_count  # m -> mm
+        if is_expected_deformation_unit(unit_normalized):
+            log_message(
+                "Validated deformation result unit after unit-system switch: {0}.".format(
+                    unit_text_display if unit_text_display != "" else EXPECTED_RESULT_UNIT_LABELS[RESULT_KIND_DEFORMATION]
+                ),
+                progress_dialog,
+            )
+        elif unit_normalized == "m":
+            log_message(
+                "Warning: deformation result unit remained '{0}' after forcing {1}. "
+                "Continuing with explicit m -> mm conversion.".format(
+                    unit_text_display if unit_text_display != "" else "m",
+                    UNIT_SYSTEM_STANDARD_NMM_LABEL,
+                ),
+                progress_dialog,
+            )
+            factors = [1e3] * component_count
+        else:
+            raise Exception(
+                "Unexpected deformation result unit '{0}' after forcing {1}. "
+                "Expected mm.".format(
+                    unit_text_display if unit_text_display != "" else "(blank)",
+                    UNIT_SYSTEM_STANDARD_NMM_LABEL,
+                )
+            )
     return factors
 
 
@@ -1964,6 +2299,16 @@ def write_mode_csv(path, mode, component_names, node_ids, mode_component_values)
             writer.writerow(row)
 
 
+def write_component_csv(path, mode, component_name, node_ids, component_values):
+    with open(path, "wb") as f:
+        writer = csv.writer(f)
+        writer.writerow(["NodeID", "{0}_Mode{1}".format(component_name, mode)])
+
+        node_count = len(node_ids)
+        for row_index in xrange(node_count):
+            writer.writerow([node_ids[row_index], component_values[row_index]])
+
+
 def should_use_solution_evaluate(solution, temp_component_count):
     children_count = len(solution.Children)
     # If there are many existing results, evaluating the full solution can be slower.
@@ -2039,6 +2384,34 @@ def merge_pass(base_csv_path, batch_csv_paths, output_csv_path, node_count, pass
                 pass
 
 
+def merge_component_files_into_mode_csv(component_csv_paths, output_csv_path, node_count):
+    if component_csv_paths is None or len(component_csv_paths) == 0:
+        raise Exception("No component CSV files were created for mode merge.")
+
+    if os.path.exists(output_csv_path):
+        os.remove(output_csv_path)
+
+    if len(component_csv_paths) == 1:
+        os.rename(component_csv_paths[0], output_csv_path)
+        return output_csv_path
+
+    try:
+        merge_pass(
+            component_csv_paths[0],
+            component_csv_paths[1:],
+            output_csv_path,
+            node_count,
+            1,
+            1,
+            None,
+        )
+        return output_csv_path
+    finally:
+        for component_path in component_csv_paths:
+            if component_path != output_csv_path:
+                safe_delete_file(component_path)
+
+
 def safe_delete_file(path):
     try:
         if os.path.exists(path):
@@ -2066,7 +2439,7 @@ def merge_batches_into_output(
     output_csv_path,
     node_count,
     progress_dialog=None,
-    low_ram_backpressure_bytes=None,
+    low_ram_free_percent=None,
 ):
     if len(batch_files) == 0:
         if os.path.exists(output_csv_path):
@@ -2083,7 +2456,7 @@ def merge_batches_into_output(
         raise_if_run_cancel_requested(progress_dialog, "before merge pass scheduling")
         group_limit, merge_available_ram = estimate_merge_group_limit(
             len(pending),
-            low_ram_backpressure_bytes=low_ram_backpressure_bytes,
+            low_ram_free_percent=low_ram_free_percent,
         )
         if group_limit != previous_group_limit:
             log_message(
@@ -2098,7 +2471,7 @@ def merge_batches_into_output(
         apply_low_ram_backpressure(
             progress_dialog,
             "before merge pass {0}".format(pass_index + 1),
-            low_ram_backpressure_bytes=low_ram_backpressure_bytes,
+            low_ram_free_percent=low_ram_free_percent,
         )
 
         pass_index += 1
@@ -2252,9 +2625,7 @@ def write_job_metadata_file(
         base_output_dir = "(analysis ResultFileDirectory)"
 
     result_labels = get_result_kind_labels(job_record.get("result_kinds", []))
-    low_ram_used_percent = clamp_low_ram_used_percent(
-        job_record.get("low_ram_used_percent", LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
-    )
+    low_ram_free_percent = get_job_low_ram_free_percent(job_record)
     try:
         available_mode_count = int(job_record.get("available_mode_count", -1))
     except Exception:
@@ -2271,7 +2642,7 @@ def write_job_metadata_file(
         "Requested Output Types: {0}".format("; ".join(result_labels)),
         "No Graphics Preference Enabled: {0}".format(format_yes_no(job_record.get("use_no_graphics", False))),
         "Requested Mode Subset: {0}".format(mode_limit_text),
-        "Low-RAM Cleanup Trigger (% used): {0:.1f}".format(low_ram_used_percent),
+        "Low-RAM Cleanup Trigger (% free): {0:.1f}".format(low_ram_free_percent),
         "Mode Count: {0}".format(mode_count),
         "Available RAM at Job Start: {0}".format(format_available_ram_text(available_ram_start)),
         "Job Start Time: {0}".format(format_timestamp(started_epoch)),
@@ -2309,7 +2680,7 @@ def run_extraction(
     result_kind_label=None,
     output_dir=None,
     output_name_suffix="",
-    low_ram_used_percent=LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT,
+    low_ram_free_percent=LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT,
 ):
     start_time = time.time()
     temp_objects = []
@@ -2325,9 +2696,8 @@ def run_extraction(
     if result_kind_label is None:
         result_kind_label = RESULT_KIND_LABEL_BY_ID.get(result_kind, result_kind)
 
-    low_ram_backpressure_bytes, effective_low_ram_used_percent, total_ram_bytes, used_percent_mode = (
-        resolve_low_ram_backpressure_bytes(low_ram_used_percent)
-    )
+    effective_low_ram_free_percent = clamp_low_ram_free_percent(low_ram_free_percent)
+    total_ram_bytes = get_total_ram_bytes()
 
     try:
         raise_if_run_cancel_requested(progress_dialog, "before extraction setup")
@@ -2336,22 +2706,19 @@ def run_extraction(
         if progress_dialog is not None:
             progress_dialog.update_progress(msg, 0, 1000)
 
-        if used_percent_mode:
+        if total_ram_bytes > 0:
             log_message(
-                "Low-RAM cleanup trigger: {0:.1f}% used "
-                "(free-RAM threshold: {1}, total RAM: {2:.2f} GiB).".format(
-                    effective_low_ram_used_percent,
-                    format_available_ram_text(low_ram_backpressure_bytes),
-                    bytes_to_gib(total_ram_bytes),
+                "Low-RAM cleanup trigger: <= {0:.1f}% free RAM.".format(
+                    effective_low_ram_free_percent
                 ),
                 progress_dialog,
             )
         else:
             log_message(
-                "Low-RAM cleanup trigger fallback: free RAM below {0} "
-                "(configured used-threshold: {1:.1f}%; total RAM query unavailable).".format(
-                    format_available_ram_text(low_ram_backpressure_bytes),
-                    effective_low_ram_used_percent,
+                "Low-RAM cleanup trigger: <= {0:.1f}% free RAM "
+                "(total RAM query unavailable; fallback trigger below {1} free).".format(
+                    effective_low_ram_free_percent,
+                    format_available_ram_text(LOW_RAM_BACKPRESSURE_FALLBACK_BYTES),
                 ),
                 progress_dialog,
             )
@@ -2387,19 +2754,15 @@ def run_extraction(
             if len(node_ids) == 0:
                 raise Exception("No nodes found in extracted scope.")
             first_unit = get_values_unit(component_objects[0])
-            try:
-                component_objects[0].ClearGeneratedData()
-            except Exception:
-                pass
+            clear_component_generated_data(component_objects)
+            force_memory_cleanup()
 
-            scale_factors = get_scale_factors(result_kind, comp_count, first_unit)
-            if result_kind == RESULT_KIND_STRESS and scale_factors[0] == 1e-6:
-                log_message("Stress unit '{0}' detected. Exporting stresses in MPa.".format(first_unit), progress_dialog)
-            if result_kind == RESULT_KIND_DEFORMATION and scale_factors[0] == 1e3:
-                log_message(
-                    "Deformation unit '{0}' detected. Exporting deformations in mm.".format(first_unit),
-                    progress_dialog,
-                )
+            scale_factors = get_scale_factors(
+                result_kind,
+                comp_count,
+                first_unit,
+                progress_dialog=progress_dialog,
+            )
 
             msg = "Extracting coordinates for {0} scoped nodes...".format(len(node_ids))
             log_message(msg, progress_dialog)
@@ -2433,18 +2796,22 @@ def run_extraction(
             del node_coords
             force_memory_cleanup()
 
-            use_solution_eval = should_use_solution_evaluate(solution, len(component_objects))
+            # Reusing one temp-object set avoids Mechanical tree churn; values are extracted one component at a time
+            # and flushed to disk immediately to keep live Python/.NET data bounded.
+            use_solution_eval = False
             if result_kind == RESULT_KIND_FORCE_MOMENT:
-                # ENFO/ENMO are treated as a coupled channel set for this workflow.
                 use_solution_eval = True
                 log_message(
                     "ENFO/ENMO extraction uses solution.EvaluateAllResults() per mode; failure is treated as unavailable data for that mode/scope.",
                     progress_dialog,
                 )
+            else:
+                log_message(
+                    "Using per-object EvaluateAllResults() and per-component disk spooling to minimize retained extraction data.",
+                    progress_dialog,
+                )
             if use_solution_eval:
                 log_message("Using solution.EvaluateAllResults() once per mode.", progress_dialog)
-            else:
-                log_message("Using per-object EvaluateAllResults() (avoids evaluating all existing tree results).", progress_dialog)
 
             total_modes = len(mode_ids)
             mode_cursor = 0
@@ -2456,7 +2823,7 @@ def run_extraction(
                     len(node_ids),
                     comp_count,
                     remaining,
-                    low_ram_backpressure_bytes=low_ram_backpressure_bytes,
+                    low_ram_free_percent=effective_low_ram_free_percent,
                 )
                 batch_modes = mode_ids[mode_cursor: mode_cursor + batch_size]
                 batch_index += 1
@@ -2474,155 +2841,190 @@ def run_extraction(
                 )
                 log_message(msg, progress_dialog)
 
-                for local_idx in xrange(len(batch_modes)):
-                    mode = int(batch_modes[local_idx])
-                    global_mode_idx = mode_cursor + local_idx + 1
-                    raise_if_run_cancel_requested(progress_dialog, "before extracting mode {0}".format(mode))
-                    apply_low_ram_backpressure(
-                        progress_dialog,
-                        "before extracting mode {0}".format(mode),
-                        low_ram_backpressure_bytes=low_ram_backpressure_bytes,
-                    )
-                    mode_msg = "Extracting [{0}] mode {1}/{2} (set {3})".format(
-                        result_kind_label,
-                        global_mode_idx,
-                        total_modes,
-                        mode,
-                    )
-                    log_message(mode_msg, progress_dialog)
-                    if progress_dialog is not None:
-                        # reserve 80% of progress range to mode extraction
-                        mode_progress = int((float(global_mode_idx) / float(total_modes)) * 800.0)
-                        progress_dialog.update_progress(mode_msg, mode_progress, 1000)
+                try:
+                    for local_idx in xrange(len(batch_modes)):
+                        mode = int(batch_modes[local_idx])
+                        global_mode_idx = mode_cursor + local_idx + 1
+                        raise_if_run_cancel_requested(progress_dialog, "before extracting mode {0}".format(mode))
+                        apply_low_ram_backpressure(
+                            progress_dialog,
+                            "before extracting mode {0}".format(mode),
+                            low_ram_free_percent=effective_low_ram_free_percent,
+                        )
+                        mode_msg = "Extracting [{0}] mode {1}/{2} (set {3})".format(
+                            result_kind_label,
+                            global_mode_idx,
+                            total_modes,
+                            mode,
+                        )
+                        log_message(mode_msg, progress_dialog)
+                        if progress_dialog is not None:
+                            # reserve 80% of progress range to mode extraction
+                            mode_progress = int((float(global_mode_idx) / float(total_modes)) * 800.0)
+                            progress_dialog.update_progress(mode_msg, mode_progress, 1000)
 
-                    with begin_transaction(True):
-                        for obj in component_objects:
-                            obj.SetNumber = mode
+                        with begin_transaction(True):
+                            for obj in component_objects:
+                                obj.SetNumber = mode
 
-                    if use_solution_eval:
-                        try:
-                            solution.EvaluateAllResults()
-                        except Exception as eval_all_ex:
-                            if result_kind == RESULT_KIND_FORCE_MOMENT:
-                                raise Exception(
-                                    "ENFO/ENMO evaluation failed at mode {0}. "
-                                    "Requested scope appears unavailable in RST for force/moment channels. Detail: {1}".format(
-                                        mode, str(eval_all_ex)
+                        if use_solution_eval:
+                            try:
+                                solution.EvaluateAllResults()
+                            except Exception as eval_all_ex:
+                                if result_kind == RESULT_KIND_FORCE_MOMENT:
+                                    raise Exception(
+                                        "ENFO/ENMO evaluation failed at mode {0}. "
+                                        "Requested scope appears unavailable in RST for force/moment channels. Detail: {1}".format(
+                                            mode, str(eval_all_ex)
+                                        )
                                     )
-                                )
-                            else:
-                                raise
-                    else:
-                        for eval_idx in xrange(comp_count):
-                            obj = component_objects[eval_idx]
-                            obj.EvaluateAllResults()
-
-                    mode_component_values = []
-                    if use_plotdata_values:
-                        try:
-                            first_component_values, first_is_base_order = extract_aligned_values(
-                                component_objects[0],
-                                node_ids,
-                                scale_factors[0],
-                                return_order_match=True,
-                            )
-                        except Exception as value_ex:
-                            if result_kind != RESULT_KIND_FORCE_MOMENT:
-                                raise
-
-                            use_plotdata_values = False
-                            if not plotdata_fallback_logged:
-                                log_message(
-                                    "PlotData access failed for ENFO/ENMO. "
-                                    "Switching to ExportToTextFile fallback for remaining extraction. "
-                                    "Detail: {0}".format(str(value_ex)),
-                                    progress_dialog,
-                                )
-                                plotdata_fallback_logged = True
-
-                            export_path = os.path.join(
-                                temp_dir,
-                                "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_names[0]),
-                            )
-                            first_component_values = extract_aligned_values_from_text_export(
-                                component_objects[0],
-                                node_ids,
-                                scale_factors[0],
-                                export_path,
-                                component_name=component_names[0],
-                                progress_dialog=progress_dialog,
-                            )
-                            first_is_base_order = False
-                    else:
-                        export_path = os.path.join(
-                            temp_dir,
-                            "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_names[0]),
-                        )
-                        first_component_values = extract_aligned_values_from_text_export(
-                            component_objects[0],
-                            node_ids,
-                            scale_factors[0],
-                            export_path,
-                            component_name=component_names[0],
-                            progress_dialog=progress_dialog,
-                        )
+                                else:
+                                    raise
+                        component_csv_paths = []
                         first_is_base_order = False
-
-                    mode_component_values.append(first_component_values)
-
-                    for comp_idx in xrange(1, comp_count):
-                        obj = component_objects[comp_idx]
-                        if use_plotdata_values:
-                            if first_is_base_order:
-                                values = extract_scaled_values(obj, scale_factors[comp_idx])
-                            else:
-                                values = extract_aligned_values(obj, node_ids, scale_factors[comp_idx])
-                        else:
-                            export_path = os.path.join(
-                                temp_dir,
-                                "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_names[comp_idx]),
-                            )
-                            values = extract_aligned_values_from_text_export(
-                                obj,
-                                node_ids,
-                                scale_factors[comp_idx],
-                                export_path,
-                                component_name=component_names[comp_idx],
-                                progress_dialog=progress_dialog,
-                            )
-                        mode_component_values.append(values)
-
-                    mode_file = os.path.join(temp_dir, "mode_{0:05d}.csv".format(mode))
-                    write_mode_csv(mode_file, mode, component_names, node_ids, mode_component_values)
-                    batch_files.append(mode_file)
-
-                    for obj in component_objects:
                         try:
-                            obj.ClearGeneratedData()
-                        except Exception:
-                            pass
+                            for comp_idx in xrange(comp_count):
+                                obj = component_objects[comp_idx]
+                                component_name = component_names[comp_idx]
 
-                    if use_solution_eval and (
-                        SOLUTION_CHILDREN_CLEAR_INTERVAL <= 1
-                        or (global_mode_idx % SOLUTION_CHILDREN_CLEAR_INTERVAL) == 0
-                    ):
-                        cleanup_solution_generated_data(solution)
+                                if not use_solution_eval:
+                                    obj.EvaluateAllResults()
 
-                    del mode_component_values
-                    first_component_values = None
-                    if global_mode_idx % 2 == 0:
-                        force_memory_cleanup(True)
-                    else:
-                        force_memory_cleanup()
-                    apply_low_ram_backpressure(
-                        progress_dialog,
-                        "after extracting mode {0}".format(mode),
-                        low_ram_backpressure_bytes=low_ram_backpressure_bytes,
-                    )
-                    raise_if_run_cancel_requested(progress_dialog, "after extracting mode {0}".format(mode))
+                                if comp_idx == 0:
+                                    if use_plotdata_values:
+                                        try:
+                                            component_values, first_is_base_order = extract_aligned_values(
+                                                obj,
+                                                node_ids,
+                                                scale_factors[comp_idx],
+                                                return_order_match=True,
+                                            )
+                                        except Exception as value_ex:
+                                            if result_kind != RESULT_KIND_FORCE_MOMENT:
+                                                raise
+
+                                            use_plotdata_values = False
+                                            if not plotdata_fallback_logged:
+                                                log_message(
+                                                    "PlotData access failed for ENFO/ENMO. "
+                                                    "Switching to ExportToTextFile fallback for remaining extraction. "
+                                                    "Detail: {0}".format(str(value_ex)),
+                                                    progress_dialog,
+                                                )
+                                                plotdata_fallback_logged = True
+
+                                            export_path = os.path.join(
+                                                temp_dir,
+                                                "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_name),
+                                            )
+                                            component_values = extract_aligned_values_from_text_export(
+                                                obj,
+                                                node_ids,
+                                                scale_factors[comp_idx],
+                                                export_path,
+                                                component_name=component_name,
+                                                progress_dialog=progress_dialog,
+                                            )
+                                            first_is_base_order = False
+                                    else:
+                                        export_path = os.path.join(
+                                            temp_dir,
+                                            "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_name),
+                                        )
+                                        component_values = extract_aligned_values_from_text_export(
+                                            obj,
+                                            node_ids,
+                                            scale_factors[comp_idx],
+                                            export_path,
+                                            component_name=component_name,
+                                            progress_dialog=progress_dialog,
+                                        )
+                                        first_is_base_order = False
+                                else:
+                                    if use_plotdata_values:
+                                        if first_is_base_order:
+                                            component_values = extract_scaled_values(obj, scale_factors[comp_idx])
+                                        else:
+                                            component_values = extract_aligned_values(obj, node_ids, scale_factors[comp_idx])
+                                    else:
+                                        export_path = os.path.join(
+                                            temp_dir,
+                                            "__tmp_export_mode_{0:05d}_{1}.txt".format(mode, component_name),
+                                        )
+                                        component_values = extract_aligned_values_from_text_export(
+                                            obj,
+                                            node_ids,
+                                            scale_factors[comp_idx],
+                                            export_path,
+                                            component_name=component_name,
+                                            progress_dialog=progress_dialog,
+                                        )
+
+                                component_csv_path = os.path.join(
+                                    temp_dir,
+                                    "__tmp_mode_{0:05d}_{1}.csv".format(mode, component_name),
+                                )
+                                write_component_csv(
+                                    component_csv_path,
+                                    mode,
+                                    component_name,
+                                    node_ids,
+                                    component_values,
+                                )
+                                component_csv_paths.append(component_csv_path)
+
+                                component_values = None
+                                try:
+                                    obj.ClearGeneratedData()
+                                except Exception:
+                                    pass
+
+                                if comp_idx < (comp_count - 1):
+                                    apply_low_ram_backpressure(
+                                        progress_dialog,
+                                        "after extracting component {0} for mode {1}".format(component_name, mode),
+                                        low_ram_free_percent=effective_low_ram_free_percent,
+                                    )
+                                    force_memory_cleanup()
+                                raise_if_run_cancel_requested(
+                                    progress_dialog,
+                                    "after extracting component {0} for mode {1}".format(component_name, mode),
+                                )
+
+                            mode_file = os.path.join(temp_dir, "mode_{0:05d}.csv".format(mode))
+                            merge_component_files_into_mode_csv(
+                                component_csv_paths,
+                                mode_file,
+                                len(node_ids),
+                            )
+                        finally:
+                            for component_csv_path in component_csv_paths:
+                                safe_delete_file(component_csv_path)
+
+                        batch_files.append(mode_file)
+
+                        if use_solution_eval and (
+                            SOLUTION_CHILDREN_CLEAR_INTERVAL <= 1
+                            or (global_mode_idx % SOLUTION_CHILDREN_CLEAR_INTERVAL) == 0
+                        ):
+                            cleanup_solution_generated_data(solution)
+
+                        if global_mode_idx % 2 == 0:
+                            force_memory_cleanup(True)
+                        else:
+                            force_memory_cleanup()
+                        apply_low_ram_backpressure(
+                            progress_dialog,
+                            "after extracting mode {0}".format(mode),
+                            low_ram_free_percent=effective_low_ram_free_percent,
+                        )
+                        raise_if_run_cancel_requested(progress_dialog, "after extracting mode {0}".format(mode))
+                finally:
+                    clear_component_generated_data(component_objects)
+                    force_memory_cleanup(True)
 
                 mode_cursor += len(batch_modes)
-                force_memory_cleanup()
+                force_memory_cleanup(True)
 
         output_name = RESULT_OUTPUT_FILES[result_kind]
         if output_name_suffix is not None and str(output_name_suffix).strip() != "":
@@ -2661,7 +3063,7 @@ def run_extraction(
             output_csv_path=output_csv_path,
             node_count=len(node_ids),
             progress_dialog=progress_dialog,
-            low_ram_backpressure_bytes=low_ram_backpressure_bytes,
+            low_ram_free_percent=effective_low_ram_free_percent,
         )
 
         if progress_dialog is not None:
@@ -2718,9 +3120,7 @@ def main():
             selected_ns = job.get("named_selection", None)
             selected_kinds = list(job.get("result_kinds", []))
             use_no_graphics_pref = bool(job.get("use_no_graphics", False))
-            low_ram_used_percent = clamp_low_ram_used_percent(
-                job.get("low_ram_used_percent", LOW_RAM_BACKPRESSURE_USED_PERCENT_DEFAULT)
-            )
+            low_ram_free_percent = get_job_low_ram_free_percent(job)
             mode_limit_requested = job.get("mode_limit", None)
             mode_limit_text = ""
 
@@ -2733,6 +3133,7 @@ def main():
                 continue
 
             pref_state = None
+            unit_state = None
             solution = None
             mode_ids = []
             output_dir = None
@@ -2800,7 +3201,7 @@ def main():
 
                 kind_labels = get_result_kind_labels(selected_kinds)
                 start_msg = (
-                    "Job {0}/{1} (ID {2}) | Analysis: {3} | NS: {4} | Result types: {5} | Modes: 1..{6} ({7}) | Low-RAM trigger: {8:.1f}% used"
+                    "Job {0}/{1} (ID {2}) | Analysis: {3} | NS: {4} | Result types: {5} | Modes: 1..{6} ({7}) | Low-RAM trigger: {8:.1f}% free"
                 ).format(
                     job_idx + 1,
                     total_jobs,
@@ -2810,7 +3211,7 @@ def main():
                     "; ".join(kind_labels),
                     len(mode_ids),
                     mode_limit_text,
-                    low_ram_used_percent,
+                    low_ram_free_percent,
                 )
                 log_message(start_msg, dialog)
                 log_message("Job {0} base output folder: {1}".format(job_id, selected_base_output_dir), dialog)
@@ -2821,6 +3222,8 @@ def main():
                     pref_state = enter_no_graphics_preference_mode(dialog)
                 else:
                     log_message("Job {0}: No-Graphics preference is disabled.".format(job_id), dialog)
+
+                unit_state = enter_standard_nmm_unit_system(dialog)
 
                 n_selected = len(selected_kinds)
                 for run_idx in xrange(n_selected):
@@ -2853,7 +3256,7 @@ def main():
                         kind_label,
                         output_dir=output_dir,
                         output_name_suffix="_job_{0}".format(job_id),
-                        low_ram_used_percent=low_ram_used_percent,
+                        low_ram_free_percent=low_ram_free_percent,
                     )
                     output_csvs.append(output_csv)
                     all_output_csvs.append(output_csv)
@@ -2934,6 +3337,11 @@ def main():
                         error_text=job_err,
                     )
             finally:
+                try:
+                    restore_unit_system_state(unit_state, dialog)
+                except Exception:
+                    pass
+
                 try:
                     restore_no_graphics_preference_mode(pref_state, dialog)
                 except Exception:
