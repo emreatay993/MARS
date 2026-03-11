@@ -88,18 +88,45 @@ JOB_STATUS_COMPLETED = "Completed"
 JOB_STATUS_FAILED = "Failed"
 JOB_STATUS_CANCELLED = "Cancelled"
 
-# RAM guardrails. Values are intentionally conservative to avoid host memory pressure.
-RAM_SAFETY_FRACTION = 0.04
+# RAM guardrails — two-tier adaptive model.
+RAM_SAFETY_FRACTION_NORMAL = 0.20
+RAM_SAFETY_FRACTION_LOW = 0.08
 RAM_MIN_SAFE_BYTES = 128 * 1024 * 1024
-RAM_MAX_MODES_PER_BATCH = 6
-# Trigger aggressive cleanup when free RAM falls to or below this percentage.
-LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT = 60.0
-LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN = 1.0
-LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX = 99.0
+RAM_MAX_MODES_PER_BATCH = 16
+OVERHEAD_MULTIPLIER = 6.0
 # Fallback absolute free-RAM threshold (used only if total RAM cannot be queried).
 LOW_RAM_BACKPRESSURE_FALLBACK_BYTES = 3 * 1024 ** 3
-LARGE_MODE_BYTES_THRESHOLD = int(0.75 * 1024 ** 3)
-VERY_LARGE_MODE_BYTES_THRESHOLD = int(1.5 * 1024 ** 3)
+# GC scheduling: full GC every N modes inside a batch.
+GC_INTERVAL_MODES = 4
+GC_INTERVAL_LOW_RAM_MODES = 1
+# Short-term cache for available-RAM probes to avoid redundant OS queries in hot loops.
+RAM_AVAILABLE_CACHE_COOLDOWN_SEC = 3
+# Preset-based RAM strategy replacing raw percentage input.
+RAM_STRATEGY_PRESETS = {
+    "conservative": {
+        "label": "Conservative",
+        "safety_fraction": 0.12,
+        "gc_interval": 2,
+        "low_ram_free_percent": 50.0,
+        "description": "Slower but safest. Best for machines running other heavy applications.",
+    },
+    "balanced": {
+        "label": "Balanced",
+        "safety_fraction": 0.20,
+        "gc_interval": 4,
+        "low_ram_free_percent": 35.0,
+        "description": "Good default for dedicated extraction workstations.",
+    },
+    "aggressive": {
+        "label": "Aggressive",
+        "safety_fraction": 0.35,
+        "gc_interval": 8,
+        "low_ram_free_percent": 20.0,
+        "description": "Fastest extraction. Use only when Mechanical has most of the system RAM available.",
+    },
+}
+RAM_STRATEGY_DEFAULT = "balanced"
+RAM_STRATEGY_PRESET_KEYS = ["conservative", "balanced", "aggressive"]
 MERGE_GROUP_LIMIT_MIN = 8
 MERGE_GROUP_LIMIT_MAX = 64
 MERGE_GROUP_LIMIT_LOW_RAM = 12
@@ -117,6 +144,8 @@ NUMERIC_TOKEN_PATTERN = re.compile(r"[-+]?(?:\d+(?:\.\d*)?|\.\d+)(?:[eEdD][-+]?\
 
 _AVAILABLE_MB_COUNTER = None
 _AVAILABLE_MB_COUNTER_LAST_INIT = 0.0
+_AVAILABLE_RAM_BYTES_CACHE = -1
+_AVAILABLE_RAM_BYTES_LAST_REFRESH = 0.0
 _TOTAL_RAM_BYTES_CACHE = -1
 _TOTAL_RAM_BYTES_LAST_REFRESH = 0.0
 
@@ -548,7 +577,8 @@ def try_dispose_dotnet_object(obj):
         pass
 
 
-def get_available_ram_bytes():
+def _probe_available_ram_bytes():
+    """Actual OS query for available RAM (no caching)."""
     global _AVAILABLE_MB_COUNTER
     global _AVAILABLE_MB_COUNTER_LAST_INIT
 
@@ -571,7 +601,6 @@ def get_available_ram_bytes():
             _AVAILABLE_MB_COUNTER = PerformanceCounter("Memory", "Available MBytes")
             _AVAILABLE_MB_COUNTER_LAST_INIT = now
             try:
-                # First read can be stale on some hosts; warm-up once.
                 _AVAILABLE_MB_COUNTER.NextValue()
             except Exception:
                 pass
@@ -600,6 +629,25 @@ def get_available_ram_bytes():
         try_dispose_dotnet_object(searcher)
 
     return -1
+
+
+def get_available_ram_bytes():
+    global _AVAILABLE_RAM_BYTES_CACHE
+    global _AVAILABLE_RAM_BYTES_LAST_REFRESH
+
+    now = time.time()
+    if (
+        _AVAILABLE_RAM_BYTES_CACHE > 0
+        and RAM_AVAILABLE_CACHE_COOLDOWN_SEC > 0
+        and (now - _AVAILABLE_RAM_BYTES_LAST_REFRESH) <= RAM_AVAILABLE_CACHE_COOLDOWN_SEC
+    ):
+        return _AVAILABLE_RAM_BYTES_CACHE
+
+    result = _probe_available_ram_bytes()
+    if result > 0:
+        _AVAILABLE_RAM_BYTES_CACHE = result
+        _AVAILABLE_RAM_BYTES_LAST_REFRESH = now
+    return result
 
 
 def get_total_ram_bytes():
@@ -684,39 +732,57 @@ def raise_if_run_cancel_requested(progress_dialog=None, context_text=""):
     raise UserCancelledException(msg)
 
 
-def clamp_low_ram_free_percent(raw_value):
-    try:
-        pct = float(raw_value)
-    except Exception:
-        pct = LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
-
-    if pct < LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN:
-        pct = LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN
-    if pct > LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX:
-        pct = LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX
-    return pct
+def get_ram_strategy(preset_key=None):
+    if preset_key is not None and preset_key in RAM_STRATEGY_PRESETS:
+        return dict(RAM_STRATEGY_PRESETS[preset_key])
+    return dict(RAM_STRATEGY_PRESETS[RAM_STRATEGY_DEFAULT])
 
 
-def get_job_low_ram_free_percent(job_record):
+def get_job_ram_strategy(job_record):
     if job_record is None:
-        return LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
+        return get_ram_strategy(RAM_STRATEGY_DEFAULT)
 
+    if "ram_strategy" in job_record:
+        key = str(job_record.get("ram_strategy", RAM_STRATEGY_DEFAULT)).strip().lower()
+        return get_ram_strategy(key)
+
+    # Legacy compatibility: map old "low_ram_free_percent" to nearest preset.
     if "low_ram_free_percent" in job_record:
-        return clamp_low_ram_free_percent(job_record.get("low_ram_free_percent"))
+        try:
+            pct = float(job_record.get("low_ram_free_percent"))
+        except Exception:
+            return get_ram_strategy(RAM_STRATEGY_DEFAULT)
+        if pct >= 45.0:
+            return get_ram_strategy("conservative")
+        elif pct >= 28.0:
+            return get_ram_strategy("balanced")
+        else:
+            return get_ram_strategy("aggressive")
 
-    # Legacy compatibility for already-created in-memory jobs that still store "% used".
     if "low_ram_used_percent" in job_record:
         try:
             legacy_used_pct = float(job_record.get("low_ram_used_percent"))
-            return clamp_low_ram_free_percent(100.0 - legacy_used_pct)
+            free_pct = 100.0 - legacy_used_pct
         except Exception:
-            pass
+            return get_ram_strategy(RAM_STRATEGY_DEFAULT)
+        if free_pct >= 45.0:
+            return get_ram_strategy("conservative")
+        elif free_pct >= 28.0:
+            return get_ram_strategy("balanced")
+        else:
+            return get_ram_strategy("aggressive")
 
-    return LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
+    return get_ram_strategy(RAM_STRATEGY_DEFAULT)
 
 
-def evaluate_low_ram_condition(low_ram_free_percent, available_bytes=None, total_bytes=None):
-    threshold_percent = clamp_low_ram_free_percent(low_ram_free_percent)
+def evaluate_low_ram_condition(ram_strategy=None, available_bytes=None, total_bytes=None):
+    if ram_strategy is None:
+        ram_strategy = get_ram_strategy(RAM_STRATEGY_DEFAULT)
+    # Accept either a strategy dict or a raw float for backward compatibility (merge functions).
+    if isinstance(ram_strategy, (int, float)):
+        threshold_percent = float(ram_strategy)
+    else:
+        threshold_percent = float(ram_strategy.get("low_ram_free_percent", 35.0))
     if available_bytes is None or available_bytes <= 0:
         available_bytes = get_available_ram_bytes()
     available_percent, total_bytes = get_available_ram_percent(available_bytes, total_bytes)
@@ -767,66 +833,64 @@ def force_memory_cleanup(wait_for_finalizers=False):
         pass
 
 
-def apply_low_ram_backpressure(progress_dialog=None, context_text="", low_ram_free_percent=None):
-    ram_state = evaluate_low_ram_condition(low_ram_free_percent)
+def apply_low_ram_backpressure(progress_dialog=None, context_text="", ram_strategy=None, low_ram_free_percent=None):
+    effective_strategy = ram_strategy
+    if effective_strategy is None and low_ram_free_percent is not None:
+        effective_strategy = low_ram_free_percent
+    ram_state = evaluate_low_ram_condition(effective_strategy)
     available_bytes = ram_state.get("available_bytes", -1)
     if ram_state.get("triggered", False):
         if ram_state.get("percent_mode", False):
             msg = "Low available RAM detected ({0} free, {1} available; trigger: <= {2:.1f}% free). Running aggressive cleanup.".format(
                 format_available_ram_percent_text(ram_state.get("available_percent", -1.0)),
                 format_available_ram_text(available_bytes),
-                ram_state.get("threshold_percent", LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT),
+                ram_state.get("threshold_percent", 35.0),
             )
         else:
             msg = "Low available RAM detected ({0} available; fallback trigger: below {1}; configured trigger: <= {2:.1f}% free, total RAM query unavailable). Running aggressive cleanup.".format(
                 format_available_ram_text(available_bytes),
                 format_available_ram_text(ram_state.get("fallback_bytes", LOW_RAM_BACKPRESSURE_FALLBACK_BYTES)),
-                ram_state.get("threshold_percent", LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT),
+                ram_state.get("threshold_percent", 35.0),
             )
         if context_text is not None and str(context_text).strip() != "":
             msg += " Context: {0}".format(str(context_text))
         log_message(msg, progress_dialog)
         force_memory_cleanup(True)
-        time.sleep(0.2)
-    return available_bytes
+    return ram_state
 
 
-def estimate_mode_batch_size(node_count, component_count, remaining_modes, low_ram_free_percent=None):
+def estimate_mode_batch_size(node_count, component_count, remaining_modes, ram_strategy=None):
     if remaining_modes <= 0:
-        return 1, -1
+        return 1, -1, False
+
+    if ram_strategy is None:
+        ram_strategy = get_ram_strategy(RAM_STRATEGY_DEFAULT)
 
     available_bytes = get_available_ram_bytes()
     if node_count <= 0 or component_count <= 0:
-        return 1, available_bytes
+        return 1, available_bytes, False
 
-    # Conservative estimate for Python + .NET object overhead.
-    overhead_multiplier = 14.0
-    bytes_per_mode = int(node_count * component_count * 8.0 * overhead_multiplier)
+    bytes_per_mode = int(node_count * component_count * 8.0 * OVERHEAD_MULTIPLIER)
 
-    if bytes_per_mode >= VERY_LARGE_MODE_BYTES_THRESHOLD:
-        mode_size_cap = 1
-    elif bytes_per_mode >= LARGE_MODE_BYTES_THRESHOLD:
-        mode_size_cap = 2
-    else:
-        mode_size_cap = RAM_MAX_MODES_PER_BATCH
+    ram_state = evaluate_low_ram_condition(ram_strategy, available_bytes=available_bytes)
+    is_low_ram = ram_state.get("triggered", False)
+
+    fraction = RAM_SAFETY_FRACTION_LOW if is_low_ram else ram_strategy.get("safety_fraction", RAM_SAFETY_FRACTION_NORMAL)
 
     if available_bytes > 0:
-        safe_bytes = int(max(RAM_MIN_SAFE_BYTES, available_bytes * RAM_SAFETY_FRACTION))
+        safe_bytes = int(max(RAM_MIN_SAFE_BYTES, available_bytes * fraction))
         estimate = int(float(safe_bytes) / float(max(bytes_per_mode, 1)))
     else:
         estimate = 1
 
     if estimate < 1:
         estimate = 1
-    ram_state = evaluate_low_ram_condition(low_ram_free_percent, available_bytes=available_bytes)
-    if ram_state.get("triggered", False):
-        mode_size_cap = min(mode_size_cap, 1)
-    if estimate > mode_size_cap:
-        estimate = mode_size_cap
+    if estimate > RAM_MAX_MODES_PER_BATCH:
+        estimate = RAM_MAX_MODES_PER_BATCH
     if estimate > remaining_modes:
         estimate = remaining_modes
 
-    return estimate, available_bytes
+    return estimate, available_bytes, is_low_ram
 
 
 def estimate_merge_group_limit(pending_count, low_ram_free_percent=None):
@@ -1198,27 +1262,33 @@ class ExtractOptionsDialog(Form):
             "Preference set/get uses direct API first, then PreferenceMgr fallback when needed.",
         )
 
-        self.low_ram_trigger_label = Label()
-        self.low_ram_trigger_label.Text = "Low-RAM Cleanup Trigger (% free):"
-        self.low_ram_trigger_label.Location = Point(430, 320)
-        self.low_ram_trigger_label.Size = Size(250, 22)
-        self.low_ram_trigger_label.Anchor = AnchorStyles.Top | AnchorStyles.Right
-        self.Controls.Add(self.low_ram_trigger_label)
+        self.ram_strategy_label = Label()
+        self.ram_strategy_label.Text = "RAM Strategy:"
+        self.ram_strategy_label.Location = Point(430, 320)
+        self.ram_strategy_label.Size = Size(120, 22)
+        self.ram_strategy_label.Anchor = AnchorStyles.Top | AnchorStyles.Right
+        self.Controls.Add(self.ram_strategy_label)
 
-        self.low_ram_trigger_textbox = TextBox()
-        self.low_ram_trigger_textbox.Location = Point(690, 319)
-        self.low_ram_trigger_textbox.Size = Size(60, 24)
-        self.low_ram_trigger_textbox.Anchor = AnchorStyles.Top | AnchorStyles.Right
-        self.low_ram_trigger_textbox.Text = "{0:.1f}".format(LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT)
-        self.Controls.Add(self.low_ram_trigger_textbox)
+        self.ram_strategy_combo = ComboBox()
+        self.ram_strategy_combo.Location = Point(560, 319)
+        self.ram_strategy_combo.Size = Size(190, 24)
+        self.ram_strategy_combo.Anchor = AnchorStyles.Top | AnchorStyles.Right
+        self.ram_strategy_combo.DropDownStyle = ComboBoxStyle.DropDownList
+        default_idx = 0
+        for idx, key in enumerate(RAM_STRATEGY_PRESET_KEYS):
+            preset = RAM_STRATEGY_PRESETS[key]
+            self.ram_strategy_combo.Items.Add(preset["label"])
+            if key == RAM_STRATEGY_DEFAULT:
+                default_idx = idx
+        self.ram_strategy_combo.SelectedIndex = default_idx
+        self.Controls.Add(self.ram_strategy_combo)
+        preset_descriptions = "; ".join(
+            "{0}: {1}".format(RAM_STRATEGY_PRESETS[k]["label"], RAM_STRATEGY_PRESETS[k]["description"])
+            for k in RAM_STRATEGY_PRESET_KEYS
+        )
         self.tooltips.SetToolTip(
-            self.low_ram_trigger_textbox,
-            "Cleanup threshold in terms of total free RAM percent. "
-            "Example: 60 means trigger aggressive cleanup when free RAM falls to 60% or less. "
-            "Allowed range: {0:.1f}..{1:.1f}.".format(
-                LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN,
-                LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX,
-            ),
+            self.ram_strategy_combo,
+            "Controls batch sizing, GC frequency, and low-RAM cleanup trigger. " + preset_descriptions,
         )
 
         self.mode_limit_label = Label()
@@ -1328,7 +1398,7 @@ class ExtractOptionsDialog(Form):
         self.Controls.Add(self.progress_bar)
         self.tooltips.SetToolTip(
             self.progress_bar,
-            "Progress indicator (0..1000 internal scale). Most progress is allocated to per-mode extraction.",
+            "Progress indicator (0..1000 internal scale). ~77% allocated to extraction, ~23% to merge.",
         )
 
         self.close_button = Button()
@@ -1469,27 +1539,11 @@ class ExtractOptionsDialog(Form):
             return ""
         return os.path.abspath(path_text)
 
-    def selected_low_ram_free_percent(self):
-        raw_text = str(self.low_ram_trigger_textbox.Text).strip()
-        if raw_text == "":
-            return LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
-        try:
-            pct = float(raw_text)
-        except Exception:
-            raise Exception(
-                "Low-RAM cleanup trigger must be a number between {0:.1f} and {1:.1f}.".format(
-                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN,
-                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX,
-                )
-            )
-        if pct < LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN or pct > LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX:
-            raise Exception(
-                "Low-RAM cleanup trigger must be between {0:.1f} and {1:.1f} (% free).".format(
-                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MIN,
-                    LOW_RAM_BACKPRESSURE_FREE_PERCENT_MAX,
-                )
-            )
-        return pct
+    def selected_ram_strategy_key(self):
+        idx = self.ram_strategy_combo.SelectedIndex
+        if idx < 0 or idx >= len(RAM_STRATEGY_PRESET_KEYS):
+            return RAM_STRATEGY_DEFAULT
+        return RAM_STRATEGY_PRESET_KEYS[idx]
 
     def selected_mode_limit(self):
         try:
@@ -1514,7 +1568,6 @@ class ExtractOptionsDialog(Form):
         selected_ns = self.selected_named_selection()
         selected_kinds = self.selected_result_kinds()
         selected_base_output_dir = self.selected_base_output_dir()
-        selected_low_ram_free_percent = LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT
         selected_mode_limit = None
 
         if selected_analysis is None:
@@ -1536,11 +1589,7 @@ class ExtractOptionsDialog(Form):
             )
             return None
 
-        try:
-            selected_low_ram_free_percent = self.selected_low_ram_free_percent()
-        except Exception as ram_ex:
-            self._show_warning(str(ram_ex), "Invalid RAM Trigger")
-            return None
+        selected_strategy_key = self.selected_ram_strategy_key()
 
         try:
             selected_mode_limit = self.selected_mode_limit()
@@ -1557,7 +1606,7 @@ class ExtractOptionsDialog(Form):
             "named_selection_name": str(selected_ns.Name),
             "result_kinds": list(selected_kinds),
             "use_no_graphics": self.use_no_graphics_enabled(),
-            "low_ram_free_percent": float(selected_low_ram_free_percent),
+            "ram_strategy": selected_strategy_key,
             "mode_limit": selected_mode_limit,
             "mode_limit_max": int(self.mode_limit_spinner.Maximum),
             "available_mode_count": -1,
@@ -1618,8 +1667,8 @@ class ExtractOptionsDialog(Form):
         self.cb_deformation.Enabled = enabled
         self.cb_forces.Enabled = enabled
         self.cb_use_no_graphics.Enabled = enabled
-        self.low_ram_trigger_label.Enabled = enabled
-        self.low_ram_trigger_textbox.Enabled = enabled
+        self.ram_strategy_label.Enabled = enabled
+        self.ram_strategy_combo.Enabled = enabled
         self.mode_limit_label.Enabled = enabled
         self.mode_limit_spinner.Enabled = enabled
         self.output_dir_textbox.Enabled = enabled
@@ -1678,20 +1727,20 @@ class ExtractOptionsDialog(Form):
         base_output_dir = str(new_job.get("base_output_dir", "")).strip()
         if base_output_dir == "":
             base_output_dir = "(analysis ResultFileDirectory)"
-        low_ram_free_percent = get_job_low_ram_free_percent(new_job)
+        job_strategy = get_job_ram_strategy(new_job)
         mode_limit_text = format_mode_subset_with_available(
             new_job.get("mode_limit", None),
             new_job.get("mode_limit_max", -1),
         )
 
-        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4} | Mode limit: {5} | Low-RAM trigger: {6:.1f}% free | Save base: {7}".format(
+        queue_msg = "Job {0} submitted | Analysis: {1} | NS: {2} | Result types: {3} | No Graphics: {4} | Mode limit: {5} | RAM strategy: {6} | Save base: {7}".format(
             new_job.get("job_id", ""),
             new_job.get("analysis_name", ""),
             new_job.get("named_selection_name", ""),
             "; ".join(result_labels),
             format_yes_no(new_job.get("use_no_graphics", False)),
             mode_limit_text,
-            low_ram_free_percent,
+            job_strategy.get("label", "Balanced"),
             base_output_dir,
         )
         self.update_progress(queue_msg, 0, 1000)
@@ -2625,7 +2674,7 @@ def write_job_metadata_file(
         base_output_dir = "(analysis ResultFileDirectory)"
 
     result_labels = get_result_kind_labels(job_record.get("result_kinds", []))
-    low_ram_free_percent = get_job_low_ram_free_percent(job_record)
+    job_strategy = get_job_ram_strategy(job_record)
     try:
         available_mode_count = int(job_record.get("available_mode_count", -1))
     except Exception:
@@ -2642,7 +2691,11 @@ def write_job_metadata_file(
         "Requested Output Types: {0}".format("; ".join(result_labels)),
         "No Graphics Preference Enabled: {0}".format(format_yes_no(job_record.get("use_no_graphics", False))),
         "Requested Mode Subset: {0}".format(mode_limit_text),
-        "Low-RAM Cleanup Trigger (% free): {0:.1f}".format(low_ram_free_percent),
+        "RAM Strategy: {0} (trigger: <= {1:.1f}% free, GC interval: {2})".format(
+            job_strategy.get("label", "Balanced"),
+            job_strategy.get("low_ram_free_percent", 35.0),
+            job_strategy.get("gc_interval", GC_INTERVAL_MODES),
+        ),
         "Mode Count: {0}".format(mode_count),
         "Available RAM at Job Start: {0}".format(format_available_ram_text(available_ram_start)),
         "Job Start Time: {0}".format(format_timestamp(started_epoch)),
@@ -2680,7 +2733,7 @@ def run_extraction(
     result_kind_label=None,
     output_dir=None,
     output_name_suffix="",
-    low_ram_free_percent=LOW_RAM_BACKPRESSURE_FREE_PERCENT_DEFAULT,
+    ram_strategy=None,
 ):
     start_time = time.time()
     temp_objects = []
@@ -2696,8 +2749,15 @@ def run_extraction(
     if result_kind_label is None:
         result_kind_label = RESULT_KIND_LABEL_BY_ID.get(result_kind, result_kind)
 
-    effective_low_ram_free_percent = clamp_low_ram_free_percent(low_ram_free_percent)
+    if ram_strategy is None:
+        ram_strategy = get_ram_strategy(RAM_STRATEGY_DEFAULT)
+    effective_gc_interval = int(ram_strategy.get("gc_interval", GC_INTERVAL_MODES))
     total_ram_bytes = get_total_ram_bytes()
+
+    # Dynamic progress allocation: extraction ~77%, merge ~23%.
+    total_modes = len(mode_ids)
+    extraction_ticks = int(1000.0 * (1.0 / 1.3))
+    merge_ticks = 1000 - extraction_ticks
 
     try:
         raise_if_run_cancel_requested(progress_dialog, "before extraction setup")
@@ -2706,18 +2766,22 @@ def run_extraction(
         if progress_dialog is not None:
             progress_dialog.update_progress(msg, 0, 1000)
 
+        strategy_label = ram_strategy.get("label", "Balanced")
+        trigger_pct = ram_strategy.get("low_ram_free_percent", 35.0)
         if total_ram_bytes > 0:
             log_message(
-                "Low-RAM cleanup trigger: <= {0:.1f}% free RAM.".format(
-                    effective_low_ram_free_percent
+                "RAM strategy: {0} (low-RAM trigger: <= {1:.1f}% free, GC interval: {2} modes).".format(
+                    strategy_label, trigger_pct, effective_gc_interval
                 ),
                 progress_dialog,
             )
         else:
             log_message(
-                "Low-RAM cleanup trigger: <= {0:.1f}% free RAM "
-                "(total RAM query unavailable; fallback trigger below {1} free).".format(
-                    effective_low_ram_free_percent,
+                "RAM strategy: {0} (low-RAM trigger: <= {1:.1f}% free, GC interval: {2} modes; "
+                "total RAM query unavailable; fallback trigger below {3} free).".format(
+                    strategy_label,
+                    trigger_pct,
+                    effective_gc_interval,
                     format_available_ram_text(LOW_RAM_BACKPRESSURE_FALLBACK_BYTES),
                 ),
                 progress_dialog,
@@ -2730,7 +2794,6 @@ def run_extraction(
             if comp_count == 0:
                 raise Exception("No temporary extraction result objects were created.")
 
-            # Evaluate first component for first mode to establish node ordering and unit.
             first_mode = int(mode_ids[0])
             with begin_transaction(True):
                 component_objects[0].SetNumber = first_mode
@@ -2796,8 +2859,6 @@ def run_extraction(
             del node_coords
             force_memory_cleanup()
 
-            # Reusing one temp-object set avoids Mechanical tree churn; values are extracted one component at a time
-            # and flushed to disk immediately to keep live Python/.NET data bounded.
             use_solution_eval = False
             if result_kind == RESULT_KIND_FORCE_MOMENT:
                 use_solution_eval = True
@@ -2813,20 +2874,39 @@ def run_extraction(
             if use_solution_eval:
                 log_message("Using solution.EvaluateAllResults() once per mode.", progress_dialog)
 
-            total_modes = len(mode_ids)
             mode_cursor = 0
             batch_index = 0
+            consecutive_backpressure_count = 0
             while mode_cursor < total_modes:
                 raise_if_run_cancel_requested(progress_dialog, "before mode batch setup")
                 remaining = total_modes - mode_cursor
-                batch_size, available_ram = estimate_mode_batch_size(
-                    len(node_ids),
-                    comp_count,
-                    remaining,
-                    low_ram_free_percent=effective_low_ram_free_percent,
-                )
+
+                # Backpressure with teeth: consecutive triggers force batch_size=1.
+                if consecutive_backpressure_count >= 2:
+                    batch_size = 1
+                    available_ram = get_available_ram_bytes()
+                    is_low_ram = True
+                    log_message(
+                        "Consecutive backpressure detected ({0}x). Forcing batch_size=1.".format(
+                            consecutive_backpressure_count
+                        ),
+                        progress_dialog,
+                    )
+                else:
+                    batch_size, available_ram, is_low_ram = estimate_mode_batch_size(
+                        len(node_ids),
+                        comp_count,
+                        remaining,
+                        ram_strategy=ram_strategy,
+                    )
+                if batch_size > remaining:
+                    batch_size = remaining
+
                 batch_modes = mode_ids[mode_cursor: mode_cursor + batch_size]
                 batch_index += 1
+
+                # Determine GC interval for this batch based on RAM state.
+                batch_gc_interval = GC_INTERVAL_LOW_RAM_MODES if is_low_ram else effective_gc_interval
 
                 if available_ram > 0:
                     ram_text = "{0:.2f} GiB".format(bytes_to_gib(available_ram))
@@ -2846,11 +2926,6 @@ def run_extraction(
                         mode = int(batch_modes[local_idx])
                         global_mode_idx = mode_cursor + local_idx + 1
                         raise_if_run_cancel_requested(progress_dialog, "before extracting mode {0}".format(mode))
-                        apply_low_ram_backpressure(
-                            progress_dialog,
-                            "before extracting mode {0}".format(mode),
-                            low_ram_free_percent=effective_low_ram_free_percent,
-                        )
                         mode_msg = "Extracting [{0}] mode {1}/{2} (set {3})".format(
                             result_kind_label,
                             global_mode_idx,
@@ -2859,8 +2934,7 @@ def run_extraction(
                         )
                         log_message(mode_msg, progress_dialog)
                         if progress_dialog is not None:
-                            # reserve 80% of progress range to mode extraction
-                            mode_progress = int((float(global_mode_idx) / float(total_modes)) * 800.0)
+                            mode_progress = int((float(global_mode_idx) / float(total_modes)) * float(extraction_ticks))
                             progress_dialog.update_progress(mode_msg, mode_progress, 1000)
 
                         with begin_transaction(True):
@@ -2979,13 +3053,6 @@ def run_extraction(
                                 except Exception:
                                     pass
 
-                                if comp_idx < (comp_count - 1):
-                                    apply_low_ram_backpressure(
-                                        progress_dialog,
-                                        "after extracting component {0} for mode {1}".format(component_name, mode),
-                                        low_ram_free_percent=effective_low_ram_free_percent,
-                                    )
-                                    force_memory_cleanup()
                                 raise_if_run_cancel_requested(
                                     progress_dialog,
                                     "after extracting component {0} for mode {1}".format(component_name, mode),
@@ -3009,22 +3076,27 @@ def run_extraction(
                         ):
                             cleanup_solution_generated_data(solution)
 
-                        if global_mode_idx % 2 == 0:
-                            force_memory_cleanup(True)
-                        else:
-                            force_memory_cleanup()
-                        apply_low_ram_backpressure(
-                            progress_dialog,
-                            "after extracting mode {0}".format(mode),
-                            low_ram_free_percent=effective_low_ram_free_percent,
-                        )
+                        # Interval-based GC: only collect every N modes within a batch.
+                        if batch_gc_interval <= 1 or (local_idx + 1) % batch_gc_interval == 0:
+                            force_memory_cleanup(False)
+
                         raise_if_run_cancel_requested(progress_dialog, "after extracting mode {0}".format(mode))
                 finally:
                     clear_component_generated_data(component_objects)
                     force_memory_cleanup(True)
 
                 mode_cursor += len(batch_modes)
-                force_memory_cleanup(True)
+
+                # Batch-boundary backpressure check with re-evaluation for next batch.
+                bp_state = apply_low_ram_backpressure(
+                    progress_dialog,
+                    "after batch {0}".format(batch_index),
+                    ram_strategy=ram_strategy,
+                )
+                if bp_state.get("triggered", False):
+                    consecutive_backpressure_count += 1
+                else:
+                    consecutive_backpressure_count = 0
 
         output_name = RESULT_OUTPUT_FILES[result_kind]
         if output_name_suffix is not None and str(output_name_suffix).strip() != "":
@@ -3053,7 +3125,7 @@ def run_extraction(
         msg = "Merging temporary CSV chunks into final output..."
         log_message(msg, progress_dialog)
         if progress_dialog is not None:
-            progress_dialog.update_progress(msg, 820, 1000)
+            progress_dialog.update_progress(msg, extraction_ticks, 1000)
         raise_if_run_cancel_requested(progress_dialog, "before merge phase")
 
         merge_batches_into_output(
@@ -3063,7 +3135,7 @@ def run_extraction(
             output_csv_path=output_csv_path,
             node_count=len(node_ids),
             progress_dialog=progress_dialog,
-            low_ram_free_percent=effective_low_ram_free_percent,
+            low_ram_free_percent=ram_strategy.get("low_ram_free_percent", 35.0),
         )
 
         if progress_dialog is not None:
@@ -3120,7 +3192,7 @@ def main():
             selected_ns = job.get("named_selection", None)
             selected_kinds = list(job.get("result_kinds", []))
             use_no_graphics_pref = bool(job.get("use_no_graphics", False))
-            low_ram_free_percent = get_job_low_ram_free_percent(job)
+            job_ram_strategy = get_job_ram_strategy(job)
             mode_limit_requested = job.get("mode_limit", None)
             mode_limit_text = ""
 
@@ -3201,7 +3273,7 @@ def main():
 
                 kind_labels = get_result_kind_labels(selected_kinds)
                 start_msg = (
-                    "Job {0}/{1} (ID {2}) | Analysis: {3} | NS: {4} | Result types: {5} | Modes: 1..{6} ({7}) | Low-RAM trigger: {8:.1f}% free"
+                    "Job {0}/{1} (ID {2}) | Analysis: {3} | NS: {4} | Result types: {5} | Modes: 1..{6} ({7}) | RAM strategy: {8}"
                 ).format(
                     job_idx + 1,
                     total_jobs,
@@ -3211,7 +3283,7 @@ def main():
                     "; ".join(kind_labels),
                     len(mode_ids),
                     mode_limit_text,
-                    low_ram_free_percent,
+                    job_ram_strategy.get("label", "Balanced"),
                 )
                 log_message(start_msg, dialog)
                 log_message("Job {0} base output folder: {1}".format(job_id, selected_base_output_dir), dialog)
@@ -3256,7 +3328,7 @@ def main():
                         kind_label,
                         output_dir=output_dir,
                         output_name_suffix="_job_{0}".format(job_id),
-                        low_ram_free_percent=low_ram_free_percent,
+                        ram_strategy=job_ram_strategy,
                     )
                     output_csvs.append(output_csv)
                     all_output_csvs.append(output_csv)
