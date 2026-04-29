@@ -108,6 +108,7 @@ RAM_STRATEGY_PRESETS = {
         "safety_fraction": 0.12,
         "gc_interval": 2,
         "low_ram_free_percent": 50.0,
+        "evaluate_stress_once_per_mode": False,
         "description": "Slower but safest. Best for machines running other heavy applications.",
     },
     "balanced": {
@@ -115,6 +116,7 @@ RAM_STRATEGY_PRESETS = {
         "safety_fraction": 0.20,
         "gc_interval": 4,
         "low_ram_free_percent": 35.0,
+        "evaluate_stress_once_per_mode": True,
         "description": "Good default for dedicated extraction workstations.",
     },
     "aggressive": {
@@ -122,6 +124,7 @@ RAM_STRATEGY_PRESETS = {
         "safety_fraction": 0.35,
         "gc_interval": 8,
         "low_ram_free_percent": 20.0,
+        "evaluate_stress_once_per_mode": True,
         "description": "Fastest extraction. Use only when Mechanical has most of the system RAM available.",
     },
 }
@@ -2864,6 +2867,14 @@ def run_extraction(
                 use_solution_eval = True
                 log_message(
                     "ENFO/ENMO extraction uses solution.EvaluateAllResults() per mode; failure is treated as unavailable data for that mode/scope.",
+                    progress_dialog,
+                )
+            elif result_kind == RESULT_KIND_STRESS and ram_strategy.get("evaluate_stress_once_per_mode", False):
+                use_solution_eval = True
+                log_message(
+                    "Stress extraction uses solution.EvaluateAllResults() once per mode for the {0} RAM strategy.".format(
+                        strategy_label
+                    ),
                     progress_dialog,
                 )
             else:
