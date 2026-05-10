@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from ui.handlers.display_results_handler import DisplayResultsHandler
 from ui.handlers.display_interaction_handler import DisplayInteractionHandler
 from ui.handlers.display_visualization_handler import DisplayVisualizationHandler
+from ui.handlers.display_animation_handler import DisplayAnimationHandler
 
 
 class FakeSpinBox:
@@ -211,6 +212,120 @@ class FakeVisualizationTab:
         return False
 
 
+class FakeAnimationMesh:
+    def __init__(self, points, arrays, active_scalars_name="Result"):
+        self.points = np.asarray(points, dtype=float)
+        self._arrays = {name: np.asarray(values).copy() for name, values in arrays.items()}
+        self.array_names = list(self._arrays.keys())
+        self.active_scalars_name = active_scalars_name
+        self.n_points = self.points.shape[0]
+        self.points_modified_calls = 0
+
+    def __getitem__(self, key):
+        return self._arrays[key]
+
+    def __setitem__(self, key, value):
+        if key not in self.array_names:
+            self.array_names.append(key)
+        self._arrays[key] = np.asarray(value).copy()
+
+    def set_active_scalars(self, key):
+        self.active_scalars_name = key
+
+    def points_modified(self):
+        self.points_modified_calls += 1
+
+
+class FakeAnimationManager:
+    def __init__(self, frame_scalars, frame_coords, frame_times, data_column_name="Result"):
+        self.precomputed_scalars = np.asarray(frame_scalars)
+        self.precomputed_coords = np.asarray(frame_coords)
+        self.precomputed_anim_times = np.asarray(frame_times)
+        self.data_column_name = data_column_name
+
+    def get_num_frames(self):
+        return len(self.precomputed_anim_times)
+
+    def get_frame_data(self, frame_index):
+        return (
+            self.precomputed_scalars[frame_index],
+            self.precomputed_coords[frame_index],
+            self.precomputed_anim_times[frame_index],
+        )
+
+
+class FakeAnimationPlotter:
+    def __init__(self):
+        self.camera_position = (
+            (10.0, 20.0, 30.0),
+            (1.0, 2.0, 3.0),
+            (0.0, 0.0, 1.0),
+        )
+        self.render_calls = 0
+        self.screenshot_calls = []
+
+    def render(self):
+        self.render_calls += 1
+
+    def screenshot(self, **kwargs):
+        self.screenshot_calls.append(kwargs)
+        return np.full((13, 17, 3), len(self.screenshot_calls), dtype=np.uint8)
+
+
+class FakeAnimationTimer:
+    def __init__(self, active=True):
+        self.active = active
+        self.stop_calls = 0
+        self.start_calls = 0
+        self.started_intervals = []
+
+    def isActive(self):
+        return self.active
+
+    def stop(self):
+        self.active = False
+        self.stop_calls += 1
+
+    def start(self, interval):
+        self.active = True
+        self.start_calls += 1
+        self.started_intervals.append(interval)
+
+
+class FakeAnimationTextActor:
+    def __init__(self, text):
+        self.text = text
+
+    def GetInput(self):
+        return self.text
+
+    def SetInput(self, text):
+        self.text = text
+
+
+class FakeIntegerSpinBox:
+    def __init__(self, value):
+        self._value = int(value)
+
+    def value(self):
+        return self._value
+
+
+class FakeAnimationTab:
+    def __init__(self, mesh, plotter, actor):
+        self.current_mesh = mesh
+        self.plotter = plotter
+        self.current_actor = actor
+        self.anim_interval_spin = FakeIntegerSpinBox(10)
+        self.freeze_tracked_node = False
+        self.freeze_baseline = None
+        self.target_node_index = None
+        self.target_node_label_actor = None
+        self.target_node_marker_actor = None
+        self.label_point_data = None
+        self.marker_poly = None
+
+
 def test_configure_time_point_catalog_keeps_existing_modes_and_solver_context():
     existing_catalog = {
         "Von Mises": {
@@ -370,6 +485,66 @@ def test_add_camera_widget_is_idempotent():
     assert state.camera_widget is first_widget
     assert tab.camera_widget is first_widget
     assert plotter.add_camera_widget_calls == 1
+
+
+def test_animation_export_captures_live_plotter_and_restores_visible_state(monkeypatch, tmp_path):
+    import imageio.v2 as imageio
+
+    saved = {}
+
+    def fake_mimsave(path, frames, **kwargs):
+        saved["path"] = path
+        saved["frames"] = list(frames)
+        saved["kwargs"] = kwargs
+
+    monkeypatch.setattr(imageio, "mimsave", fake_mimsave)
+
+    original_points = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
+    original_scalars = np.array([9.0, 10.0])
+    mesh = FakeAnimationMesh(
+        original_points,
+        {"Result": original_scalars},
+        active_scalars_name="Result",
+    )
+    plotter = FakeAnimationPlotter()
+    original_camera = plotter.camera_position
+    actor = SimpleNamespace(mapper=SimpleNamespace(scalar_range=(2.0, 8.0)))
+    tab = FakeAnimationTab(mesh=mesh, plotter=plotter, actor=actor)
+    timer = FakeAnimationTimer(active=True)
+    time_actor = FakeAnimationTextActor("Time: original")
+    state = SimpleNamespace(
+        anim_timer=timer,
+        current_anim_frame_index=5,
+        time_text_actor=time_actor,
+    )
+    manager = FakeAnimationManager(
+        frame_scalars=np.array([[1.0, 2.0], [3.0, 4.0]]),
+        frame_coords=np.array([
+            [[0.0, 0.0, 0.0], [2.0, 0.0, 0.0]],
+            [[0.0, 1.0, 0.0], [3.0, 0.0, 0.0]],
+        ]),
+        frame_times=np.array([0.0, 0.1]),
+    )
+    handler = DisplayAnimationHandler(tab=tab, state=state, anim_manager=manager)
+
+    output_path = tmp_path / "animation.mp4"
+    assert handler.write_animation_to_file(str(output_path), "mp4") is True
+
+    assert saved["path"] == str(output_path)
+    assert len(saved["frames"]) == 2
+    assert saved["frames"][0].shape == (13, 17, 3)
+    assert saved["kwargs"]["macro_block_size"] is None
+    assert all(call == {"return_img": True} for call in plotter.screenshot_calls)
+    assert np.allclose(mesh.points, original_points)
+    assert np.allclose(mesh["Result"], original_scalars)
+    assert mesh.active_scalars_name == "Result"
+    assert state.current_anim_frame_index == 5
+    assert time_actor.GetInput() == "Time: original"
+    assert actor.mapper.scalar_range == (2.0, 8.0)
+    assert plotter.camera_position == original_camera
+    assert timer.stop_calls == 1
+    assert timer.start_calls == 1
+    assert timer.started_intervals == [10]
 
 
 class FakeInteractionMesh:

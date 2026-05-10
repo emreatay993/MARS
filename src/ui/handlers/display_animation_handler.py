@@ -7,7 +7,6 @@ import time
 from typing import Optional, Tuple
 
 import numpy as np
-import pyvista as pv
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 
@@ -504,40 +503,195 @@ class DisplayAnimationHandler(DisplayBaseHandler):
 
         return file_path, file_format
 
+    def _copy_points(self, point_data):
+        """Best-effort copy of PyVista point coordinates."""
+        if point_data is None or not hasattr(point_data, "points"):
+            return None
+        try:
+            return point_data.points.copy()
+        except Exception:
+            return None
+
+    def _mark_points_modified(self, point_data) -> None:
+        """Notify PyVista/VTK that point coordinates changed."""
+        try:
+            point_data.points_modified()
+            return
+        except AttributeError:
+            pass
+        try:
+            point_data.GetPoints().Modified()
+        except Exception:
+            pass
+
+    def _capture_animation_export_state(self) -> dict:
+        """Capture the currently visible animation state so export can restore it."""
+        tab = self.tab
+        mesh = tab.current_mesh
+        data_column = self.anim_manager.data_column_name
+
+        scalar_values = None
+        if mesh is not None and data_column:
+            try:
+                if data_column in mesh.array_names:
+                    scalar_values = np.asarray(mesh[data_column]).copy()
+            except Exception:
+                scalar_values = None
+
+        actor_scalar_range = None
+        actor = getattr(tab, "current_actor", None)
+        mapper = getattr(actor, "mapper", None)
+        if mapper is not None:
+            try:
+                actor_scalar_range = tuple(mapper.scalar_range)
+            except Exception:
+                actor_scalar_range = None
+
+        time_text = None
+        if self.state.time_text_actor is not None:
+            try:
+                time_text = self.state.time_text_actor.GetInput()
+            except Exception:
+                time_text = None
+
+        return {
+            "mesh": mesh,
+            "points": self._copy_points(mesh),
+            "active_scalars_name": getattr(mesh, "active_scalars_name", None),
+            "data_column": data_column,
+            "scalar_values": scalar_values,
+            "camera_position": self._capture_camera_position(tab.plotter),
+            "actor_scalar_range": actor_scalar_range,
+            "current_anim_frame_index": self.state.current_anim_frame_index,
+            "time_text": time_text,
+            "marker_points": self._copy_points(getattr(tab, "marker_poly", None)),
+            "label_points": self._copy_points(getattr(tab, "label_point_data", None)),
+        }
+
+    def _restore_animation_export_state(self, snapshot: dict) -> None:
+        """Restore the display after live-plotter frame capture."""
+        tab = self.tab
+        mesh = snapshot.get("mesh")
+
+        if mesh is not None:
+            points = snapshot.get("points")
+            if points is not None:
+                try:
+                    mesh.points = points.copy()
+                    self._mark_points_modified(mesh)
+                except Exception as exc:
+                    print(f"Warning: Could not restore animation mesh points: {exc}")
+
+            data_column = snapshot.get("data_column")
+            scalar_values = snapshot.get("scalar_values")
+            if data_column and scalar_values is not None:
+                try:
+                    mesh[data_column] = scalar_values.copy()
+                except Exception as exc:
+                    print(f"Warning: Could not restore animation scalars: {exc}")
+
+            active_scalars_name = snapshot.get("active_scalars_name")
+            if active_scalars_name:
+                try:
+                    mesh.set_active_scalars(active_scalars_name)
+                except Exception:
+                    pass
+
+        actor_scalar_range = snapshot.get("actor_scalar_range")
+        actor = getattr(tab, "current_actor", None)
+        mapper = getattr(actor, "mapper", None)
+        if mapper is not None and actor_scalar_range is not None:
+            try:
+                mapper.scalar_range = actor_scalar_range
+            except Exception:
+                pass
+
+        if self.state.time_text_actor is not None and snapshot.get("time_text") is not None:
+            try:
+                self.state.time_text_actor.SetInput(snapshot["time_text"])
+            except Exception:
+                pass
+
+        marker_poly = getattr(tab, "marker_poly", None)
+        marker_points = snapshot.get("marker_points")
+        if marker_poly is not None and marker_points is not None:
+            try:
+                marker_poly.points = marker_points.copy()
+                self._mark_points_modified(marker_poly)
+            except Exception:
+                pass
+
+        label_point_data = getattr(tab, "label_point_data", None)
+        label_points = snapshot.get("label_points")
+        if label_point_data is not None and label_points is not None:
+            try:
+                label_point_data.points = label_points.copy()
+                self._mark_points_modified(label_point_data)
+            except Exception:
+                pass
+
+        self.set_state_attr(
+            "current_anim_frame_index",
+            snapshot.get("current_anim_frame_index", 0),
+        )
+        self._restore_camera_position(snapshot.get("camera_position"), plotter=tab.plotter)
+
+        try:
+            tab.plotter.render()
+        except Exception:
+            pass
+
     def _write_animation_to_file(self, file_path: str, file_format: str) -> bool:
-        """Render precomputed frames and write them to disk."""
+        """Capture the visible animation frames and write them to disk."""
         tab = self.tab
 
-        if file_format == "mp4":
+        timer = self.state.anim_timer
+        timer_was_active = False
+        if timer is not None:
             try:
-                pv.start_xvfb()
-            except Exception as exc:
-                print(f"Warning: Failed to start xvfb: {exc}")
+                timer_was_active = timer.isActive()
+            except Exception:
+                timer_was_active = False
+            if timer_was_active:
+                timer.stop()
 
-        original_position = tab.plotter.camera_position
-        temp_plotter = pv.Plotter(off_screen=True)
-        temp_plotter.background_color = tab.plotter.background_color
+        snapshot = self._capture_animation_export_state()
 
         output_frames = []
         num_frames = self.anim_manager.get_num_frames()
+        frame_size = None
 
         print(f"Saving animation to {file_path} ...")
-        for frame_index in range(num_frames):
-            if not self._update_mesh_for_frame(frame_index):
-                print(f"Skipping frame {frame_index} due to update failure.")
-                continue
+        try:
+            for frame_index in range(num_frames):
+                if not self._update_mesh_for_frame(frame_index):
+                    print(f"Skipping frame {frame_index} due to update failure.")
+                    continue
 
-            temp_plotter.clear()
-            temp_plotter.add_mesh(
-                tab.current_mesh.copy(deep=True),
-                scalars=self.anim_manager.data_column_name,
-                cmap="jet",
-                clim=tab.current_actor.mapper.scalar_range if tab.current_actor else None,
-                render_points_as_spheres=True
-            )
-            temp_plotter.camera_position = original_position
-            img = temp_plotter.screenshot(return_img=True, window_size=(1280, 720))
-            output_frames.append(img)
+                tab.plotter.render()
+                img = tab.plotter.screenshot(return_img=True)
+                if img is None:
+                    print(f"Skipping frame {frame_index}: screenshot returned no image.")
+                    continue
+
+                current_size = img.shape[:2]
+                if frame_size is None:
+                    frame_size = current_size
+                    print(f"Exporting animation at visible display size {frame_size[1]}x{frame_size[0]}.")
+                elif current_size != frame_size:
+                    raise RuntimeError(
+                        "Display area size changed during export. "
+                        "Please retry without resizing the window."
+                    )
+
+                output_frames.append(img)
+        finally:
+            self._restore_animation_export_state(snapshot)
+            if timer_was_active and timer is not None:
+                try:
+                    timer.start(tab.anim_interval_spin.value())
+                except Exception as exc:
+                    print(f"Warning: Could not restart animation timer after export: {exc}")
 
         if not output_frames:
             QMessageBox.warning(
@@ -550,7 +704,12 @@ class DisplayAnimationHandler(DisplayBaseHandler):
             try:
                 import imageio.v2 as imageio
 
-                imageio.mimsave(file_path, output_frames, fps=max(1, 1000 // tab.anim_interval_spin.value()))
+                imageio.mimsave(
+                    file_path,
+                    output_frames,
+                    fps=max(1, 1000 // tab.anim_interval_spin.value()),
+                    macro_block_size=None,
+                )
             except Exception as exc:
                 raise RuntimeError(f"Failed to write MP4:\n{exc}")
         else:
