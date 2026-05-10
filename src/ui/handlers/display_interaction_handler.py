@@ -26,6 +26,25 @@ from ui.styles.style_constants import CONTEXT_MENU_STYLE
 class DisplayInteractionHandler(DisplayBaseHandler):
     """Manages point picking, hotspot workflows, and context actions."""
 
+    _PAIRED_RESULT_MODES = {
+        "max_over_time": "time_of_max",
+        "time_of_max": "max_over_time",
+        "min_over_time": "time_of_min",
+        "time_of_min": "min_over_time",
+    }
+    _PAIR_COLUMN_ORDER = {
+        "max_over_time": ("max_over_time", "time_of_max"),
+        "time_of_max": ("max_over_time", "time_of_max"),
+        "min_over_time": ("min_over_time", "time_of_min"),
+        "time_of_min": ("min_over_time", "time_of_min"),
+    }
+    _MODE_LABELS = {
+        "max_over_time": "Max over Time",
+        "min_over_time": "Min over Time",
+        "time_of_max": "Time of Max",
+        "time_of_min": "Time of Min",
+    }
+
     def __init__(self, tab, state, hotspot_detector: HotspotDetector):
         super().__init__(tab, state)
         self.hotspot_detector = hotspot_detector
@@ -294,6 +313,11 @@ class DisplayInteractionHandler(DisplayBaseHandler):
 
             scalar_name = mesh_to_analyze.active_scalars_name or "Result"
             df_hotspots = df_hotspots.rename(columns={"Value": scalar_name})
+            df_hotspots = self._add_paired_result_values(
+                df_hotspots,
+                mesh_to_analyze,
+                scalar_name,
+            )
 
             if self.state.hotspot_dialog is not None:
                 self.state.hotspot_dialog.close()
@@ -310,6 +334,172 @@ class DisplayInteractionHandler(DisplayBaseHandler):
 
         except Exception as exc:
             QMessageBox.critical(self.tab, "Error", f"Failed to find hotspots: {exc}")
+
+    def _add_paired_result_values(
+        self,
+        df_hotspots,
+        mesh_to_analyze: pv.PolyData,
+        current_column: str,
+    ):
+        """Append the paired extrema/time result column for SOLVE catalog modes."""
+        selection = getattr(self.state, "result_selection", {}) or {}
+        current_mode = selection.get("mode")
+        paired_mode = self._PAIRED_RESULT_MODES.get(current_mode)
+        if not paired_mode:
+            return df_hotspots
+
+        group = selection.get("group")
+        component = selection.get("component")
+        catalog = getattr(self.state, "result_catalog", {}) or {}
+        modes = catalog.get(group, {}).get(component, {})
+        if current_mode not in modes or paired_mode not in modes:
+            return df_hotspots
+
+        paired_entry = modes[paired_mode]
+        paired_column = self._entry_field_name(
+            paired_entry,
+            group,
+            component,
+            paired_mode,
+        )
+        if paired_column not in df_hotspots.columns:
+            paired_values = self._paired_values_for_hotspots(
+                paired_entry,
+                paired_column,
+                mesh_to_analyze,
+                df_hotspots["NodeID"].to_numpy(),
+            )
+            if paired_values is None:
+                return df_hotspots
+
+            df_hotspots = df_hotspots.copy()
+            df_hotspots[paired_column] = paired_values
+
+        return self._order_paired_hotspot_columns(
+            df_hotspots,
+            current_mode,
+            current_column,
+            paired_mode,
+            paired_column,
+        )
+
+    def _paired_values_for_hotspots(
+        self,
+        entry: dict,
+        field_name: str,
+        mesh_to_analyze: pv.PolyData,
+        target_node_ids: np.ndarray,
+    ) -> Optional[np.ndarray]:
+        """Resolve a catalog entry and align it to the hotspot row NodeIDs."""
+        if field_name in getattr(mesh_to_analyze, "array_names", []):
+            return self._align_values_to_node_ids(
+                mesh_to_analyze["NodeID"],
+                mesh_to_analyze[field_name],
+                target_node_ids,
+            )
+
+        values = None
+        results_handler = getattr(self.tab, "results_handler", None)
+        if results_handler is not None and hasattr(results_handler, "_resolve_values"):
+            try:
+                values = results_handler._resolve_values(entry, field_name)
+            except Exception as exc:
+                print(f"Could not resolve paired hotspot result '{field_name}': {exc}")
+
+        if values is None and entry.get("values") is not None:
+            values = entry.get("values")
+        if values is None:
+            return None
+
+        source_mesh = (
+            getattr(self.state, "current_mesh", None)
+            or getattr(self.tab, "current_mesh", None)
+        )
+        if source_mesh is not None and "NodeID" in getattr(source_mesh, "array_names", []):
+            return self._align_values_to_node_ids(
+                source_mesh["NodeID"],
+                values,
+                target_node_ids,
+            )
+
+        values = np.asarray(values, dtype=float).reshape(-1)
+        if values.shape[0] != len(target_node_ids):
+            return None
+        return values
+
+    @classmethod
+    def _order_paired_hotspot_columns(
+        cls,
+        df_hotspots,
+        current_mode: str,
+        current_column: str,
+        paired_mode: str,
+        paired_column: str,
+    ):
+        """Keep extrema columns before their time columns, regardless of active mode."""
+        mode_to_column = {
+            current_mode: current_column,
+            paired_mode: paired_column,
+        }
+        result_columns = []
+        for mode in cls._PAIR_COLUMN_ORDER.get(current_mode, (current_mode, paired_mode)):
+            column = mode_to_column.get(mode)
+            if column in df_hotspots.columns and column not in result_columns:
+                result_columns.append(column)
+
+        base_columns = [column for column in ("Rank", "NodeID") if column in df_hotspots.columns]
+        coordinate_columns = [column for column in ("X", "Y", "Z") if column in df_hotspots.columns]
+        pinned_columns = set(base_columns + result_columns + coordinate_columns)
+        remaining_columns = [
+            column for column in df_hotspots.columns
+            if column not in pinned_columns
+        ]
+        return df_hotspots[base_columns + result_columns + remaining_columns + coordinate_columns]
+
+    @classmethod
+    def _entry_field_name(
+        cls,
+        entry: dict,
+        group: str,
+        component: str,
+        mode: str,
+    ) -> str:
+        """Return the display column name for a result-catalog entry."""
+        return (
+            entry.get("field_name")
+            or f"{group} - {component} - {cls._MODE_LABELS.get(mode, mode)}"
+        )
+
+    @staticmethod
+    def _align_values_to_node_ids(
+        source_node_ids,
+        source_values,
+        target_node_ids,
+    ) -> Optional[np.ndarray]:
+        """Return source values in target NodeID order, or None if alignment is unsafe."""
+        try:
+            source_ids = np.asarray(source_node_ids, dtype=np.int64).reshape(-1)
+            target_ids = np.asarray(target_node_ids, dtype=np.int64).reshape(-1)
+            values = np.asarray(source_values, dtype=float).reshape(-1)
+        except Exception:
+            return None
+
+        if source_ids.shape[0] != values.shape[0]:
+            return None
+        if target_ids.size == 0:
+            return values[:0]
+        if np.unique(source_ids).size != source_ids.size:
+            return None
+
+        order = np.argsort(source_ids)
+        sorted_ids = source_ids[order]
+        match_indices = np.searchsorted(sorted_ids, target_ids)
+        if np.any(match_indices >= sorted_ids.size):
+            return None
+        if np.any(sorted_ids[match_indices] != target_ids):
+            return None
+
+        return values[order][match_indices]
 
     def highlight_and_focus_on_node(self, node_id: int) -> None:
         """Highlight and focus camera on a specific node."""

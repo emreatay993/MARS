@@ -15,6 +15,7 @@ from ui.handlers.display_results_handler import DisplayResultsHandler
 from ui.handlers.display_interaction_handler import DisplayInteractionHandler
 from ui.handlers.display_visualization_handler import DisplayVisualizationHandler
 from ui.handlers.display_animation_handler import DisplayAnimationHandler
+from core.visualization import HotspotDetector
 
 
 class FakeSpinBox:
@@ -725,6 +726,215 @@ class FakeInteractionPlotter:
 
     def render(self):
         self.render_calls += 1
+
+
+class FakeHotspotMesh:
+    def __init__(self, points, arrays, active_scalars_name):
+        self.points = np.asarray(points, dtype=float)
+        self._arrays = {name: np.asarray(values) for name, values in arrays.items()}
+        self.array_names = list(self._arrays.keys())
+        self.active_scalars_name = active_scalars_name
+        self.n_points = self.points.shape[0]
+
+    @property
+    def active_scalars(self):
+        return self._arrays.get(self.active_scalars_name)
+
+    def __getitem__(self, key):
+        return self._arrays[key]
+
+
+class FakeHotspotResultsHandler:
+    def _resolve_values(self, entry, _field_name):
+        values = entry.get("values")
+        if values is None:
+            return None
+        return np.asarray(values, dtype=float)
+
+
+class FakeSignal:
+    def __init__(self):
+        self.connections = []
+
+    def connect(self, callback):
+        self.connections.append(callback)
+
+
+class CapturingHotspotDialog:
+    instances = []
+
+    def __init__(self, hotspot_df, parent=None):
+        self.hotspot_df = hotspot_df.copy()
+        self.parent = parent
+        self.node_selected = FakeSignal()
+        self.finished = FakeSignal()
+        self.show_calls = 0
+        self.close_calls = 0
+        CapturingHotspotDialog.instances.append(self)
+
+    def show(self):
+        self.show_calls += 1
+
+    def close(self):
+        self.close_calls += 1
+
+
+def test_hotspot_table_adds_time_of_max_for_max_over_time_contour(monkeypatch):
+    CapturingHotspotDialog.instances = []
+    monkeypatch.setattr(
+        "ui.handlers.display_interaction_handler.QInputDialog.getInt",
+        lambda *_args, **_kwargs: (2, True),
+    )
+    monkeypatch.setattr(
+        "ui.handlers.display_interaction_handler.HotspotDialog",
+        CapturingHotspotDialog,
+    )
+
+    value_field = "SVM (MPa) - Max over Time"
+    time_field = "Time of Max: SVM (s)"
+    full_mesh = FakeHotspotMesh(
+        points=np.zeros((4, 3)),
+        arrays={
+            "NodeID": np.array([101, 102, 103, 104]),
+            value_field: np.array([10.0, 5.0, 20.0, 30.0]),
+        },
+        active_scalars_name=value_field,
+    )
+    visible_mesh = FakeHotspotMesh(
+        points=np.array([
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+        ]),
+        arrays={
+            "NodeID": np.array([103, 101, 104]),
+            value_field: np.array([20.0, 10.0, 30.0]),
+        },
+        active_scalars_name=value_field,
+    )
+    state = SimpleNamespace(
+        result_catalog={
+            "Von Mises": {
+                "Magnitude": {
+                    "max_over_time": {
+                        "field_name": value_field,
+                        "values": np.array([10.0, 5.0, 20.0, 30.0]),
+                    },
+                    "time_of_max": {
+                        "field_name": time_field,
+                        "values": np.array([0.1, 0.2, 0.3, 0.4]),
+                    },
+                }
+            }
+        },
+        result_selection={
+            "group": "Von Mises",
+            "component": "Magnitude",
+            "mode": "max_over_time",
+        },
+        current_mesh=full_mesh,
+        hotspot_dialog=None,
+        box_widget=None,
+    )
+    tab = SimpleNamespace(
+        current_mesh=full_mesh,
+        results_handler=FakeHotspotResultsHandler(),
+    )
+    handler = DisplayInteractionHandler(
+        tab=tab,
+        state=state,
+        hotspot_detector=HotspotDetector(),
+    )
+
+    handler._find_and_show_hotspots(visible_mesh)
+
+    dialog = CapturingHotspotDialog.instances[-1]
+    df = dialog.hotspot_df
+    assert list(df.columns) == ["Rank", "NodeID", value_field, time_field, "X", "Y", "Z"]
+    np.testing.assert_array_equal(df["NodeID"].to_numpy(), np.array([104, 103]))
+    np.testing.assert_allclose(df[value_field].to_numpy(), np.array([30.0, 20.0]))
+    np.testing.assert_allclose(df[time_field].to_numpy(), np.array([0.4, 0.3]))
+    assert dialog.show_calls == 1
+    assert state.hotspot_dialog is dialog
+
+
+def test_hotspot_table_adds_min_over_time_for_time_of_min_contour(monkeypatch):
+    CapturingHotspotDialog.instances = []
+    monkeypatch.setattr(
+        "ui.handlers.display_interaction_handler.QInputDialog.getInt",
+        lambda *_args, **_kwargs: (2, True),
+    )
+    monkeypatch.setattr(
+        "ui.handlers.display_interaction_handler.HotspotDialog",
+        CapturingHotspotDialog,
+    )
+
+    value_field = "S3 (MPa) - Min over Time"
+    time_field = "Time of Min: S3 (s)"
+    full_mesh = FakeHotspotMesh(
+        points=np.zeros((3, 3)),
+        arrays={
+            "NodeID": np.array([11, 22, 33]),
+            time_field: np.array([0.1, 0.4, 0.2]),
+        },
+        active_scalars_name=time_field,
+    )
+    visible_mesh = FakeHotspotMesh(
+        points=np.array([
+            [1.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [3.0, 0.0, 0.0],
+        ]),
+        arrays={
+            "NodeID": np.array([11, 22, 33]),
+            time_field: np.array([0.1, 0.4, 0.2]),
+        },
+        active_scalars_name=time_field,
+    )
+    state = SimpleNamespace(
+        result_catalog={
+            "Min Principal": {
+                "S3": {
+                    "min_over_time": {
+                        "field_name": value_field,
+                        "values": np.array([-10.0, -5.0, -20.0]),
+                    },
+                    "time_of_min": {
+                        "field_name": time_field,
+                        "values": np.array([0.1, 0.4, 0.2]),
+                    },
+                }
+            }
+        },
+        result_selection={
+            "group": "Min Principal",
+            "component": "S3",
+            "mode": "time_of_min",
+        },
+        current_mesh=full_mesh,
+        hotspot_dialog=None,
+        box_widget=None,
+    )
+    tab = SimpleNamespace(
+        current_mesh=full_mesh,
+        results_handler=FakeHotspotResultsHandler(),
+    )
+    handler = DisplayInteractionHandler(
+        tab=tab,
+        state=state,
+        hotspot_detector=HotspotDetector(),
+    )
+
+    handler._find_and_show_hotspots(visible_mesh)
+
+    dialog = CapturingHotspotDialog.instances[-1]
+    df = dialog.hotspot_df
+    assert list(df.columns) == ["Rank", "NodeID", value_field, time_field, "X", "Y", "Z"]
+    np.testing.assert_array_equal(df["NodeID"].to_numpy(), np.array([22, 33]))
+    np.testing.assert_allclose(df[value_field].to_numpy(), np.array([-5.0, -20.0]))
+    np.testing.assert_allclose(df[time_field].to_numpy(), np.array([0.4, 0.2]))
+    assert dialog.show_calls == 1
+    assert state.hotspot_dialog is dialog
 
 
 def test_go_to_node_preserves_full_camera_tuple(monkeypatch):
