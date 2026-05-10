@@ -328,7 +328,7 @@ class DisplayTab(QWidget):
             self.state.current_mesh = mesh
             self.current_mesh = mesh
             self.results_handler.clear_result_catalog()
-            self.update_visualization()
+            self.update_visualization(preserve_camera=False)
             self.plotter.reset_camera()
     
     def _update_time_controls(self, time_values):
@@ -383,9 +383,9 @@ class DisplayTab(QWidget):
         """Open file dialog and load visualization file."""
         self.file_handler.open_file_dialog()
     
-    def update_visualization(self):
-        """Update the 3D visualization with current mesh."""
-        self.visual_handler.update_visualization()
+    def update_visualization(self, preserve_camera: bool = True):
+        """Update the 3D visualization, preserving camera by default."""
+        self.visual_handler.update_visualization(preserve_camera=preserve_camera)
     
     
     @pyqtSlot(int)
@@ -555,7 +555,7 @@ class DisplayTab(QWidget):
         self.scalar_max_spin.blockSignals(False)
         
         # Update the visualization
-        self.update_visualization()
+        self.update_visualization(preserve_camera=True)
         self.results_handler.configure_time_point_catalog(mesh, scalar_bar_title)
         
         # Clear file path since this is computed data, not loaded from file
@@ -634,7 +634,7 @@ class DisplayTab(QWidget):
                         self.current_mesh.GetPoints().Modified()
                 
                 # Rebuild visualization with new scalar bar title and range
-                self.update_visualization()
+                self.update_visualization(preserve_camera=True)
             
             # Re-create tracked node markers AFTER update_visualization (which clears the plotter)
             if self.target_node_index is not None:

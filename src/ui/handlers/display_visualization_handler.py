@@ -44,7 +44,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         """Toggle compatibility mode and refresh the mesh if loaded."""
         self._set_compatibility_rendering(enabled)
         if (self.state.current_mesh or getattr(self.tab, "current_mesh", None)) is not None:
-            self.update_visualization()
+            self.update_visualization(preserve_camera=True)
 
     def _compute_effective_point_size(
         self, base_point_size: float, compatibility_mode: bool
@@ -125,8 +125,8 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
             },
         )
 
-    def update_visualization(self, preserve_camera: bool = False) -> None:
-        """Refresh the 3D view with the current mesh."""
+    def update_visualization(self, preserve_camera: bool = True) -> None:
+        """Refresh the 3D view, preserving camera unless new geometry opts out."""
         mesh = self.state.current_mesh or self.tab.current_mesh
         if mesh is None:
             return

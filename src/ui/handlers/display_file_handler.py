@@ -70,7 +70,7 @@ class DisplayFileHandler(DisplayBaseHandler):
             self.tab.results_handler.clear_result_catalog()
 
         # Refresh the 3D view via the widget API
-        self.tab.update_visualization()
+        self.tab.update_visualization(preserve_camera=False)
         self.tab.plotter.reset_camera()
 
     @staticmethod

@@ -463,6 +463,86 @@ def test_update_visualization_preserves_camera_when_requested():
     assert np.allclose(plotter.camera_position[2], initial_camera[2])
 
 
+def test_update_visualization_preserves_camera_by_default():
+    mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
+    plotter = FakePlotter(fail_on_parallel_enable=False)
+    initial_camera = (
+        (12.0, 22.0, 32.0),
+        (2.0, 3.0, 4.0),
+        (0.0, 1.0, 0.0),
+    )
+    plotter.camera_position = initial_camera
+    tab = FakeVisualizationTab(plotter=plotter)
+    state = SimpleNamespace(
+        current_mesh=mesh,
+        current_actor=None,
+        data_column="Result",
+        camera_widget=None,
+        hover_annotation=None,
+        hover_observer=None,
+        last_hover_time=0.0,
+    )
+    handler = DisplayVisualizationHandler(tab=tab, state=state, viz_manager=None)
+
+    handler.update_visualization()
+
+    assert plotter.reset_camera_calls == 0
+    assert np.allclose(plotter.camera_position[0], initial_camera[0])
+    assert np.allclose(plotter.camera_position[1], initial_camera[1])
+    assert np.allclose(plotter.camera_position[2], initial_camera[2])
+
+
+def test_update_visualization_can_reset_camera_for_new_geometry():
+    mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
+    plotter = FakePlotter(fail_on_parallel_enable=False)
+    tab = FakeVisualizationTab(plotter=plotter)
+    state = SimpleNamespace(
+        current_mesh=mesh,
+        current_actor=None,
+        data_column="Result",
+        camera_widget=None,
+        hover_annotation=None,
+        hover_observer=None,
+        last_hover_time=0.0,
+    )
+    handler = DisplayVisualizationHandler(tab=tab, state=state, viz_manager=None)
+
+    handler.update_visualization(preserve_camera=False)
+
+    assert plotter.reset_camera_calls == 1
+
+
+def test_compatibility_rendering_toggle_preserves_camera():
+    mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
+    plotter = FakePlotter(fail_on_parallel_enable=False)
+    initial_camera = (
+        (15.0, 25.0, 35.0),
+        (5.0, 6.0, 7.0),
+        (0.0, 0.0, 1.0),
+    )
+    plotter.camera_position = initial_camera
+    tab = FakeVisualizationTab(plotter=plotter)
+    state = SimpleNamespace(
+        current_mesh=mesh,
+        current_actor=None,
+        data_column="Result",
+        camera_widget=None,
+        hover_annotation=None,
+        hover_observer=None,
+        last_hover_time=0.0,
+        compatibility_rendering=False,
+    )
+    handler = DisplayVisualizationHandler(tab=tab, state=state, viz_manager=None)
+
+    handler.toggle_compatibility_rendering(True)
+
+    assert state.compatibility_rendering is True
+    assert plotter.reset_camera_calls == 0
+    assert np.allclose(plotter.camera_position[0], initial_camera[0])
+    assert np.allclose(plotter.camera_position[1], initial_camera[1])
+    assert np.allclose(plotter.camera_position[2], initial_camera[2])
+
+
 def test_add_camera_widget_is_idempotent():
     plotter = FakePlotter()
     tab = FakeVisualizationTab(plotter=plotter)
