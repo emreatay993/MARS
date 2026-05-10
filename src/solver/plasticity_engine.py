@@ -669,6 +669,38 @@ def _warn_if_not_converged(
     warnings.warn(message, RuntimeWarning, stacklevel=3)
 
 
+def _warn_if_plateau_tail_extended(
+    method: str,
+    temperature: np.ndarray,
+    material: MaterialDB,
+    plastic_strain: np.ndarray,
+    tol: float,
+) -> None:
+    """Report plateau-mode points that require plastic strain beyond table data."""
+    tail_epsp = np.interp(
+        np.asarray(temperature, dtype=np.float64),
+        material.TEMP,
+        material.EPSP[:, -1],
+    )
+    strain = np.asarray(plastic_strain, dtype=np.float64)
+    extended = strain > tail_epsp + max(float(tol), 1e-12)
+    if not np.any(extended):
+        return
+
+    extended_indices = np.flatnonzero(extended)
+    max_local = int(np.nanargmax(strain[extended_indices] - tail_epsp[extended_indices]))
+    worst_index = int(extended_indices[max_local])
+    message = (
+        f"{method} plateau mode extended beyond supplied plastic curve tail for "
+        f"{extended_indices.size}/{strain.size} entries; stress was capped and "
+        f"plastic strain was extended past the last tabulated value. Worst flat "
+        f"index {worst_index}: epsp={strain[worst_index]:.6e}, "
+        f"tail_epsp={tail_epsp[worst_index]:.6e}."
+    )
+    LOG.warning(message)
+    warnings.warn(message, RuntimeWarning, stacklevel=3)
+
+
 def apply_neuber_correction(
     sigma_equivalent: np.ndarray,
     temperature: np.ndarray,
@@ -708,6 +740,8 @@ def apply_neuber_correction(
         use_plateau=1 if use_plateau else 0,
     )
     _warn_if_not_converged("Neuber", converged, rel_residual, max_iterations)
+    if use_plateau:
+        _warn_if_plateau_tail_extended("Neuber", temp, material, plastic_strain, tol)
     return corrected, plastic_strain
 
 
@@ -742,6 +776,8 @@ def apply_glinka_correction(
         use_plateau=1 if use_plateau else 0,
     )
     _warn_if_not_converged("Glinka", converged, rel_residual, max_iterations)
+    if use_plateau:
+        _warn_if_plateau_tail_extended("Glinka", temp, material, plastic_strain, tol)
     return corrected, plastic_strain
 
 

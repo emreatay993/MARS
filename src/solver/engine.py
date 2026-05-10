@@ -3,6 +3,7 @@ import gc
 import math
 import os
 import time
+import warnings
 from dataclasses import dataclass
 from typing import Optional
 
@@ -89,6 +90,7 @@ class MSUPSmartSolverTransient(QObject):
 
         self.max_over_time_svm_corrected = None
         self.plasticity_context: Optional[PlasticityRuntimeContext] = None
+        self.plasticity_warning_messages = []
 
         self.fatigue_A = None
         self.fatigue_m = None
@@ -716,11 +718,24 @@ class MSUPSmartSolverTransient(QObject):
     def set_plasticity_context(self, context: Optional[PlasticityRuntimeContext]):
         """Assign the runtime plasticity context (``None`` disables plasticity)."""
         self.plasticity_context = context
+        self.plasticity_warning_messages = []
         if context and context.method in {"neuber", "glinka"}:
             self.max_over_time_svm_corrected = -np.inf * np.ones(self.modal_coord.shape[1], dtype=constants.NP_DTYPE)
         else:
             self.max_over_time_svm_corrected = None
     # endregion
+
+    def _record_plasticity_warnings(self, captured_warnings) -> list:
+        """Store unique plasticity runtime warnings and return messages from this call."""
+        messages = []
+        for warning_item in captured_warnings:
+            if not issubclass(warning_item.category, RuntimeWarning):
+                continue
+            message = str(warning_item.message)
+            messages.append(message)
+            if message not in self.plasticity_warning_messages:
+                self.plasticity_warning_messages.append(message)
+        return messages
 
     # region Internal Batch Processing Helpers
     def _setup_calculation_jobs(self, calculate_von_mises, calculate_max_principal_stress,
@@ -1247,18 +1262,21 @@ class MSUPSmartSolverTransient(QObject):
         sigma_flat = np.ascontiguousarray(sigma_vm, dtype=np.float64).reshape(-1)
         temp_flat = np.repeat(np.asarray(local_temperatures, dtype=np.float64), time_count)
 
-        if ctx.method == 'neuber':
-            corrected_flat, plastic_strain_flat = apply_neuber_correction(
-                sigma_flat, temp_flat, ctx.material_db,
-                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
-                use_plateau=ctx.use_plateau,
-            )
-        else:
-            corrected_flat, plastic_strain_flat = apply_glinka_correction(
-                sigma_flat, temp_flat, ctx.material_db,
-                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
-                use_plateau=ctx.use_plateau,
-            )
+        with warnings.catch_warnings(record=True) as captured:
+            warnings.simplefilter("always", RuntimeWarning)
+            if ctx.method == 'neuber':
+                corrected_flat, plastic_strain_flat = apply_neuber_correction(
+                    sigma_flat, temp_flat, ctx.material_db,
+                    tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                    use_plateau=ctx.use_plateau,
+                )
+            else:
+                corrected_flat, plastic_strain_flat = apply_glinka_correction(
+                    sigma_flat, temp_flat, ctx.material_db,
+                    tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                    use_plateau=ctx.use_plateau,
+                )
+        self._record_plasticity_warnings(captured)
 
         corrected = corrected_flat.reshape(node_count, time_count)
         plastic_strain = plastic_strain_flat.reshape(node_count, time_count)
@@ -1328,14 +1346,17 @@ class MSUPSmartSolverTransient(QObject):
             node_temp = float(ctx.default_temperature)
         temp_series = np.full(sigma_vm_series.shape[0], node_temp, dtype=np.float64)
 
-        if ctx.method == 'neuber':
-            corrected, plastic_strain = apply_neuber_correction(sigma_vm_series, temp_series, ctx.material_db,
-                                                                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
-                                                                use_plateau=ctx.use_plateau)
-        else:
-            corrected, plastic_strain = apply_glinka_correction(sigma_vm_series, temp_series, ctx.material_db,
-                                                                tol=ctx.tolerance, max_iterations=ctx.max_iterations,
-                                                                use_plateau=ctx.use_plateau)
+        with warnings.catch_warnings(record=True) as captured:
+            warnings.simplefilter("always", RuntimeWarning)
+            if ctx.method == 'neuber':
+                corrected, plastic_strain = apply_neuber_correction(sigma_vm_series, temp_series, ctx.material_db,
+                                                                    tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                                                                    use_plateau=ctx.use_plateau)
+            else:
+                corrected, plastic_strain = apply_glinka_correction(sigma_vm_series, temp_series, ctx.material_db,
+                                                                    tol=ctx.tolerance, max_iterations=ctx.max_iterations,
+                                                                    use_plateau=ctx.use_plateau)
+        warning_messages = self._record_plasticity_warnings(captured)
 
         delta_eps = np.empty_like(plastic_strain)
         if plastic_strain.size > 0:
@@ -1350,6 +1371,7 @@ class MSUPSmartSolverTransient(QObject):
             'elastic_vm': sigma_vm_series,
             'temperature': temp_series,
             'method': ctx.method,
+            'warnings': warning_messages,
         }
 
     def process_results_in_batch(self,

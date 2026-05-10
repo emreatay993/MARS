@@ -525,6 +525,8 @@ class SolverAnalysisHandler:
                 self.tab.console_textbox.append(
                     f"Final cumulative plastic strain: {final_strain:.6e}"
                 )
+                for warning_message in plasticity_overlay.get('warnings', []):
+                    self.tab.console_textbox.append(f"Plasticity warning: {warning_message}")
             else:
                 if (config.plasticity.method or '').lower() != 'ibg':
                     self.tab.console_textbox.append(
@@ -571,6 +573,8 @@ class SolverAnalysisHandler:
             self.tab.console_textbox.append(
                 f"Plasticity correction applied ({plasticity_ctx.method.title()})"
             )
+            for warning_message in getattr(solver, 'plasticity_warning_messages', []):
+                self.tab.console_textbox.append(f"Plasticity warning: {warning_message}")
 
         if config.calculate_max_principal_stress and hasattr(solver, 'max_over_time_s1'):
             max_traces.append({

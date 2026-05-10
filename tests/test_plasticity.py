@@ -200,7 +200,8 @@ def test_neuber_plateau_caps_stress_and_allows_tail_strain_growth():
     sigma_e = np.array([10_000.0], dtype=float)
     temp = np.array([20.0], dtype=float)
 
-    corrected, epsp = apply_neuber_correction(sigma_e, temp, material, use_plateau=True)
+    with pytest.warns(RuntimeWarning, match="plateau mode extended beyond supplied plastic curve tail"):
+        corrected, epsp = apply_neuber_correction(sigma_e, temp, material, use_plateau=True)
 
     assert corrected[0] <= 400.0 + 1e-8
     assert epsp[0] > 0.10
@@ -211,10 +212,24 @@ def test_glinka_plateau_caps_stress_and_allows_tail_strain_growth():
     sigma_e = np.array([10_000.0], dtype=float)
     temp = np.array([20.0], dtype=float)
 
-    corrected, epsp = apply_glinka_correction(sigma_e, temp, material, use_plateau=True)
+    with pytest.warns(RuntimeWarning, match="plateau mode extended beyond supplied plastic curve tail"):
+        corrected, epsp = apply_glinka_correction(sigma_e, temp, material, use_plateau=True)
 
     assert corrected[0] <= 400.0 + 1e-8
     assert epsp[0] > 0.10
+
+
+def test_plateau_mode_does_not_warn_when_tail_is_not_extended():
+    material = _simple_plateau_material()
+    sigma_e = np.array([350.0], dtype=float)
+    temp = np.array([20.0], dtype=float)
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        apply_neuber_correction(sigma_e, temp, material, use_plateau=True)
+        apply_glinka_correction(sigma_e, temp, material, use_plateau=True)
+
+    assert not any("plateau mode extended" in str(item.message) for item in caught)
 
 
 def _nonlinear_hardening_material() -> MaterialDB:
