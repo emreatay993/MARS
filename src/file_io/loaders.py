@@ -82,6 +82,33 @@ def _extract_node_ids(df: pd.DataFrame, column: str = 'NodeID') -> np.ndarray:
     return rounded_values.astype(np.int64)
 
 
+def _columns_containing_prefix(columns, prefixes):
+    """Collect matching columns once while preserving file order."""
+    matches = {prefix: [] for prefix in prefixes}
+    for column in columns:
+        column_lower = str(column).lower()
+        for prefix in prefixes:
+            if prefix in column_lower:
+                matches[prefix].append(column)
+    return matches
+
+
+def _columns_starting_with_prefix(columns, prefixes):
+    """Collect matching columns once while preserving file order."""
+    matches = {prefix: [] for prefix in prefixes}
+    for column in columns:
+        column_lower = str(column).lower()
+        for prefix in prefixes:
+            if column_lower.startswith(prefix):
+                matches[prefix].append(column)
+    return matches
+
+
+def _modal_columns_to_numpy(df: pd.DataFrame, columns) -> np.ndarray:
+    """Extract modal columns using the solver dtype without an extra astype copy."""
+    return df.loc[:, columns].to_numpy(dtype=NP_DTYPE, copy=False)
+
+
 def _load_performance_history():
     """Load performance history from cache file."""
     global _performance_history, _history_loaded
@@ -575,12 +602,16 @@ def load_modal_stress(filename: str) -> ModalStressData:
         node_coords = df[['X', 'Y', 'Z']].to_numpy()
     
     # Extract stress components
-    modal_sx = df.filter(regex='(?i)sx_.*').to_numpy().astype(NP_DTYPE)
-    modal_sy = df.filter(regex='(?i)sy_.*').to_numpy().astype(NP_DTYPE)
-    modal_sz = df.filter(regex='(?i)sz_.*').to_numpy().astype(NP_DTYPE)
-    modal_sxy = df.filter(regex='(?i)sxy_.*').to_numpy().astype(NP_DTYPE)
-    modal_syz = df.filter(regex='(?i)syz_.*').to_numpy().astype(NP_DTYPE)
-    modal_sxz = df.filter(regex='(?i)sxz_.*').to_numpy().astype(NP_DTYPE)
+    stress_columns = _columns_containing_prefix(
+        df.columns,
+        ('sx_', 'sy_', 'sz_', 'sxy_', 'syz_', 'sxz_')
+    )
+    modal_sx = _modal_columns_to_numpy(df, stress_columns['sx_'])
+    modal_sy = _modal_columns_to_numpy(df, stress_columns['sy_'])
+    modal_sz = _modal_columns_to_numpy(df, stress_columns['sz_'])
+    modal_sxy = _modal_columns_to_numpy(df, stress_columns['sxy_'])
+    modal_syz = _modal_columns_to_numpy(df, stress_columns['syz_'])
+    modal_sxz = _modal_columns_to_numpy(df, stress_columns['sxz_'])
     
     # Create result
     result = ModalStressData(
@@ -657,9 +688,13 @@ def load_modal_deformations(filename: str) -> DeformationData:
     node_ids = _extract_node_ids(df, 'NodeID')
     
     # Extract deformation components
-    modal_ux = df.filter(regex='(?i)^ux_').to_numpy().astype(NP_DTYPE)
-    modal_uy = df.filter(regex='(?i)^uy_').to_numpy().astype(NP_DTYPE)
-    modal_uz = df.filter(regex='(?i)^uz_').to_numpy().astype(NP_DTYPE)
+    deformation_columns = _columns_starting_with_prefix(
+        df.columns,
+        ('ux_', 'uy_', 'uz_')
+    )
+    modal_ux = _modal_columns_to_numpy(df, deformation_columns['ux_'])
+    modal_uy = _modal_columns_to_numpy(df, deformation_columns['uy_'])
+    modal_uz = _modal_columns_to_numpy(df, deformation_columns['uz_'])
     
     # Create result
     result = DeformationData(
