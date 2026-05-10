@@ -348,17 +348,46 @@ class DisplayResultsHandler(DisplayBaseHandler):
 
             df = pd.read_csv(file_path)
             if csv_column and csv_column in df.columns:
-                values = df[csv_column].to_numpy(dtype=float, copy=True)
-                return values.reshape(-1)
+                value_column = csv_column
+            else:
+                candidate_cols = [
+                    col for col in df.columns
+                    if col.lower() not in {"nodeid", "x", "y", "z", "index"}
+                ]
+                if not candidate_cols:
+                    return None
+                value_column = candidate_cols[0]
 
-            candidate_cols = [
-                col for col in df.columns
-                if col.lower() not in {"nodeid", "x", "y", "z", "index"}
-            ]
-            if not candidate_cols:
-                return None
-            values = df[candidate_cols[0]].to_numpy(dtype=float, copy=True)
-            return values.reshape(-1)
+            values = df[value_column].to_numpy(dtype=float, copy=True).reshape(-1)
+            mesh = self.state.current_mesh or self.tab.current_mesh
+            if mesh is None or "NodeID" not in getattr(mesh, "array_names", []):
+                return values
+
+            if "NodeID" not in df.columns:
+                return values
+
+            csv_ids = pd.to_numeric(df["NodeID"], errors="raise").to_numpy(dtype=np.int64, copy=False)
+            mesh_ids = np.asarray(mesh["NodeID"], dtype=np.int64).reshape(-1)
+            if np.array_equal(csv_ids, mesh_ids):
+                return values
+
+            if len(np.unique(csv_ids)) != len(csv_ids):
+                raise ValueError(
+                    f"Solver result CSV '{filename}' contains duplicate NodeID values; "
+                    "cannot safely align values to the displayed mesh."
+                )
+
+            value_by_node = pd.Series(values, index=csv_ids)
+            missing_ids = np.setdiff1d(mesh_ids, csv_ids, assume_unique=False)
+            if missing_ids.size:
+                sample = ", ".join(str(int(node_id)) for node_id in missing_ids[:5])
+                suffix = "..." if missing_ids.size > 5 else ""
+                raise ValueError(
+                    f"Solver result CSV '{filename}' is missing {missing_ids.size} displayed NodeID(s): "
+                    f"{sample}{suffix}"
+                )
+
+            return value_by_node.loc[mesh_ids].to_numpy(dtype=float, copy=True).reshape(-1)
         except Exception as exc:
             print(f"Failed to load solver result array from {filename}: {exc}")
             return None

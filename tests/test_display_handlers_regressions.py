@@ -390,6 +390,62 @@ def test_configure_time_point_catalog_exposes_force_shear_components():
     assert state.result_selection["mode"] == "selected_time"
 
 
+def test_solver_csv_values_are_aligned_to_current_mesh_node_ids(tmp_path):
+    csv_path = tmp_path / "max_element_nodal_force.csv"
+    csv_path.write_text(
+        "NodeID,Force_Mag_Max,X,Y,Z\n"
+        "10,100.0,0,0,0\n"
+        "20,200.0,0,0,0\n"
+        "30,300.0,0,0,0\n",
+        encoding="utf-8",
+    )
+
+    state = SimpleNamespace(
+        result_catalog={},
+        result_selection={},
+        current_mesh=FakeMesh({"NodeID": np.array([30, 10, 20])}),
+    )
+    tab = FakeResultsTab()
+    visual_handler = FakeVisualHandler()
+    handler = DisplayResultsHandler(tab=tab, state=state, visual_handler=visual_handler)
+
+    values = handler._load_solver_array(
+        SimpleNamespace(output_directory=str(tmp_path)),
+        "max_element_nodal_force.csv",
+        "Force_Mag_Max",
+    )
+
+    np.testing.assert_allclose(values, np.array([300.0, 100.0, 200.0]))
+
+
+def test_solver_csv_values_are_not_positionally_applied_to_wrong_node_ids(tmp_path):
+    csv_path = tmp_path / "max_element_nodal_force.csv"
+    csv_path.write_text(
+        "NodeID,Force_Mag_Max,X,Y,Z\n"
+        "10,100.0,0,0,0\n"
+        "20,200.0,0,0,0\n"
+        "30,300.0,0,0,0\n",
+        encoding="utf-8",
+    )
+
+    state = SimpleNamespace(
+        result_catalog={},
+        result_selection={},
+        current_mesh=FakeMesh({"NodeID": np.array([30, 10, 99])}),
+    )
+    tab = FakeResultsTab()
+    visual_handler = FakeVisualHandler()
+    handler = DisplayResultsHandler(tab=tab, state=state, visual_handler=visual_handler)
+
+    values = handler._load_solver_array(
+        SimpleNamespace(output_directory=str(tmp_path)),
+        "max_element_nodal_force.csv",
+        "Force_Mag_Max",
+    )
+
+    assert values is None
+
+
 def test_update_visualization_enables_parallel_projection():
     mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
     plotter = FakePlotter(fail_on_parallel_enable=False)
