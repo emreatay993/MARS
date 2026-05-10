@@ -16,6 +16,13 @@ try:
 except ImportError as e:
     print(f"Error importing pandas: {e}")
 
+try:
+    import numba
+    print(f"Numba version: {numba.__version__}")
+except ImportError as e:
+    print(f"Error importing required numba dependency: {e}")
+    raise
+
 # Check path setup
 current_dir = os.path.dirname(os.path.abspath(__file__))
 src_path = os.path.abspath(os.path.join(current_dir, '../../src'))

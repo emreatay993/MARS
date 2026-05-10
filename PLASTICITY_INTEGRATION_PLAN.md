@@ -52,7 +52,7 @@ For implementation details, see:
      - Build `MaterialDB` from numpy arrays.
      - Run Neuber/Glinka on vectors (`solve_neuber_batch`, `solve_glinka_batch`).
      - Run IBG on tensor histories (`solve_ibg_history`).
-   - Ensure optional `numba` usage follows repo patterns (fallback if unavailable).
+   - Treat `numba` as a required runtime dependency; fail fast if it is unavailable.
 
 2. **Configuration & data conversion**
    - Extend `core/data_models.py` with a `PlasticityConfig` dataclass storing:

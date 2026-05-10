@@ -13,22 +13,7 @@ from typing import Tuple
 
 import numpy as np
 
-try:  # pragma: no cover - optional acceleration
-    from numba import njit, prange
-except ImportError:  # pragma: no cover - fallback for environments without numba
-    def njit(*args, **kwargs):  # type: ignore
-        if args and callable(args[0]) and not kwargs:
-            return args[0]
-
-        def decorator(func):
-            return func
-
-        if args and callable(args[0]):
-            return decorator(args[0])
-        return decorator
-
-    def prange(*args):  # type: ignore
-        return range(*args)
+from numba import njit, prange
 
 LOG = logging.getLogger(__name__)
 
