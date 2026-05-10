@@ -100,6 +100,10 @@ def build_material_db_from_profile(profile: MaterialProfileData) -> MaterialDB:
             raise PlasticityDataError(f"Plastic curve at {temp} °C must have at least two points.")
         if not np.all(np.diff(strain) > 0):
             raise PlasticityDataError(f"Plastic strain values must be strictly increasing for temperature {temp} °C.")
+        if not np.isclose(strain[0], 0.0, rtol=0.0, atol=1e-12):
+            raise PlasticityDataError(
+                f"Plastic strain values must start at zero for temperature {temp} °C."
+            )
 
         curve_records.append((temp, strain, stress))
         strain_grids.append(strain)
@@ -144,6 +148,10 @@ def build_material_db_from_profile(profile: MaterialProfileData) -> MaterialDB:
 
     if youngs_temps.size == 0:
         raise PlasticityDataError("Young's modulus table does not contain any entries.")
+    if temperatures[0] < youngs_temps[0] or temperatures[-1] > youngs_temps[-1]:
+        raise PlasticityDataError(
+            "Young's modulus temperature range must cover all plastic curve temperatures."
+        )
 
     E_tab = np.interp(temperatures, youngs_temps, youngs_vals)
 

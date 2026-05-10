@@ -8,6 +8,7 @@ removed; call the helper functions exposed here instead.
 from __future__ import annotations
 
 import logging
+import warnings
 from dataclasses import dataclass
 from typing import Tuple
 
@@ -382,16 +383,21 @@ def _curve_tail_of_T_njit(T: float, TEMP: np.ndarray, SIG: np.ndarray, EPSP: np.
 def solve_neuber_vector_core(sig_e: np.ndarray, T: np.ndarray,
                              TEMP: np.ndarray, E_tab: np.ndarray,
                              SIG: np.ndarray, EPSP: np.ndarray,
-                             tol: float = 1e-10, itmax: int = 60, use_plateau: int = 0) -> Tuple[np.ndarray, np.ndarray]:
+                             tol: float = 1e-10, itmax: int = 60, use_plateau: int = 0
+                             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     n = sig_e.size
     sc = np.empty(n, dtype=np.float64)
     ep = np.empty(n, dtype=np.float64)
+    converged = np.empty(n, dtype=np.uint8)
+    rel_residual = np.empty(n, dtype=np.float64)
     for i in prange(n):
         sigma_e_i = float(sig_e[i])
         Ti = float(T[i])
         if sigma_e_i <= 0.0:
             sc[i] = 0.0
             ep[i] = 0.0
+            converged[i] = 1
+            rel_residual[i] = 0.0
             continue
         sigma_cap, epsp_cap = _curve_tail_of_T_njit(Ti, TEMP, SIG, EPSP)
         sigma = min(sigma_e_i, yield_of_T_njit(Ti, TEMP, SIG))
@@ -428,25 +434,36 @@ def solve_neuber_vector_core(sig_e: np.ndarray, T: np.ndarray,
             eps_neuber = (sigma_e_i * sigma_e_i) / (sigma * E + EPS) - sigma / (E + EPS)
             if eps_neuber < epsp_cap:
                 eps_neuber = epsp_cap
-            ep[i] = max(eps_neuber, 0.0)
+            eps_returned = max(eps_neuber, 0.0)
         else:
-            ep[i] = epsp_of_T_sigma_njit(Ti, sigma, TEMP, SIG, EPSP, use_plateau)
-    return sc, ep
+            eps_returned = epsp_of_T_sigma_njit(Ti, sigma, TEMP, SIG, EPSP, use_plateau)
+        ep[i] = eps_returned
+        residual = sigma / E + eps_returned - (sigma_e_i * sigma_e_i) / (sigma * E + EPS)
+        scale = abs(sigma / E + eps_returned) + abs((sigma_e_i * sigma_e_i) / (sigma * E + EPS)) + EPS
+        rel = abs(residual) / scale
+        converged[i] = 1 if rel < tol else 0
+        rel_residual[i] = rel
+    return sc, ep, converged, rel_residual
 
 @njit(cache=True, parallel=True)
 def solve_glinka_vector_core(sig_e: np.ndarray, T: np.ndarray,
                              TEMP: np.ndarray, E_tab: np.ndarray,
                              SIG: np.ndarray, EPSP: np.ndarray,
-                             tol: float = 1e-10, itmax: int = 60, use_plateau: int = 0) -> Tuple[np.ndarray, np.ndarray]:
+                             tol: float = 1e-10, itmax: int = 60, use_plateau: int = 0
+                             ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     n = sig_e.size
     sc = np.empty(n, dtype=np.float64)
     ep = np.empty(n, dtype=np.float64)
+    converged = np.empty(n, dtype=np.uint8)
+    rel_residual = np.empty(n, dtype=np.float64)
     for i in prange(n):
         sigma_e_i = float(sig_e[i])
         Ti = float(T[i])
         if sigma_e_i <= 0.0:
             sc[i] = 0.0
             ep[i] = 0.0
+            converged[i] = 1
+            rel_residual[i] = 0.0
             continue
         E = E_of_T_njit(Ti, TEMP, E_tab)
         Ue0 = sigma_e_i * sigma_e_i / (2.0 * E + EPS)
@@ -489,10 +506,17 @@ def solve_glinka_vector_core(sig_e: np.ndarray, T: np.ndarray,
                 ep_val = epsp_cap
             else:
                 ep_val = epsp_cap + (Up_req - Up_cap) / (sigma_cap + EPS)
-            ep[i] = max(ep_val, 0.0)
+            eps_returned = max(ep_val, 0.0)
+            Upl_returned = Up_cap + sigma_cap * max(eps_returned - epsp_cap, 0.0)
         else:
-            ep[i] = epsp_of_T_sigma_njit(Ti, sigma, TEMP, SIG, EPSP, use_plateau)
-    return sc, ep
+            eps_returned = epsp_of_T_sigma_njit(Ti, sigma, TEMP, SIG, EPSP, use_plateau)
+            Upl_returned = Up_of_T_sigma_njit(Ti, sigma, TEMP, SIG, EPSP, use_plateau)
+        ep[i] = eps_returned
+        Uc_final = sigma * sigma / (2.0 * E + EPS) + Upl_returned
+        rel = abs(Uc_final - Ue0) / (abs(Ue0) + EPS)
+        converged[i] = 1 if rel < tol else 0
+        rel_residual[i] = rel
+    return sc, ep, converged, rel_residual
 
 
 # ============================================================================
@@ -613,6 +637,38 @@ def ibg_solver_tensor_core(sig_hist: np.ndarray,   # (N,6)
 # Convenience wrappers (vectorised helpers)
 # ============================================================================
 
+def _warn_if_not_converged(
+    method: str,
+    converged: np.ndarray,
+    rel_residual: np.ndarray,
+    max_iterations: int,
+) -> None:
+    """Report scalar correction entries that exhausted the nonlinear solve."""
+    failed = np.flatnonzero(np.asarray(converged) == 0)
+    if failed.size == 0:
+        return
+
+    residuals = np.asarray(rel_residual, dtype=np.float64)
+    failed_residuals = residuals[failed]
+    if failed_residuals.size and np.any(np.isfinite(failed_residuals)):
+        finite_failed = failed[np.isfinite(failed_residuals)]
+        finite_residuals = residuals[finite_failed]
+        worst_local = int(np.nanargmax(finite_residuals))
+        worst_index = int(finite_failed[worst_local])
+        worst_residual = float(finite_residuals[worst_local])
+    else:
+        worst_index = int(failed[0])
+        worst_residual = float("nan")
+
+    message = (
+        f"{method} correction did not converge for {failed.size}/{converged.size} "
+        f"entries within {max_iterations} iterations; worst relative residual "
+        f"{worst_residual:.3e} at flat index {worst_index}."
+    )
+    LOG.warning(message)
+    warnings.warn(message, RuntimeWarning, stacklevel=3)
+
+
 def apply_neuber_correction(
     sigma_equivalent: np.ndarray,
     temperature: np.ndarray,
@@ -640,8 +696,19 @@ def apply_neuber_correction(
     LOG.debug("Running Neuber correction on %d entries", sigma_equivalent.size)
     sig = np.asarray(sigma_equivalent, dtype=np.float64)
     temp = np.asarray(temperature, dtype=np.float64)
-    return solve_neuber_vector_core(sig, temp, material.TEMP, material.E_tab, material.SIG, material.EPSP,
-                                    tol=tol, itmax=max_iterations, use_plateau=1 if use_plateau else 0)
+    corrected, plastic_strain, converged, rel_residual = solve_neuber_vector_core(
+        sig,
+        temp,
+        material.TEMP,
+        material.E_tab,
+        material.SIG,
+        material.EPSP,
+        tol=tol,
+        itmax=max_iterations,
+        use_plateau=1 if use_plateau else 0,
+    )
+    _warn_if_not_converged("Neuber", converged, rel_residual, max_iterations)
+    return corrected, plastic_strain
 
 
 def apply_glinka_correction(
@@ -663,8 +730,19 @@ def apply_glinka_correction(
     LOG.debug("Running Glinka correction on %d entries", sigma_equivalent.size)
     sig = np.asarray(sigma_equivalent, dtype=np.float64)
     temp = np.asarray(temperature, dtype=np.float64)
-    return solve_glinka_vector_core(sig, temp, material.TEMP, material.E_tab, material.SIG, material.EPSP,
-                                    tol=tol, itmax=max_iterations, use_plateau=1 if use_plateau else 0)
+    corrected, plastic_strain, converged, rel_residual = solve_glinka_vector_core(
+        sig,
+        temp,
+        material.TEMP,
+        material.E_tab,
+        material.SIG,
+        material.EPSP,
+        tol=tol,
+        itmax=max_iterations,
+        use_plateau=1 if use_plateau else 0,
+    )
+    _warn_if_not_converged("Glinka", converged, rel_residual, max_iterations)
+    return corrected, plastic_strain
 
 
 def apply_ibg_correction(
