@@ -669,8 +669,8 @@ def test_animation_export_captures_live_plotter_and_restores_visible_state(monke
 
     assert saved["path"] == str(output_path)
     assert len(saved["frames"]) == 2
-    assert saved["frames"][0].shape == (13, 17, 3)
-    assert saved["kwargs"]["macro_block_size"] is None
+    assert saved["frames"][0].shape == (14, 18, 3)
+    assert saved["kwargs"]["macro_block_size"] == 2
     assert all(call == {"return_img": True} for call in plotter.screenshot_calls)
     assert np.allclose(mesh.points, original_points)
     assert np.allclose(mesh["Result"], original_scalars)

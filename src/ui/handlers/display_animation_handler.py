@@ -379,6 +379,19 @@ class DisplayAnimationHandler(DisplayBaseHandler):
         """Public wrapper for writing animation frames."""
         return self._write_animation_to_file(file_path, file_format)
 
+    def _pad_frame_to_even_dimensions(self, frame: np.ndarray) -> np.ndarray:
+        """Pad MP4 frames to dimensions accepted by yuv420p/H.264 encoders."""
+        height, width = frame.shape[:2]
+        pad_height = height % 2
+        pad_width = width % 2
+        if pad_height == 0 and pad_width == 0:
+            return frame
+
+        pad_spec = [(0, pad_height), (0, pad_width)]
+        pad_spec.extend((0, 0) for _ in range(frame.ndim - 2))
+        pad_mode = "edge" if height > 0 and width > 0 else "constant"
+        return np.pad(frame, pad_spec, mode=pad_mode)
+
     def _animate_frame(self, update_index: bool = True) -> None:
         """Update display using next precomputed animation frame."""
         if (self.anim_manager.precomputed_scalars is None or
@@ -684,6 +697,9 @@ class DisplayAnimationHandler(DisplayBaseHandler):
                         "Please retry without resizing the window."
                     )
 
+                if file_format == "mp4":
+                    img = self._pad_frame_to_even_dimensions(img)
+
                 output_frames.append(img)
         finally:
             self._restore_animation_export_state(snapshot)
@@ -708,7 +724,7 @@ class DisplayAnimationHandler(DisplayBaseHandler):
                     file_path,
                     output_frames,
                     fps=max(1, 1000 // tab.anim_interval_spin.value()),
-                    macro_block_size=None,
+                    macro_block_size=2,
                 )
             except Exception as exc:
                 raise RuntimeError(f"Failed to write MP4:\n{exc}")
