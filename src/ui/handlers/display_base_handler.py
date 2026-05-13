@@ -48,59 +48,8 @@ class DisplayBaseHandler:
         except Exception:
             return None
 
-    def _camera_value(self, camera, getter_name: str, attr_name: str):
-        """Read a camera value through a VTK getter or Python attribute."""
-        if camera is None:
-            return None
-
-        getter = getattr(camera, getter_name, None)
-        if callable(getter):
-            try:
-                return getter()
-            except Exception:
-                return None
-
-        try:
-            return getattr(camera, attr_name)
-        except Exception:
-            return None
-
-    def _set_camera_value(
-        self,
-        camera,
-        setter_name: str,
-        attr_name: str,
-        value,
-    ) -> bool:
-        """Restore a camera value through a VTK setter or Python attribute."""
-        if camera is None or value is None:
-            return False
-
-        setter = getattr(camera, setter_name, None)
-        if callable(setter):
-            try:
-                if isinstance(value, (tuple, list)):
-                    setter(*value)
-                else:
-                    setter(value)
-                return True
-            except TypeError:
-                try:
-                    setter(value)
-                    return True
-                except Exception:
-                    return False
-            except Exception:
-                return False
-
-        try:
-            setattr(camera, attr_name, value)
-            return True
-        except Exception:
-            return False
-
     def _capture_camera_state(self, plotter=None):
-        """Return camera position plus zoom values that PyVista omits."""
+        """Return camera position plus orthographic zoom."""
         if plotter is None:
             plotter = getattr(self.tab, "plotter", None)
         if plotter is None:
@@ -111,21 +60,10 @@ class DisplayBaseHandler:
         }
         camera = getattr(plotter, "camera", None)
         if camera is not None:
-            parallel_scale = self._camera_value(
-                camera, "GetParallelScale", "parallel_scale"
-            )
-            if parallel_scale is not None:
-                try:
-                    camera_state["parallel_scale"] = float(parallel_scale)
-                except (TypeError, ValueError):
-                    pass
-
-            view_angle = self._camera_value(camera, "GetViewAngle", "view_angle")
-            if view_angle is not None:
-                try:
-                    camera_state["view_angle"] = float(view_angle)
-                except (TypeError, ValueError):
-                    pass
+            try:
+                camera_state["parallel_scale"] = float(camera.GetParallelScale())
+            except (AttributeError, TypeError, ValueError):
+                pass
 
         if any(value is not None for value in camera_state.values()):
             return camera_state
@@ -160,7 +98,7 @@ class DisplayBaseHandler:
         plotter=None,
         render: bool = False,
     ) -> bool:
-        """Restore camera position and zoom values captured before a redraw."""
+        """Restore camera position and orthographic zoom captured before a redraw."""
         if isinstance(camera_state, (tuple, list)):
             return self._restore_camera_position(camera_state, plotter, render)
 
@@ -179,24 +117,13 @@ class DisplayBaseHandler:
         )
 
         camera = getattr(plotter, "camera", None)
-        restored = (
-            self._set_camera_value(
-                camera,
-                "SetParallelScale",
-                "parallel_scale",
-                camera_state.get("parallel_scale"),
-            )
-            or restored
-        )
-        restored = (
-            self._set_camera_value(
-                camera,
-                "SetViewAngle",
-                "view_angle",
-                camera_state.get("view_angle"),
-            )
-            or restored
-        )
+        parallel_scale = camera_state.get("parallel_scale")
+        if camera is not None and parallel_scale is not None:
+            try:
+                camera.SetParallelScale(parallel_scale)
+                restored = True
+            except (AttributeError, TypeError, ValueError):
+                pass
 
         if restored and render:
             try:

@@ -126,7 +126,6 @@ class FakeCamera:
     def __init__(self):
         self.parallel_projection = False
         self.parallel_scale = 9.0
-        self.view_angle = 30.0
         self.calls = 0
 
     def SetParallelProjection(self, value):
@@ -138,12 +137,6 @@ class FakeCamera:
 
     def SetParallelScale(self, value):
         self.parallel_scale = float(value)
-
-    def GetViewAngle(self):
-        return self.view_angle
-
-    def SetViewAngle(self, value):
-        self.view_angle = float(value)
 
 
 class FakeCameraWidget:
@@ -199,7 +192,6 @@ class FakePlotter:
         self.camera.parallel_projection = True
         if self.reset_zoom_on_parallel_enable:
             self.camera.parallel_scale = 1.0
-            self.camera.view_angle = 45.0
 
     def render(self):
         self.render_calls += 1
@@ -587,7 +579,6 @@ def test_update_visualization_preserves_orthographic_zoom():
     )
     plotter.camera_position = initial_camera
     plotter.camera.parallel_scale = 42.0
-    plotter.camera.view_angle = 22.0
     tab = FakeVisualizationTab(plotter=plotter)
     state = SimpleNamespace(
         current_mesh=mesh,
@@ -608,7 +599,6 @@ def test_update_visualization_preserves_orthographic_zoom():
     assert np.allclose(plotter.camera_position[1], initial_camera[1])
     assert np.allclose(plotter.camera_position[2], initial_camera[2])
     assert plotter.camera.parallel_scale == 42.0
-    assert plotter.camera.view_angle == 22.0
 
 
 def test_update_visualization_can_reset_camera_for_new_geometry():
