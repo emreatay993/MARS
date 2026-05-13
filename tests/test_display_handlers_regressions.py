@@ -125,11 +125,25 @@ class FakeActor:
 class FakeCamera:
     def __init__(self):
         self.parallel_projection = False
+        self.parallel_scale = 9.0
+        self.view_angle = 30.0
         self.calls = 0
 
     def SetParallelProjection(self, value):
         self.parallel_projection = bool(value)
         self.calls += 1
+
+    def GetParallelScale(self):
+        return self.parallel_scale
+
+    def SetParallelScale(self, value):
+        self.parallel_scale = float(value)
+
+    def GetViewAngle(self):
+        return self.view_angle
+
+    def SetViewAngle(self, value):
+        self.view_angle = float(value)
 
 
 class FakeCameraWidget:
@@ -148,8 +162,13 @@ class FakeCameraWidget:
 
 
 class FakePlotter:
-    def __init__(self, fail_on_parallel_enable=False):
+    def __init__(
+        self,
+        fail_on_parallel_enable=False,
+        reset_zoom_on_parallel_enable=False,
+    ):
         self.fail_on_parallel_enable = fail_on_parallel_enable
+        self.reset_zoom_on_parallel_enable = reset_zoom_on_parallel_enable
         self.camera = FakeCamera()
         self.camera_position = (
             (5.0, 6.0, 7.0),
@@ -161,11 +180,13 @@ class FakePlotter:
         self.render_calls = 0
         self.clear_calls = 0
         self.add_camera_widget_calls = 0
+        self.add_mesh_kwargs = []
 
     def clear(self):
         self.clear_calls += 1
 
-    def add_mesh(self, *_args, **_kwargs):
+    def add_mesh(self, *_args, **kwargs):
+        self.add_mesh_kwargs.append(kwargs)
         return FakeActor()
 
     def reset_camera(self):
@@ -175,6 +196,10 @@ class FakePlotter:
         self.enable_parallel_projection_calls += 1
         if self.fail_on_parallel_enable:
             raise RuntimeError("parallel projection helper unavailable")
+        self.camera.parallel_projection = True
+        if self.reset_zoom_on_parallel_enable:
+            self.camera.parallel_scale = 1.0
+            self.camera.view_angle = 45.0
 
     def render(self):
         self.render_calls += 1
@@ -549,6 +574,43 @@ def test_update_visualization_preserves_camera_by_default():
     assert np.allclose(plotter.camera_position[2], initial_camera[2])
 
 
+def test_update_visualization_preserves_orthographic_zoom():
+    mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
+    plotter = FakePlotter(
+        fail_on_parallel_enable=False,
+        reset_zoom_on_parallel_enable=True,
+    )
+    initial_camera = (
+        (18.0, 28.0, 38.0),
+        (8.0, 9.0, 10.0),
+        (0.0, 1.0, 0.0),
+    )
+    plotter.camera_position = initial_camera
+    plotter.camera.parallel_scale = 42.0
+    plotter.camera.view_angle = 22.0
+    tab = FakeVisualizationTab(plotter=plotter)
+    state = SimpleNamespace(
+        current_mesh=mesh,
+        current_actor=None,
+        data_column="Result",
+        camera_widget=None,
+        hover_annotation=None,
+        hover_observer=None,
+        last_hover_time=0.0,
+    )
+    handler = DisplayVisualizationHandler(tab=tab, state=state, viz_manager=None)
+
+    handler.update_visualization(preserve_camera=True)
+
+    assert plotter.reset_camera_calls == 0
+    assert plotter.add_mesh_kwargs[-1]["reset_camera"] is False
+    assert np.allclose(plotter.camera_position[0], initial_camera[0])
+    assert np.allclose(plotter.camera_position[1], initial_camera[1])
+    assert np.allclose(plotter.camera_position[2], initial_camera[2])
+    assert plotter.camera.parallel_scale == 42.0
+    assert plotter.camera.view_angle == 22.0
+
+
 def test_update_visualization_can_reset_camera_for_new_geometry():
     mesh = FakeMesh({"Result": np.array([1.0, 2.0, 3.0])}, active_scalars_name="Result")
     plotter = FakePlotter(fail_on_parallel_enable=False)
@@ -567,6 +629,7 @@ def test_update_visualization_can_reset_camera_for_new_geometry():
     handler.update_visualization(preserve_camera=False)
 
     assert plotter.reset_camera_calls == 1
+    assert plotter.add_mesh_kwargs[-1]["reset_camera"] is False
 
 
 def test_compatibility_rendering_toggle_preserves_camera():

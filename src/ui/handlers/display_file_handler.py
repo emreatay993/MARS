@@ -71,7 +71,6 @@ class DisplayFileHandler(DisplayBaseHandler):
 
         # Refresh the 3D view via the widget API
         self.tab.update_visualization(preserve_camera=False)
-        self.tab.plotter.reset_camera()
 
     @staticmethod
     def _has_required_columns(columns: Sequence[str]) -> bool:

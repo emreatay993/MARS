@@ -329,7 +329,6 @@ class DisplayTab(QWidget):
             self.current_mesh = mesh
             self.results_handler.clear_result_catalog()
             self.update_visualization(preserve_camera=False)
-            self.plotter.reset_camera()
     
     def _update_time_controls(self, time_values):
         """Update time-related UI controls with time range."""

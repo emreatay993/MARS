@@ -98,6 +98,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         active_scalars,
         point_size: float,
         compatibility_mode: bool,
+        reset_camera: bool,
     ):
         """Add the mesh actor using the selected rendering mode."""
         return self.tab.plotter.add_mesh(
@@ -110,6 +111,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
             cmap="jet",
             below_color="gray",
             above_color="magenta",
+            reset_camera=reset_camera,
             scalar_bar_args={
                 "title": self.tab.data_column,
                 "fmt": "%.4f",
@@ -125,6 +127,16 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
             },
         )
 
+    def _enable_parallel_projection(self, plotter) -> None:
+        """Use orthographic projection for engineering contour views."""
+        try:
+            plotter.enable_parallel_projection()
+        except Exception:
+            try:
+                plotter.camera.SetParallelProjection(True)
+            except Exception:
+                pass
+
     def update_visualization(self, preserve_camera: bool = True) -> None:
         """Refresh the 3D view, preserving camera unless new geometry opts out."""
         mesh = self.state.current_mesh or self.tab.current_mesh
@@ -132,8 +144,8 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
             return
 
         plotter = self.tab.plotter
-        preserved_camera = (
-            self._capture_camera_position(plotter) if preserve_camera else None
+        preserved_camera_state = (
+            self._capture_camera_state(plotter) if preserve_camera else None
         )
         plotter.clear()
 
@@ -157,6 +169,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
                 active_scalars,
                 point_size,
                 compatibility_mode,
+                reset_camera=False,
             )
         except Exception as exc:
             if compatibility_mode:
@@ -175,6 +188,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
                 active_scalars,
                 point_size,
                 True,
+                reset_camera=False,
             )
 
         self.state.current_actor = actor
@@ -188,17 +202,12 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
 
         self.setup_hover_annotation()
 
-        if not self._restore_camera_position(preserved_camera, plotter=plotter):
+        self._enable_parallel_projection(plotter)
+        if preserve_camera:
+            self._restore_camera_state(preserved_camera_state, plotter=plotter)
+        else:
             plotter.reset_camera()
-        try:
-            # Use orthographic projection for engineering contour views.
-            plotter.enable_parallel_projection()
-        except Exception:
-            try:
-                plotter.camera.SetParallelProjection(True)
-            except Exception:
-                pass
-        
+
         # Clear old camera widget if it exists
         self._clear_camera_widget()
         
