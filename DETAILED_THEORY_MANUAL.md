@@ -1,7 +1,7 @@
 # DETAILED THEORY MANUAL · MARS: Modal Analysis Response Solver
 
 **Version**: v0.98  
-**Last updated**: February 8, 2026
+**Last updated**: May 14, 2026
 
 > **Audience**  
 > Practicing mechanical and structural engineers using MARS to post-process modal analysis data.
@@ -89,7 +89,7 @@ MARS consumes several complementary datasets:
 
 For `.pch` modal coordinate imports, MARS expects NASTRAN SOL 112-style `(SOLUTION SET)` displacement blocks and consistent time grids across modes.
 
-**Key assumption**: Node ordering is consistent across all files. The solver aligns data by node ID.
+**Key assumption**: modal coordinates and modal shape arrays are multiplied by retained-mode order. Stress, deformation, and force/moment rows are used in loaded array order, while steady-state stress and temperature fields are mapped by node ID.
 
 ### Interpretation Tip
 
@@ -213,7 +213,15 @@ Magnitudes are then computed as:
 |M|(t) = √(MX² + MY² + MZ²)
 ```
 
-MARS exports max/min envelopes and time-of-max/min for both magnitudes and each component.
+MARS also computes force shear resultants for display and export:
+
+```
+|F_xy|(t) = sqrt(FX^2 + FY^2)
+|F_xz|(t) = sqrt(FX^2 + FZ^2)
+|F_yz|(t) = sqrt(FY^2 + FZ^2)
+```
+
+MARS exports max/min envelopes and time-of-max/min for force magnitude, moment magnitude, each force/moment component, and the three shear resultants.
 
 ### Checklist
 
@@ -269,9 +277,13 @@ In v0.98, the dedicated Damage Index output remains hidden in the UI while stres
 
 ### 7.1 Rainflow Counting
 
-Rainflow counting converts a stress-time history into stress ranges and cycle counts. The method mimics how a hysteresis loop “rainflows” through turning points, aligning with ASTM E1049-85.
+Rainflow counting converts a stress-time history into stress ranges and cycle counts. The MARS damage implementation uses a simplified stack-based rainflow routine for screening-level damage ranking; do not treat it as a complete ASTM E1049-85 implementation without independent verification.
 
 Given a signed von Mises history `σ_vm,sign(t)`:
+
+```
+sigma_vm_signed(t) = sigma_vm(t) * sign(sigma_x(t) + sigma_y(t) + sigma_z(t) + 1e-6)
+```
 
 - Peaks and valleys define half-cycles.  
 - Matching exit and entry points produce full cycles with range `Δσ`.  
@@ -309,13 +321,15 @@ Modal analysis yields **elastic** stresses that assume linear material behavior.
 
 **Plasticity correction methods** address this by computing a reduced, **plastically corrected stress** and an associated **plastic strain** using notch-root approximations. These methods rely on the observation that the elastic stress-strain product (proportional to strain energy) must equal the sum of elastic plus plastic energy in the real material.
 
-MARS implements three correction methods:
+MARS has code paths for three correction methods:
 
-1. **Neuber's Rule** (peak-value, scalar)  
-2. **Glinka's Energy-Density Method** (peak-value, scalar)  
+1. **Neuber's Rule** (scalar equivalent-stress correction)
+2. **Glinka's Energy-Density Method** (scalar equivalent-stress correction)
 3. **Incremental Buczynski–Glinka (IBG)** (time-history, tensor) — *implemented in code, disabled in the v0.98 UI*
 
 All three incorporate **temperature-dependent material hardening curves** to handle spatially varying thermal fields typical of aerospace and power-generation components.
+
+Current batch behavior: Neuber and Glinka corrections are applied to every node-time von Mises value before selecting each node's corrected maximum, time of corrected maximum, and plastic strain at that corrected maximum. They are not applied only to a preselected elastic peak.
 
 ---
 
@@ -432,7 +446,7 @@ The derivative is computed numerically, and Newton iterations proceed until conv
 
 #### 8.4.1 Motivation for Time-History Correction
 
-Neuber and Glinka apply to **peak values**. For time-varying stress histories (e.g., transient thermal-mechanical cycles), a single peak correction may not capture:
+Neuber and Glinka are scalar equivalent-stress corrections. They are useful for correcting each point in a proportional von Mises history, but they do not preserve the full tensor loading path. For time-varying stress histories (e.g., transient thermal-mechanical cycles), a scalar correction may not capture:
 - **Plasticity accumulation** over multiple cycles  
 - **Loading path dependence** (load-unload hysteresis)  
 - **Full tensor state** at each time step
@@ -477,6 +491,8 @@ This tensor update is repeated for all time steps, producing a **corrected stres
 - Further validation against transient FEA benchmarks  
 - Robustness improvements (convergence, numerical stability)  
 - Tuning of the empirical \(k\)-factor used in energy partitioning
+
+The active application uses IBG only as a guarded single-node/time-history code path. Batch plasticity CSV outputs are produced for Neuber and Glinka only.
 
 See `PLASTICITY_INTEGRATION_PLAN.md` for details on future re-enablement.
 
@@ -528,7 +544,7 @@ Beyond the last point of a hardening curve, MARS offers two modes:
 - **Linear extrapolation** (default): Continue the slope from the last two points. Suitable for strain-hardening alloys.  
 - **Plateau**: Clamp stress to the last value. Suitable for perfectly plastic or limited-hardening materials.
 
-Select the mode via the **Extrapolation Mode** option in the Material Profile dialog.
+Select the mode via the **Extrapolation Mode** option in the Solver tab plasticity controls.
 
 ---
 
@@ -590,7 +606,8 @@ The temperature field file assigns a nodal temperature for material property int
 
 **Format Requirements:**
 - **File type**: `.txt`, tab-delimited or whitespace-delimited
-- **Required node column**: `Node Number` (preferred), also supports `Node`, `NodeID`, `Node Id`
+- **Required node column at load time**: `Node Number`
+- **Lower-level mapping aliases**: `Node`, `NodeID`, and `Node Id` are recognized after data is loaded, but the current file loader requires `Node Number`
 - **Temperature column**: any non-node column (names containing `temp` are preferred automatically)
 - **Optional columns**: additional columns are ignored unless selected as the temperature source
 - **Node coverage**: Every node in the modal stress file must have a temperature entry; missing nodes trigger an error
@@ -635,6 +652,12 @@ After solving with plasticity enabled, MARS exports:
 - `time_of_max_corrected_von_mises.csv` — Time instant of corrected peak
 
 In **Time History Mode**, MARS plots elastic and corrected von Mises traces side-by-side and can include plastic strain diagnostics.
+
+Implementation reference:
+- `src/core/plasticity.py` validates material tables, resamples plastic strain curves, and maps nodal temperature values.
+- `src/solver/plasticity_engine.py` contains the Neuber, Glinka, and IBG numerical kernels.
+- `src/ui/dialogs/material_profile_dialog.py` owns material profile import/export and editing.
+- `src/ui/handlers/analysis_handler.py` validates plasticity options and routes batch/time-history calculations.
 
 ---
 
@@ -716,13 +739,15 @@ Use side-by-side visualizations in the Display tab to assess impact.
 
 ### 9.1 Peak Values and Time Stamps
 
-For each node, MARS reports **max**, **min**, and corresponding **time-of-max/min** values for supported outputs.
+For each node, MARS reports extrema and corresponding time values where that output supports them.
 In the Display tab, these are exposed through Result Group/Component/Mode selectors (Max over Time, Min over Time, Time of Max, Time of Min, Selected Time). Use these to:
 
 - Capture snapshots for visualization.  
 - Cross-check against known loading events.  
 - Compare with instrumentation data if available.
 - Separate interpretation of stress/kinematic outputs from force/moment outputs (configured as mutually exclusive output families in the solver UI).
+
+Output availability is result-specific: von Mises and `s1` are max-oriented, `s3` is min-oriented, fatigue damage has no time-of-damage column, deformation/velocity/acceleration support max/min/time modes, and force/moment outputs support max/min/time modes for magnitudes, components, and shear resultants.
 
 ### 9.2 Time-History Plots
 
@@ -738,6 +763,8 @@ Time history mode lets you inspect nodal response vs. time:
 Animations blend deformation with color-mapped scalar data. They help communicate mode participation and the spatial march of peak values.
 
 - MARS animates one output type at a time (to avoid mixed-field ambiguity).
+- Scalar animation can be paired with deformed coordinates when modal deformation data are loaded.
+- Deformation animation can be rendered relative to the starting frame or as absolute deformed coordinates, depending on the selected deformation mode.
 - Keep deformation scaling reasonable (<5) to avoid misinterpretation.
 
 ---

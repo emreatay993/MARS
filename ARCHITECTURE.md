@@ -51,8 +51,9 @@ flowchart LR
     ST --> SAH[SolverAnalysisHandler]
     ST --> SLH[SolverLogHandler]
 
-    SFH --> FLT[FileLoaderThread]
+    SFH --> FLT[FileLoaderThread for large modal loads]
     FLT --> LOADERS[file_io.loaders]
+    SFH --> SYNC[Direct steady/temperature loads]
 
     SAH --> STH[SolverThread]
     STH --> AE[AnalysisEngine]
@@ -61,7 +62,7 @@ flowchart LR
 
     SOLVER --> OUT[(CSV / DAT outputs)]
     SAH --> CATALOG[Dataset catalog]
-    CATALOG --> DT
+    CATALOG --> DRH
 
     DT --> DRH[DisplayResultsHandler]
     DT --> DVH[DisplayVisualizationHandler]
@@ -141,9 +142,10 @@ sequenceDiagram
 
 ## Main runtime flow
 ### 1) Data loading
-- `SolverFileHandler` handles file dialogs and starts `FileLoaderThread` for heavy loads.
+- `SolverFileHandler` handles file dialogs and starts `FileLoaderThread` for modal coordinate, modal stress, deformation, and force/moment loads.
+- Steady-state stress and temperature field files are loaded synchronously through `file_io.loaders`.
 - `file_io.loaders` parses supported inputs into dataclasses from `core.data_models`.
-- `SolverTab` updates state flags and emits `initial_data_loaded` once required inputs are present.
+- `SolverTab` updates state flags and emits `initial_data_loaded` once modal coordinates plus either stress or force/moment node coordinates are present.
 
 ### 2) Solve orchestration
 - `SolverAnalysisHandler.solve()` validates UI state and builds `SolverConfig`.
@@ -158,15 +160,16 @@ sequenceDiagram
 - Optional plasticity runtime context is built from material profile + temperature mapping.
 
 ### 4) Result handoff to display
-- Batch flow: `SolverAnalysisHandler` builds a dataset catalog from generated outputs and pushes it to Display.
+- Batch flow: `SolverAnalysisHandler` builds a dataset catalog from generated outputs and pushes it to `DisplayResultsHandler.apply_solver_results`.
 - Time-history flow: solver tab plot widgets are updated directly.
 - Time-point and animation requests originate from Display tab and route back to Solver tab handler methods.
+- Output files are written to the selected project directory when available, with a safe fallback beside `src/ui/handlers/analysis_handler.py` if that directory cannot be created.
 
 ### 5) Display processing
 - `DisplayResultsHandler` owns result catalog/selector behavior.
 - `DisplayVisualizationHandler` manages mesh rendering, scalar range, camera/widget state.
-- `DisplayInteractionHandler` handles picking, context menu tools, tracked nodes, hotspot workflows.
-- `DisplayAnimationHandler` coordinates animation precomputation playback and export.
+- `DisplayInteractionHandler` handles picking, context menu tools, tracked nodes, camera freeze/reset, hotspot sorting, region filters, and threshold filters.
+- `SolverAnalysisHandler.perform_animation_precomputation` computes requested animation frames; `DisplayAnimationHandler` owns playback state, timers, and export.
 
 ## Data contracts that keep modules decoupled
 `src/core/data_models.py` defines shared dataclasses used across UI, I/O, and solver boundaries, including:
@@ -178,7 +181,7 @@ Because these contracts are centralized, UI and solver internals can evolve inde
 
 ## Key architecture rules currently enforced
 1. Background work for responsiveness
-- File loading and solve execution run in `QThread` wrappers.
+- Large modal file loading and solve execution run in `QThread` wrappers. Steady-state and temperature loads currently run directly.
 
 2. Force/moment output exclusivity
 - Force/moment output cannot be combined with stress/deformation/damage outputs in one run.
@@ -192,15 +195,26 @@ Because these contracts are centralized, UI and solver internals can evolve inde
 5. Display catalog-driven selection
 - Display selectors are built from a normalized result catalog instead of hard-coded widget logic.
 
+6. Project-scoped outputs
+- Solver CSV/DAT outputs are directed to the active project directory when possible; fallback output beside the analysis handler is treated as a safety path, not the preferred project layout.
+
 ## Folder map
 - `src/main.py`: app entry and runtime settings bootstrap.
 - `src/ui/application_controller.py`: top-level window, tabs, dock, menus, cross-tab wiring.
 - `src/ui/solver_tab.py`: solve inputs, delegates to handler classes.
 - `src/ui/display_tab.py`: 3D visualization UI and interaction endpoints.
+- `src/ui/builders/*`: declarative builders for Solver and Display tab widget layouts.
+- `src/ui/dialogs/*`: modal dialogs such as the material profile editor.
 - `src/ui/handlers/*`: isolated behaviors (file loading, state rules, solving, rendering, animation, export).
+- `src/ui/widgets/*`: reusable console, dialog, table, and plotting widgets.
+- `src/ui/styles/*` and `src/ui/tooltips.py`: centralized UI style constants and tooltip text.
 - `src/core/computation.py`: `AnalysisEngine` facade.
+- `src/core/plasticity.py`: material profile validation, normalization, and temperature mapping helpers.
+- `src/core/visualization.py`: scalar ranges, deformation scaling, animation frame preparation, and hotspot helpers.
 - `src/solver/engine.py`: core transient computation engine.
+- `src/solver/plasticity_engine.py`: Neuber, Glinka, and IBG numerical kernels.
 - `src/file_io/loaders.py`: parsing and input hydration into dataclasses.
+- `src/file_io/exporters.py`: CSV/APDL export helpers.
 - `tests/`: regression/unit coverage for data models, handlers, solver behavior, and utilities.
 
 ## Where to change what
@@ -209,6 +223,7 @@ Because these contracts are centralized, UI and solver internals can evolve inde
 - Change parsing logic or supported input format: `src/file_io/validators.py` and `src/file_io/loaders.py`.
 - Change display selector behavior: `src/ui/handlers/display_results_handler.py`.
 - Change rendering behavior: `src/ui/handlers/display_visualization_handler.py`.
+- Change animation request computation: `src/ui/handlers/analysis_handler.py`; change playback/export behavior: `src/ui/handlers/display_animation_handler.py`.
 
 ## Practical summary
 MARS uses a handler-driven UI with a facade-to-engine compute path.
