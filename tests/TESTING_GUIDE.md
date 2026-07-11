@@ -46,6 +46,10 @@ The fast RST service tests use fake DPF objects and must run without an Ansys
 installation. Real-file verification is environment-gated and is never part of
 ordinary test collection:
 
+To verify that a frozen package contains the PyDPF client, set
+`MARS_TEST_PACKAGED_DIR` to the built `dist/MARS` directory and run
+`pytest tests/test_packaged_dpf_client.py -v`.
+
 ```powershell
 $env:MARS_TEST_MODAL_RST = 'C:\trusted-2025R2-or-newer-case\file.rst'
 $env:MARS_TEST_MODAL_GOLDEN_DIR = 'C:\trusted-2025R2-or-newer-case'

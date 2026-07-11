@@ -53,7 +53,7 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 - **Operating System**: Windows 10/11 (primary), Linux/macOS (compatible)
 - **RAM**: Minimum 8 GB; 16+ GB recommended for large models
 - **Optional (MP4 export)**: `ffmpeg` available on PATH
-- **Optional (direct RST import)**: Ansys 2025 R2 or newer with a compatible installed DPF runtime. The licensed DPF server is not bundled with MARS; CSV workflows do not require it.
+- **Optional (direct RST import)**: Packaged MARS includes `ansys-dpf-core==0.16.1`; Ansys 2025 R2 or newer with a compatible installed DPF server/runtime is additionally required. Only the licensed server remains external, and CSV workflows do not require it.
 
 ### Installation Steps
 
@@ -88,9 +88,9 @@ From the project root:
 build.bat --clean
 ```
 
-This invokes the root `MARS.spec` with Python 3.12. The specification includes
-the PyDPF client modules, package metadata, and client DLLs, but does not bundle
-the licensed Ansys DPF server. At runtime MARS discovers a compatible installed
+This invokes the root `MARS.spec` with Python 3.12. The specification bundles
+`ansys-dpf-core==0.16.1`, its Python modules, package metadata, gRPC bindings,
+and client DLLs. Only the licensed Ansys DPF server remains external. At runtime MARS discovers a compatible installed
 Ansys 2025 R2 or newer runtime; local validation also covers Ansys 2026 R1.
 
 [**Image Placeholder**: Terminal showing successful launch of MARS application]
@@ -1414,7 +1414,7 @@ This chapter provides solutions to common issues encountered while using MARS.
 | File won't load | File encoding issue | Re-save as UTF-8 CSV |
 | NodeID mismatch | Different node sets | Ensure same nodes in all files |
 | `.pch` not visible in Navigator | File filter excludes .pch | Use **Read Modal Coordinate File (.mcf / .pch)** button |
-| Direct `.rst` loading unavailable | PyDPF client or compatible installed runtime missing | Install the pinned dependencies and Ansys 2025 R2 or newer, or use the existing CSV loaders |
+| Direct `.rst` loading unavailable | Compatible installed server/runtime missing, or source dependencies missing | Packaged MARS already includes the PyDPF client. Install Ansys 2025 R2 or newer; for source runs also install the pinned requirements, or use the existing CSV loaders |
 | RST reports too few modes | Result file has fewer modal sets than the loaded coordinates | Use a matching modal result file or reduce the coordinate mode count at its source |
 | Named selection not offered | No supported result has a stable non-empty node intersection across all imported modes | Choose All result-support nodes or another named selection |
 
@@ -1500,8 +1500,9 @@ Time  Mode1  Mode2  Mode3 ... ModeN
 **Purpose**: Populate one or more currently solvable modal datasets directly
 from an Ansys modal result file.
 
-**Runtime**: `ansys-dpf-core==0.16.1` and a compatible installed Ansys 2025 R2
-or newer DPF runtime. The DPF server is external to the MARS package.
+**Runtime**: Packaged MARS includes `ansys-dpf-core==0.16.1`. A compatible
+installed Ansys 2025 R2 or newer DPF server/runtime is additionally required;
+only that licensed server is external to the MARS package.
 
 **Supported normalized outputs**:
 - Global averaged-nodal stress: MPa, ordered `XX, YY, ZZ, XY, YZ, XZ`

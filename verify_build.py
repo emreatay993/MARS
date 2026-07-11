@@ -90,7 +90,8 @@ def check_dpf_environment(validate_server: bool = False) -> bool:
         print_status(
             "Ansys DPF RST support",
             False,
-            "ansys-dpf-core is not installed; CSV workflows remain available",
+            "ansys-dpf-core is missing from this source/build environment; "
+            "packaged MARS releases bundle it, and CSV workflows remain available",
         )
         return False
 

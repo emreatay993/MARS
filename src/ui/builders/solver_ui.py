@@ -62,6 +62,9 @@ class SolverTabUIBuilder:
         rst_file_path = QLineEdit()
         rst_file_path.setReadOnly(True)
         rst_file_path.setStyleSheet(READONLY_INPUT_STYLE)
+        rst_file_path.setPlaceholderText(
+            "Load modal coordinates (.mcf/.pch) to enable RST import"
+        )
         rst_file_path.setToolTip(tooltips.RST_FILE_PATH)
 
         # Modal Stress File

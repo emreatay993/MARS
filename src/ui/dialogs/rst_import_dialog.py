@@ -47,8 +47,8 @@ class RstImportDialog(QDialog):
             layout.addWidget(warning_label)
 
         runtime_label = QLabel(
-            "Direct RST import requires ansys-dpf-core 0.16.1 and a compatible "
-            "installed Ansys 2025 R2 or newer DPF runtime."
+            "Packaged MARS includes ansys-dpf-core 0.16.1. Direct RST import "
+            "additionally requires an installed Ansys 2025 R2 or newer DPF runtime."
         )
         runtime_label.setWordWrap(True)
         layout.addWidget(runtime_label)

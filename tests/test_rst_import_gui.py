@@ -12,9 +12,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 from PyQt5.QtWidgets import QApplication
 
 from core.data_models import DeformationData, ModalData
+from ui.builders.solver_ui import SolverTabUIBuilder
 from ui.dialogs.rst_import_dialog import RstImportDialog
 from ui.handlers.file_handler import FileLoaderThread, SolverFileHandler
 from ui.solver_tab import SolverTab
+from ui import tooltips
 
 
 _QT_APP = None
@@ -67,6 +69,22 @@ def test_file_loader_thread_forwards_positional_and_keyword_arguments():
     thread.run()
 
     assert received == [11]
+
+
+def test_rst_first_launch_help_distinguishes_prerequisite_from_bundled_client():
+    _app()
+    builder = SolverTabUIBuilder()
+    file_group = builder.build_file_input_section()
+
+    assert file_group is not None
+    assert builder.components["rst_file_button"].isEnabled() is False
+    assert "Load modal coordinates" in builder.components[
+        "rst_file_path"
+    ].placeholderText()
+    assert "Why this is initially disabled" in tooltips.RST_FILE_BUTTON
+    assert ".mcf/.pch first" in tooltips.RST_FILE_BUTTON
+    assert "includes ansys-dpf-core 0.16.1" in tooltips.RST_FILE_BUTTON
+    assert "Load modal coordinates" in tooltips.RST_FILE_PATH
 
 
 def test_cancel_and_load_error_preserve_existing_modal_state(monkeypatch):

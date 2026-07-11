@@ -9,6 +9,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
+import sys
 from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
@@ -149,13 +150,22 @@ def _import_dpf() -> Any:
     try:
         import ansys.dpf.core as dpf
     except ImportError as exc:
-        raise RstImportError(
-            f"Direct RST loading requires ansys-dpf-core=={PYDPF_VERSION}."
-        ) from exc
+        if getattr(sys, "frozen", False):
+            message = (
+                f"This MARS package is missing its bundled ansys-dpf-core=={PYDPF_VERSION} "
+                "client. Reinstall or rebuild MARS."
+            )
+        else:
+            message = (
+                f"Source runs require ansys-dpf-core=={PYDPF_VERSION}; "
+                "install the project requirements."
+            )
+        raise RstImportError(message) from exc
     version = str(getattr(dpf, "__version__", ""))
     if version != PYDPF_VERSION:
         raise RstImportError(
-            f"Direct RST loading requires ansys-dpf-core=={PYDPF_VERSION}; found {version or 'unknown'}."
+            f"MARS requires its ansys-dpf-core client at version {PYDPF_VERSION}; "
+            f"found {version or 'unknown'}."
         )
     return dpf
 

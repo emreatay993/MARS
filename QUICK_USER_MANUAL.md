@@ -8,7 +8,7 @@ This guide condenses the end-to-end workflow for experienced analysts who need a
 
 - Python 3.12 with libraries from `requirements.txt`.
 - Modal coordinate file (`.mcf`/`.pch`) plus either a modal `.rst` or the existing modal CSV inputs.
-- Direct `.rst` loading additionally requires a compatible installed Ansys 2025 R2 or newer DPF runtime; CSV workflows do not.
+- Packaged MARS includes `ansys-dpf-core==0.16.1`. Direct `.rst` loading additionally requires a compatible installed Ansys 2025 R2 or newer DPF server/runtime; CSV workflows do not.
 
 ---
 
@@ -116,7 +116,7 @@ Outputs default to the solver's configured directory; update it before running i
 | Issue | Fix |
 | --- | --- |
 | `Invalid MCF file` | Re-export MCF ensuring `Time` header; delete stale `_unwrapped` file. |
-| Direct `.rst` loading unavailable | Install the pinned Python dependencies and a compatible Ansys 2025 R2 or newer runtime, or use CSV input. |
+| Direct `.rst` loading unavailable | Packaged MARS already includes the PyDPF client. Install a compatible Ansys 2025 R2 or newer server/runtime, or use CSV input. Source runs must also install the pinned requirements. |
 | RST has too few modes | Use an RST containing at least as many ordered modal sets as the loaded `.mcf`/`.pch`. |
 | Solver stalls at 0% | Large dataset chunking – wait for progress or reduce outputs. |
 | Blank Display | Load mesh or ensure exported CSV has `Result` column; reset camera. |

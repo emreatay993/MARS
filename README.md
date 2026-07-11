@@ -100,10 +100,11 @@ legacy/                    # Original code (preserved for reference)
    python -m pip install -r requirements.txt
    ```
 
-   Direct `.rst` loading uses the pinned `ansys-dpf-core==0.16.1` client and
-   requires a compatible installed Ansys DPF runtime from Ansys 2025 R2 or
-   newer. The DPF server is not bundled with MARS. CSV workflows remain
-   available when no compatible Ansys installation is present.
+   Source runs install the pinned `ansys-dpf-core==0.16.1` client from the
+   requirements file. Packaged MARS already includes that client. Direct `.rst`
+   loading additionally requires a compatible installed Ansys DPF server from
+   Ansys 2025 R2 or newer; only that licensed server remains external. CSV
+   workflows remain available when no compatible Ansys installation is present.
 
 ### Running the Application
 
@@ -140,8 +141,9 @@ Release builds use Python 3.12 and the root `MARS.spec`:
 build.bat --clean
 ```
 
-The packaged application includes the PyDPF client modules and client DLLs,
-but discovers the installed Ansys DPF runtime on the target workstation.
+The packaged application includes `ansys-dpf-core==0.16.1`, its metadata,
+Python modules, gRPC bindings, and client DLLs. It discovers only the licensed
+Ansys DPF server/runtime from the target workstation.
 
 ## 📖 Usage Guide
 
@@ -421,7 +423,8 @@ pip install -r requirements.txt
 ```
 
 **Direct RST loading is unavailable**:
-- Confirm `ansys-dpf-core==0.16.1` is installed in the Python 3.12 environment.
+- Packaged MARS already contains `ansys-dpf-core==0.16.1`. For a source run,
+  install it through `requirements.txt`.
 - Confirm Ansys 2025 R2 or newer is discoverable through an `AWP_ROOT###`
   environment variable or standard `ANSYS Inc\v###` directory.
 - MARS can use a newer compatible runtime; it does not require an exact

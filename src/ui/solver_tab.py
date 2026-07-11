@@ -323,6 +323,7 @@ class SolverTab(QWidget):
 
         # 6. Update all other UI states
         self.rst_file_button.setEnabled(True)
+        self.rst_file_path.setPlaceholderText("Choose an Ansys modal .rst file")
         self.ui_handler.update_output_checkboxes_state()
         self.ui_handler._update_solve_button_state()
 

@@ -36,15 +36,20 @@ RST_FILE_BUTTON = (
     "<li>Nodal deformation (mm)</li>"
     "<li>Paired element-nodal force and moment (N and N&middot;mm)</li>"
     "</ul>"
-    "<br>Load the modal coordinate .mcf/.pch first. You can then choose All "
+    "<br><b>Why this is initially disabled:</b> Load the modal coordinate "
+    ".mcf/.pch first so MARS knows how many RST modal sets to map. You can then choose All "
     "result-support nodes or a valid named selection, the result types to "
     "import, and an explicit shell layer when applicable.<br><br>"
-    "Requires ansys-dpf-core 0.16.1 and a compatible installed Ansys 2025 R2 "
-    "or newer DPF runtime. The DPF server is not bundled with MARS; existing "
+    "Packaged MARS includes ansys-dpf-core 0.16.1. Direct RST access additionally "
+    "requires a compatible installed Ansys 2025 R2 or newer DPF runtime; only "
+    "the licensed DPF server remains external. Existing "
     "CSV workflows remain available without it."
 )
 
-RST_FILE_PATH = "Path to the currently loaded Ansys modal results file."
+RST_FILE_PATH = (
+    "Load modal coordinates from an .mcf or .pch file first. This field then "
+    "shows the currently loaded Ansys modal results file."
+)
 
 STRESS_FILE_BUTTON = (
     "<b>Modal Stress File</b><br>"

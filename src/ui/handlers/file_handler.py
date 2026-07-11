@@ -110,8 +110,8 @@ class SolverFileHandler:
             self.tab,
             "RST Inspection Failed",
             f"The selected modal RST could not be inspected.\n\n{error}\n\n"
-            "Direct RST import requires ansys-dpf-core 0.16.1 and a compatible "
-            "installed Ansys 2025 R2 or newer DPF runtime.",
+            "Packaged MARS includes ansys-dpf-core 0.16.1. Direct RST import "
+            "additionally requires an installed Ansys 2025 R2 or newer DPF runtime.",
         )
 
     def _load_modal_rst(self, filename, options):
