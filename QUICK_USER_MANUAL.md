@@ -29,7 +29,7 @@ Confirm the main window shows **Main Window** and **Display** tabs, and the Navi
 
 1. **Set Project Directory**: `File → Select Project Directory` or use Navigator.
 2. **Load Modal Coordinates**: Solver tab → *Read Modal Coordinate File (.mcf)*.
-3. **Load Modal Results**: Use *Read Modal Results File (.rst)* to select scope and available result types, or continue with *Read Modal Stress File (.csv)* and the existing optional CSV loaders.
+3. **Choose Modal Results Source**: Select *Ansys RST file (single import)* or *CSV files (manual loaders)*. MARS shows only the controls for that workflow. In RST mode, use *Read Modal Results File (.rst)* to select scope and available result types; in CSV mode, use *Read Modal Stress File (.csv)* and the optional CSV loaders.
 4. *(Optional)* **Load Steady-State**: Check *Include Steady-State* → pick tab-delimited `.txt` with `Node Number` and `SX/SY/SZ/SXY/SYZ/SXZ` columns (also supports ANSYS Mechanical Vector Principal Stress text exports when exported with duplicate removal, node numbers/location, and tensor components enabled).
 5. *(Optional)* **Load Deformations**: Check *Include Deformations* → pick `.csv`.
 6. **Choose Outputs**: Select Von Mises / principal stress / deformation / velocity / acceleration / damage.

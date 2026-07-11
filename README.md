@@ -155,7 +155,8 @@ Ansys DPF server/runtime from the target workstation.
 
 2. **Load Input Files** (Main Window tab)
    - Click "Read Modal Coordinate File (.mcf)" → Select .mcf file
-   - Either click "Read Modal Results File (.rst)" and choose the scope/results to import, or continue using the existing modal CSV inputs
+   - Choose **Modal results source**: **Ansys RST file** or **CSV files**. Only the controls for the selected workflow are shown.
+   - In RST mode, click "Read Modal Results File (.rst)" and choose the scope/results to import.
    - For CSV input, click "Read Modal Stress File (.csv)" → Select stress CSV
    - Optional: Check "Include Deformations" → Load deformations CSV
    - Optional: Check "Include Steady-State Stress Field" → Load steady-state TXT

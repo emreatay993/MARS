@@ -9,12 +9,13 @@ import numpy as np
 os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QComboBox, QMessageBox
 
 from core.data_models import DeformationData, ModalData
 from ui.builders.solver_ui import SolverTabUIBuilder
 from ui.dialogs.rst_import_dialog import RstImportDialog
 from ui.handlers.file_handler import FileLoaderThread, SolverFileHandler
+from ui.handlers.ui_state_handler import SolverUIHandler
 from ui.solver_tab import SolverTab
 from ui import tooltips
 
@@ -34,6 +35,9 @@ class _Path:
 
     def setText(self, text):
         self.text = text
+
+    def clear(self):
+        self.text = ""
 
 
 class _Checkbox:
@@ -78,6 +82,8 @@ def test_rst_first_launch_help_distinguishes_prerequisite_from_bundled_client():
 
     assert file_group is not None
     assert builder.components["rst_file_button"].isEnabled() is False
+    assert builder.components["rst_file_button"].isHidden() is True
+    assert builder.components["stress_file_button"].isHidden() is False
     assert "Load modal coordinates" in builder.components[
         "rst_file_path"
     ].placeholderText()
@@ -85,6 +91,62 @@ def test_rst_first_launch_help_distinguishes_prerequisite_from_bundled_client():
     assert ".mcf/.pch first" in tooltips.RST_FILE_BUTTON
     assert "includes ansys-dpf-core 0.16.1" in tooltips.RST_FILE_BUTTON
     assert "Load modal coordinates" in tooltips.RST_FILE_PATH
+
+
+def test_modal_result_modes_show_only_their_own_controls():
+    _app()
+    builder = SolverTabUIBuilder()
+    file_group = builder.build_file_input_section()
+    tab = SimpleNamespace(**builder.components, _modal_input_mode="csv")
+    handler = SolverUIHandler(tab)
+    handler.update_modal_input_mode()
+
+    assert file_group is not None
+    assert tab.modal_input_mode_combo.currentData() == "csv"
+    assert tab.stress_file_button.isHidden() is False
+    assert tab.rst_file_button.isHidden() is True
+    assert tab.deformations_checkbox.isHidden() is False
+
+    tab.modal_input_mode_combo.setCurrentIndex(
+        tab.modal_input_mode_combo.findData("rst")
+    )
+    tab._modal_input_mode = "rst"
+    handler.update_modal_input_mode()
+
+    assert tab.rst_file_button.isHidden() is False
+    assert tab.stress_file_button.isHidden() is True
+    assert tab.deformations_checkbox.isHidden() is True
+    assert tab.force_moment_checkbox.isHidden() is True
+    assert "one modal .rst file" in tab.modal_input_mode_help.text()
+
+
+def test_switching_modal_result_source_confirms_before_clearing(monkeypatch):
+    _app()
+    combo = QComboBox()
+    combo.addItem("CSV", "csv")
+    combo.addItem("RST", "rst")
+    combo.setCurrentIndex(1)
+    clear_results = _Counter()
+    refresh_mode = _Counter()
+    tab = SimpleNamespace(
+        modal_input_mode_combo=combo,
+        _modal_input_mode="csv",
+        stress_loaded=True,
+        deformation_loaded=False,
+        force_moment_loaded=False,
+        _clear_modal_result_inputs=clear_results,
+        ui_handler=SimpleNamespace(update_modal_input_mode=refresh_mode),
+    )
+    monkeypatch.setattr(
+        "ui.solver_tab.QMessageBox.question",
+        lambda *_args: QMessageBox.Yes,
+    )
+
+    SolverTab.on_modal_input_mode_changed(tab, 1)
+
+    assert clear_results.calls == 1
+    assert refresh_mode.calls == 1
+    assert tab._modal_input_mode == "rst"
 
 
 def test_cancel_and_load_error_preserve_existing_modal_state(monkeypatch):
@@ -234,7 +296,7 @@ def test_rst_bundle_replaces_modal_fields_atomically_and_resets_stale_results():
     assert tab.force_moment_loaded is False
     assert tab.rst_file_path.text == "modal.rst"
     assert tab.stress_file_path.text == ""
-    assert tab.deformations_file_path.text == "modal.rst"
+    assert tab.deformations_file_path.text == ""
     assert tab.force_moment_file_path.text == ""
     assert reset.calls == clear_plot.calls == clear_display.calls == emit_initial.calls == 1
 

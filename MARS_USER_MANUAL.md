@@ -212,6 +212,13 @@ Time  Mode1     Mode2     Mode3
 
 ## Chapter 6 – Loading Modal Results (.rst / .csv)
 
+Use the **Modal results source** selector to choose one workflow. **Ansys RST
+file (single import)** shows only the RST loader; **CSV files (manual loaders)**
+shows the modal stress loader and optional deformation and force/moment inputs.
+Modal coordinates and optional steady-state stress remain common to both modes.
+Changing modes after modal results are loaded asks for confirmation before
+clearing those modal result datasets.
+
 MARS can populate modal stress, modal deformation, and combined element-nodal
 force/moment data directly from an Ansys modal `.rst`, while preserving every
 existing CSV loader.

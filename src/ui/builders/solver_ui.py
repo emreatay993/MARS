@@ -53,6 +53,17 @@ class SolverTabUIBuilder:
         coord_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         coord_file_path.setToolTip(tooltips.COORD_FILE_PATH)
 
+        modal_input_mode_label = QLabel("Modal results source:")
+        modal_input_mode_combo = QComboBox()
+        modal_input_mode_combo.addItem("CSV files (manual loaders)", "csv")
+        modal_input_mode_combo.addItem("Ansys RST file (single import)", "rst")
+        modal_input_mode_combo.setToolTip(tooltips.MODAL_INPUT_MODE)
+        modal_input_mode_help = QLabel(
+            "CSV mode: load modal stress, then optionally deformation and force/moment files."
+        )
+        modal_input_mode_help.setWordWrap(True)
+        modal_input_mode_help.setToolTip(tooltips.MODAL_INPUT_MODE)
+
         # Modal results file (Ansys DPF)
         rst_file_button = QPushButton('Read Modal Results File (.rst)')
         rst_file_button.setStyleSheet(BUTTON_STYLE)
@@ -66,6 +77,8 @@ class SolverTabUIBuilder:
             "Load modal coordinates (.mcf/.pch) to enable RST import"
         )
         rst_file_path.setToolTip(tooltips.RST_FILE_PATH)
+        rst_file_button.setVisible(False)
+        rst_file_path.setVisible(False)
 
         # Modal Stress File
         stress_file_button = QPushButton('Read Modal Stress File (.csv)')
@@ -149,8 +162,11 @@ class SolverTabUIBuilder:
         file_layout = QGridLayout()
         file_layout.addWidget(coord_file_button, 0, 0)
         file_layout.addWidget(coord_file_path, 0, 1)
-        file_layout.addWidget(rst_file_button, 1, 0)
-        file_layout.addWidget(rst_file_path, 1, 1)
+        file_layout.addWidget(modal_input_mode_label, 1, 0)
+        file_layout.addWidget(modal_input_mode_combo, 1, 1)
+        file_layout.addWidget(modal_input_mode_help, 1, 2, 1, 4)
+        file_layout.addWidget(rst_file_button, 2, 0)
+        file_layout.addWidget(rst_file_path, 2, 1)
         file_layout.addWidget(stress_file_button, 2, 0)
         file_layout.addWidget(stress_file_path, 2, 1)
         file_layout.addWidget(steady_state_checkbox, 3, 0, 1, 2)
@@ -174,6 +190,9 @@ class SolverTabUIBuilder:
         # Store components for external access
         self.components['coord_file_button'] = coord_file_button
         self.components['coord_file_path'] = coord_file_path
+        self.components['modal_input_mode_label'] = modal_input_mode_label
+        self.components['modal_input_mode_combo'] = modal_input_mode_combo
+        self.components['modal_input_mode_help'] = modal_input_mode_help
         self.components['rst_file_button'] = rst_file_button
         self.components['rst_file_path'] = rst_file_path
         self.components['stress_file_button'] = stress_file_button

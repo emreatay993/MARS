@@ -85,10 +85,42 @@ class SolverUIHandler:
         if not is_checked:
             self.tab.steady_state_file_path.clear()
 
+    def update_modal_input_mode(self):
+        """Show only the controls belonging to the selected modal-result source."""
+        rst_mode = self.tab.modal_input_mode_combo.currentData() == "rst"
+        csv_mode = not rst_mode
+
+        self.tab.rst_file_button.setVisible(rst_mode)
+        self.tab.rst_file_path.setVisible(rst_mode)
+        self.tab.stress_file_button.setVisible(csv_mode)
+        self.tab.stress_file_path.setVisible(csv_mode)
+        self.tab.deformations_checkbox.setVisible(csv_mode)
+        self.tab.force_moment_checkbox.setVisible(csv_mode)
+        self.tab.deformations_file_button.setVisible(
+            csv_mode and self.tab.deformations_checkbox.isChecked()
+        )
+        self.tab.deformations_file_path.setVisible(
+            csv_mode and self.tab.deformations_checkbox.isChecked()
+        )
+        self.tab.force_moment_file_button.setVisible(
+            csv_mode and self.tab.force_moment_checkbox.isChecked()
+        )
+        self.tab.force_moment_file_path.setVisible(
+            csv_mode and self.tab.force_moment_checkbox.isChecked()
+        )
+        self.tab.modal_input_mode_help.setText(
+            "RST mode: choose one modal .rst file, then select its supported "
+            "results and scope."
+            if rst_mode
+            else "CSV mode: load modal stress, then optionally deformation and "
+            "force/moment files."
+        )
+
     def toggle_deformations_inputs(self, is_checked):
         """Show/hide deformation file controls."""
-        self.tab.deformations_file_button.setVisible(is_checked)
-        self.tab.deformations_file_path.setVisible(is_checked)
+        csv_mode = getattr(self.tab, "_modal_input_mode", "csv") == "csv"
+        self.tab.deformations_file_button.setVisible(csv_mode and is_checked)
+        self.tab.deformations_file_path.setVisible(csv_mode and is_checked)
         self.update_output_checkboxes_state()
         if not is_checked:
             self.tab.deformations_file_path.clear()
@@ -97,8 +129,9 @@ class SolverUIHandler:
 
     def toggle_force_moment_inputs(self, is_checked):
         """Show/hide element nodal forces & moments file controls."""
-        self.tab.force_moment_file_button.setVisible(is_checked)
-        self.tab.force_moment_file_path.setVisible(is_checked)
+        csv_mode = getattr(self.tab, "_modal_input_mode", "csv") == "csv"
+        self.tab.force_moment_file_button.setVisible(csv_mode and is_checked)
+        self.tab.force_moment_file_path.setVisible(csv_mode and is_checked)
         self.update_output_checkboxes_state()
         if not is_checked:
             self.tab.force_moment_file_path.clear()

@@ -27,6 +27,13 @@ COORD_FILE_BUTTON = (
 
 COORD_FILE_PATH = "Path to the currently loaded modal coordinate file."
 
+MODAL_INPUT_MODE = (
+    "Choose one modal-results workflow. RST mode imports supported result families "
+    "from one Ansys file. CSV mode uses the individual stress, deformation, and "
+    "force/moment loaders. Changing mode after loading results clears those modal "
+    "result datasets after confirmation; modal coordinates and steady-state data remain."
+)
+
 RST_FILE_BUTTON = (
     "<b>Modal Results File</b><br>"
     "<hr>"

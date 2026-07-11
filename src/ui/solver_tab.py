@@ -75,6 +75,7 @@ class SolverTab(QWidget):
         self.stress_loaded = False
         self.deformation_loaded = False
         self.force_moment_loaded = False
+        self._modal_input_mode = "csv"
         self.temperature_field_data: Optional[TemperatureFieldData] = None
         self.material_profile_data: MaterialProfileData = MaterialProfileData.empty()
 
@@ -123,6 +124,8 @@ class SolverTab(QWidget):
         # File controls
         self.coord_file_button = self.components['coord_file_button']
         self.coord_file_path = self.components['coord_file_path']
+        self.modal_input_mode_combo = self.components['modal_input_mode_combo']
+        self.modal_input_mode_help = self.components['modal_input_mode_help']
         self.rst_file_button = self.components['rst_file_button']
         self.rst_file_path = self.components['rst_file_path']
         self.stress_file_button = self.components['stress_file_button']
@@ -215,6 +218,9 @@ class SolverTab(QWidget):
         """Connect UI signals to their handlers."""
         # File loading
         self.coord_file_button.clicked.connect(self.file_handler.select_coord_file)
+        self.modal_input_mode_combo.currentIndexChanged.connect(
+            self.on_modal_input_mode_changed
+        )
         self.rst_file_button.clicked.connect(self.file_handler.select_modal_rst)
         self.stress_file_button.clicked.connect(self.file_handler.select_stress_file)
         self.deformations_file_button.clicked.connect(self.file_handler.select_deformations_file)
@@ -287,7 +293,69 @@ class SolverTab(QWidget):
         self.ui_handler.toggle_damage_index_checkbox_visibility()
         self.ui_handler._update_plasticity_state()
         self.ui_handler.toggle_plasticity_options_visibility(False)
+        self.ui_handler.update_modal_input_mode()
         self.ui_handler.update_single_node_plot()
+
+    def on_modal_input_mode_changed(self, _index):
+        """Switch between exclusive RST and CSV modal-result workflows."""
+        selected_mode = self.modal_input_mode_combo.currentData()
+        if selected_mode == self._modal_input_mode:
+            return
+
+        has_modal_results = any(
+            (self.stress_loaded, self.deformation_loaded, self.force_moment_loaded)
+        )
+        if has_modal_results:
+            answer = QMessageBox.question(
+                self,
+                "Change Modal Results Source?",
+                "Changing the modal results source clears the currently loaded "
+                "modal stress, deformation, and force/moment data. Modal coordinates "
+                "and steady-state inputs are kept.\n\nContinue?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if answer != QMessageBox.Yes:
+                self.modal_input_mode_combo.blockSignals(True)
+                previous_index = self.modal_input_mode_combo.findData(
+                    self._modal_input_mode
+                )
+                self.modal_input_mode_combo.setCurrentIndex(previous_index)
+                self.modal_input_mode_combo.blockSignals(False)
+                return
+            self._clear_modal_result_inputs()
+
+        self._modal_input_mode = selected_mode
+        self.ui_handler.update_modal_input_mode()
+
+    def _clear_modal_result_inputs(self):
+        """Clear only source-specific modal result data when workflows change."""
+        self.stress_data = None
+        self.deformation_data = None
+        self.force_moment_data = None
+        self.stress_loaded = False
+        self.deformation_loaded = False
+        self.force_moment_loaded = False
+
+        self.rst_file_path.clear()
+        self.stress_file_path.clear()
+        self.deformations_file_path.clear()
+        self.force_moment_file_path.clear()
+        self.deformations_checkbox.setChecked(False)
+        self.force_moment_checkbox.setChecked(False)
+
+        self.analysis_engine.reset()
+        self.plot_single_node_tab.clear_plot()
+        self.ui_handler._hide_plot_tabs()
+        try:
+            self.window().display_tab._clear_visualization()
+        except (AttributeError, RuntimeError):
+            pass
+        self.ui_handler.update_output_checkboxes_state()
+        self.ui_handler._update_solve_button_state()
+        self.console_textbox.append(
+            "Modal result inputs cleared after changing the input workflow.\n"
+        )
 
     def on_temperature_field_loaded(self, temperature_data, filename):
         """Handle UI updates after temperature field file is loaded."""
@@ -402,14 +470,14 @@ class SolverTab(QWidget):
         self.force_moment_loaded = self.force_moment_data is not None
 
         self.rst_file_path.setText(filename)
-        self.stress_file_path.setText(filename if self.stress_loaded else "")
+        self.stress_file_path.clear()
 
         # These existing inclusion switches continue to gate their output groups.
         # Let their normal signals update visibility and dependent states.
         self.deformations_checkbox.setChecked(self.deformation_loaded)
         self.force_moment_checkbox.setChecked(self.force_moment_loaded)
-        self.deformations_file_path.setText(filename if self.deformation_loaded else "")
-        self.force_moment_file_path.setText(filename if self.force_moment_loaded else "")
+        self.deformations_file_path.clear()
+        self.force_moment_file_path.clear()
 
         # Results from the prior modal-field bundle are no longer valid.
         self.analysis_engine.reset()
