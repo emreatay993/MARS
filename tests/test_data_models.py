@@ -14,7 +14,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
 from core.data_models import (
     ModalData, ModalStressData, DeformationData,
-    SteadyStateData, SolverConfig, AnalysisResult
+    SteadyStateData, SolverConfig, AnalysisResult,
+    validate_modal_input_contracts,
 )
 
 
@@ -120,6 +121,52 @@ class TestDeformationData:
         assert np.array_equal(ux, modal_ux)
         assert np.array_equal(uy, modal_uy)
         assert np.array_equal(uz, modal_uz)
+
+    def test_deformation_coordinates(self):
+        coords = np.arange(9, dtype=float).reshape(3, 3)
+        values = np.ones((3, 2))
+        data = DeformationData(
+            node_ids=np.array([1, 2, 3]),
+            modal_ux=values,
+            modal_uy=values,
+            modal_uz=values,
+            node_coords=coords,
+        )
+        assert np.array_equal(data.node_coords, coords)
+
+
+def test_modal_input_contracts_reject_mismatched_modes():
+    modal = ModalData(np.ones((2, 4)), np.arange(4, dtype=float))
+    deformation = DeformationData(
+        node_ids=np.array([1]),
+        modal_ux=np.ones((1, 1)),
+        modal_uy=np.ones((1, 1)),
+        modal_uz=np.ones((1, 1)),
+    )
+    with pytest.raises(ValueError, match=r"expected \(1, 2\)"):
+        validate_modal_input_contracts(modal, deformation_data=deformation)
+
+
+def test_modal_input_contracts_reject_stress_deformation_node_mismatch():
+    modal = ModalData(np.ones((2, 4)), np.arange(4, dtype=float))
+    tensor = np.ones((2, 2))
+    stress = ModalStressData(
+        node_ids=np.array([1, 2]),
+        modal_sx=tensor,
+        modal_sy=tensor,
+        modal_sz=tensor,
+        modal_sxy=tensor,
+        modal_syz=tensor,
+        modal_sxz=tensor,
+    )
+    deformation = DeformationData(
+        node_ids=np.array([2, 1]),
+        modal_ux=tensor,
+        modal_uy=tensor,
+        modal_uz=tensor,
+    )
+    with pytest.raises(ValueError, match="identical ordered node IDs"):
+        validate_modal_input_contracts(modal, stress, deformation)
 
 
 class TestSolverConfig:

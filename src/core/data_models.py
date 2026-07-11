@@ -80,11 +80,13 @@ class DeformationData:
         modal_ux: Modal displacement in X direction, shape (num_nodes, num_modes).
         modal_uy: Modal displacement in Y direction, shape (num_nodes, num_modes).
         modal_uz: Modal displacement in Z direction, shape (num_nodes, num_modes).
+        node_coords: Optional node coordinates, shape (num_nodes, 3).
     """
     node_ids: np.ndarray
     modal_ux: np.ndarray
     modal_uy: np.ndarray
     modal_uz: np.ndarray
+    node_coords: Optional[np.ndarray] = None
     
     @property
     def num_nodes(self) -> int:
@@ -99,6 +101,74 @@ class DeformationData:
     def as_tuple(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Return deformations as a tuple (ux, uy, uz)."""
         return (self.modal_ux, self.modal_uy, self.modal_uz)
+
+
+def validate_modal_input_contracts(
+    modal_data: "ModalData",
+    stress_data: Optional["ModalStressData"] = None,
+    deformation_data: Optional["DeformationData"] = None,
+    force_moment_data: Optional["ElementNodalForceMomentData"] = None,
+) -> None:
+    """Validate the shared array contract used by every MARS modal input path."""
+    modal_coord = np.asarray(modal_data.modal_coord)
+    time_values = np.asarray(modal_data.time_values)
+    if modal_coord.ndim != 2:
+        raise ValueError("Modal coordinates must be a 2D (modes, time-points) array.")
+    if time_values.ndim != 1 or time_values.shape[0] != modal_coord.shape[1]:
+        raise ValueError("Modal coordinate time values must match the coordinate time axis.")
+
+    expected_modes = modal_coord.shape[0]
+
+    def _validate_dataset(data, label, components):
+        if data is None:
+            return
+        node_ids = np.asarray(data.node_ids)
+        if node_ids.ndim != 1 or node_ids.size == 0:
+            raise ValueError(f"{label} node IDs must be a non-empty 1D array.")
+        if np.unique(node_ids).size != node_ids.size:
+            raise ValueError(f"{label} node IDs must be unique.")
+
+        expected_shape = (node_ids.size, expected_modes)
+        for component in components:
+            values = np.asarray(getattr(data, component))
+            if values.shape != expected_shape:
+                raise ValueError(
+                    f"{label} component '{component}' has shape {values.shape}; "
+                    f"expected {expected_shape}."
+                )
+
+        coords = getattr(data, "node_coords", None)
+        if coords is not None and np.asarray(coords).shape != (node_ids.size, 3):
+            raise ValueError(
+                f"{label} coordinates must have shape ({node_ids.size}, 3)."
+            )
+
+    _validate_dataset(
+        stress_data,
+        "Modal stress",
+        ("modal_sx", "modal_sy", "modal_sz", "modal_sxy", "modal_syz", "modal_sxz"),
+    )
+    _validate_dataset(
+        deformation_data,
+        "Modal deformation",
+        ("modal_ux", "modal_uy", "modal_uz"),
+    )
+    _validate_dataset(
+        force_moment_data,
+        "Element nodal force/moment",
+        ("modal_fx", "modal_fy", "modal_fz", "modal_mx", "modal_my", "modal_mz"),
+    )
+
+    if stress_data is not None and deformation_data is not None:
+        if not np.array_equal(stress_data.node_ids, deformation_data.node_ids):
+            raise ValueError(
+                "Modal stress and deformation data must use identical ordered node IDs."
+            )
+        if stress_data.node_coords is not None and deformation_data.node_coords is not None:
+            if not np.allclose(stress_data.node_coords, deformation_data.node_coords):
+                raise ValueError(
+                    "Modal stress and deformation coordinates do not match."
+                )
 
 
 @dataclass

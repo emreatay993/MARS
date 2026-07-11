@@ -1394,7 +1394,28 @@ class MSUPSmartSolverTransient(QObject):
         print("--- Starting Batch Processing ---")
         num_time_points = self.modal_coord.shape[1]
         has_stress_data = self.modal_sx is not None
-        num_nodes = self.modal_sx.shape[0] if has_stress_data else 0
+        has_deformation_data = self.modal_deformations_ux is not None
+        stress_requested = any((
+            calculate_von_mises,
+            calculate_max_principal_stress,
+            calculate_min_principal_stress,
+            calculate_damage,
+        ))
+        kinematics_requested = any((
+            calculate_deformation,
+            calculate_velocity,
+            calculate_acceleration,
+        ))
+        if stress_requested and not has_stress_data:
+            raise ValueError("Stress output was requested without modal stress data.")
+        if kinematics_requested and not has_deformation_data:
+            raise ValueError("Kinematic output was requested without modal deformation data.")
+
+        num_nodes = (
+            self.modal_sx.shape[0]
+            if has_stress_data
+            else (self.modal_deformations_ux.shape[0] if has_deformation_data else 0)
+        )
 
         my_virtual_memory = psutil.virtual_memory()
         self.total_memory = my_virtual_memory.total / (1024 ** 3)
@@ -1415,7 +1436,10 @@ class MSUPSmartSolverTransient(QObject):
         is_stress_needed = any(k in calculation_jobs for k in ['von_mises', 's1_max', 's3_min', 'damage'])
         is_kinematics_needed = any(k in calculation_jobs for k in ['deformation', 'velocity', 'acceleration'])
         is_force_moment_needed = 'force_moment' in calculation_jobs
-        is_main_loop_needed = (is_stress_needed or is_kinematics_needed) and has_stress_data
+        is_main_loop_needed = (
+            (is_stress_needed and has_stress_data)
+            or (is_kinematics_needed and has_deformation_data)
+        )
 
         # Estimate chunks only when stress/kinematics loop is needed
         chunk_size = 1

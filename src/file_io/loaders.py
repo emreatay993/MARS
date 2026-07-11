@@ -595,7 +595,7 @@ def load_modal_stress(filename: str) -> ModalStressData:
     
     # Extract node IDs
     node_ids = _extract_node_ids(df, 'NodeID')
-    
+
     # Extract coordinates if present
     node_coords = None
     if {'X', 'Y', 'Z'}.issubset(df.columns):
@@ -686,6 +686,10 @@ def load_modal_deformations(filename: str) -> DeformationData:
 
     # Extract node IDs
     node_ids = _extract_node_ids(df, 'NodeID')
+
+    node_coords = None
+    if {'X', 'Y', 'Z'}.issubset(df.columns):
+        node_coords = df[['X', 'Y', 'Z']].to_numpy()
     
     # Extract deformation components
     deformation_columns = _columns_starting_with_prefix(
@@ -701,7 +705,8 @@ def load_modal_deformations(filename: str) -> DeformationData:
         node_ids=node_ids,
         modal_ux=modal_ux,
         modal_uy=modal_uy,
-        modal_uz=modal_uz
+        modal_uz=modal_uz,
+        node_coords=node_coords,
     )
     
     # Log completion for large files

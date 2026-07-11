@@ -22,7 +22,7 @@ import pyvista as pv
 from solver import engine as solver_engine
 from utils import constants
 from utils.node_utils import get_node_index_from_id
-from core.data_models import PlasticityConfig, SolverConfig
+from core.data_models import PlasticityConfig, SolverConfig, validate_modal_input_contracts
 from ui.widgets.plotting import PlotlyMaxWidget
 
 
@@ -230,6 +230,7 @@ class SolverAnalysisHandler:
         total_skipped = config.skip_n_modes + config.skip_last_n_modes
         for data_source, label in [
             (self.tab.stress_data, "stress"),
+            (self.tab.deformation_data, "deformation"),
             (self.tab.force_moment_data, "force/moment"),
         ]:
             if data_source and total_skipped >= data_source.num_modes:
@@ -265,7 +266,18 @@ class SolverAnalysisHandler:
         if self.tab.force_moment_output_checkbox.isChecked() and self.tab.force_moment_data is not None:
             if get_node_index_from_id(node_id, self.tab.force_moment_data.node_ids, log_missing=False) is not None:
                 return True
-        # Otherwise check stress data
+
+        kinematic_selected = any((
+            self.tab.deformation_checkbox.isChecked(),
+            self.tab.velocity_checkbox.isChecked(),
+            self.tab.acceleration_checkbox.isChecked(),
+        ))
+        if kinematic_selected and self.tab.deformation_data is not None:
+            return get_node_index_from_id(
+                node_id, self.tab.deformation_data.node_ids, log_missing=False
+            ) is not None
+
+        # Otherwise check stress data.
         if (
             self.tab.stress_data is not None and
             get_node_index_from_id(node_id, self.tab.stress_data.node_ids, log_missing=False) is not None
@@ -450,13 +462,54 @@ class SolverAnalysisHandler:
 
     def _configure_analysis_engine(self):
         """Configure the analysis engine with loaded data."""
+        stress_data, deformation_data, force_moment_data = self._active_modal_datasets()
+        validate_modal_input_contracts(
+            self.tab.modal_data,
+            stress_data,
+            deformation_data,
+            force_moment_data,
+        )
         self.tab.analysis_engine.configure_data(
             self.tab.modal_data,
-            self.tab.stress_data,
-            self.tab.deformation_data,
+            stress_data,
+            deformation_data,
             self.tab.steady_state_data,
-            force_moment_data=self.tab.force_moment_data
+            force_moment_data=force_moment_data,
         )
+
+    def _active_modal_datasets(self):
+        """Return datasets whose UI inclusion state is currently active."""
+        return (
+            self.tab.stress_data if getattr(self.tab, "stress_loaded", False) else None,
+            self.tab.deformation_data
+            if getattr(self.tab, "deformation_loaded", False)
+            else None,
+            self.tab.force_moment_data
+            if getattr(self.tab, "force_moment_loaded", False)
+            else None,
+        )
+
+    def _validate_active_modal_datasets(self):
+        validate_modal_input_contracts(
+            self.tab.modal_data,
+            *self._active_modal_datasets(),
+        )
+
+    def _deformation_display_coordinates(self):
+        """Use deformation coordinates, or aligned stress coordinates for legacy CSVs."""
+        deformation = self.tab.deformation_data
+        if deformation is None:
+            return None
+        if getattr(deformation, "node_coords", None) is not None:
+            return deformation.node_coords
+        stress = self.tab.stress_data
+        if (
+            stress is not None
+            and stress.node_coords is not None
+            and np.array_equal(stress.node_ids, deformation.node_ids)
+        ):
+            return stress.node_coords
+        return None
 
     def _execute_analysis(self, config):
         """
@@ -946,13 +999,22 @@ class SolverAnalysisHandler:
 
         try:
             # Validate data is loaded -- at minimum, modal coordinates must be loaded,
-            # plus at least one data source (stress, force, or moment)
+            # plus at least one modal result data source
             if not self.tab.coord_loaded:
                 QMessageBox.warning(self.tab, "Missing Data", "Modal coordinate file is not loaded.")
                 return
-            if not (self.tab.stress_loaded or self.tab.force_moment_loaded):
-                QMessageBox.warning(self.tab, "Missing Data", "No data files loaded (stress or force/moment).")
+            if not (
+                self.tab.stress_loaded
+                or self.tab.deformation_loaded
+                or self.tab.force_moment_loaded
+            ):
+                QMessageBox.warning(
+                    self.tab,
+                    "Missing Data",
+                    "No modal result data is loaded (stress, deformation, or force/moment).",
+                )
                 return
+            self._validate_active_modal_datasets()
 
             # Validate single output selection
             num_outputs = sum([
@@ -977,6 +1039,13 @@ class SolverAnalysisHandler:
                     "No valid output is selected. Please select a valid output type."
                 )
                 return
+            if options.get('compute_force_moment', False) and options.get('display_deformed_shape', False):
+                QMessageBox.warning(
+                    self.tab,
+                    "Unsupported Combination",
+                    "Force/moment visualization cannot use a deformation overlay with a separate node scope.",
+                )
+                return
 
             # Find nearest time index
             time_index = np.argmin(np.abs(self.tab.modal_data.time_values - selected_time))
@@ -994,7 +1063,12 @@ class SolverAnalysisHandler:
 
             # Prepare modal deformations if needed
             modal_deformations_filtered = None
-            if options.get('display_deformed_shape', False) and self.tab.deformation_data:
+            kinematic_output = any((
+                options.get('compute_deformation_contour', False),
+                options.get('compute_velocity', False),
+                options.get('compute_acceleration', False),
+            ))
+            if (options.get('display_deformed_shape', False) or kinematic_output) and self.tab.deformation_data:
                 modal_deformations_filtered = (
                     self.tab.deformation_data.modal_ux[:, mode_slice],
                     self.tab.deformation_data.modal_uy[:, mode_slice],
@@ -1063,7 +1137,11 @@ class SolverAnalysisHandler:
                 modal_sxy=stress_sxy, modal_syz=stress_syz, modal_sxz=stress_sxz,
                 modal_coord=selected_modal_coord,
                 time_values=dt_window,
-                modal_node_ids=self.tab.stress_data.node_ids if self.tab.stress_data else None,
+                modal_node_ids=(
+                    self.tab.stress_data.node_ids
+                    if self.tab.stress_data is not None
+                    else (self.tab.deformation_data.node_ids if self.tab.deformation_data is not None else None)
+                ),
                 modal_deformations=modal_deformations_filtered,
                 modal_force_moment=modal_fm_filtered,
                 force_moment_node_ids=fm_node_ids,
@@ -1071,8 +1149,22 @@ class SolverAnalysisHandler:
                 **steady_kwargs
             )
 
-            num_nodes = self.tab.stress_data.num_nodes if self.tab.stress_data else 0
-            display_coords = self.tab.stress_data.node_coords if self.tab.stress_data else None
+            is_stress_output = any([
+                options.get('compute_von_mises', False),
+                options.get('compute_max_principal', False),
+                options.get('compute_min_principal', False),
+            ])
+            if is_stress_output:
+                primary_data = self.tab.stress_data
+            elif kinematic_output or options.get('display_deformed_shape', False):
+                primary_data = self.tab.deformation_data
+            else:
+                primary_data = self.tab.stress_data or self.tab.deformation_data
+
+            num_nodes = primary_data.num_nodes if primary_data is not None else 0
+            display_coords = primary_data.node_coords if primary_data is not None else None
+            if display_coords is None and (kinematic_output or options.get('display_deformed_shape', False)):
+                display_coords = self._deformation_display_coordinates()
             ux_tp, uy_tp, uz_tp = None, None, None
 
             # Apply deformation to coordinates if requested
@@ -1083,17 +1175,15 @@ class SolverAnalysisHandler:
                     uy_tp = uy_tp[:, [centre_offset]]
                     uz_tp = uz_tp[:, [centre_offset]]
                 displacement_vector = np.hstack((ux_tp, uy_tp, uz_tp))
-                display_coords = self.tab.stress_data.node_coords + (
+                base_coordinates = self._deformation_display_coordinates()
+                if base_coordinates is None:
+                    raise ValueError("Modal deformation coordinates are required for deformed display.")
+                display_coords = base_coordinates + (
                         displacement_vector * options.get('scale_factor', 1.0)
                 )
 
             # Compute stresses only when stress data is available and stress outputs selected
             actual_sx = actual_sy = actual_sz = actual_sxy = actual_syz = actual_sxz = None
-            is_stress_output = any([
-                options.get('compute_von_mises', False),
-                options.get('compute_max_principal', False),
-                options.get('compute_min_principal', False),
-            ])
             if is_stress_output and num_nodes > 0:
                 actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz = \
                     temp_solver.compute_normal_stresses(0, num_nodes)
@@ -1102,8 +1192,8 @@ class SolverAnalysisHandler:
             mesh = None
             if display_coords is not None:
                 mesh = pv.PolyData(display_coords)
-                if self.tab.stress_data and self.tab.stress_data.node_ids is not None:
-                    mesh["NodeID"] = self.tab.stress_data.node_ids.astype(int)
+                if primary_data is not None and primary_data.node_ids is not None:
+                    mesh["NodeID"] = primary_data.node_ids.astype(int)
 
             # Compute requested scalar field
             scalar_field, display_name = None, "Result"
@@ -1282,8 +1372,16 @@ class SolverAnalysisHandler:
         # Core data requirements
         if not self.tab.coord_loaded:
             return False, "Modal coordinate file is not loaded."
-        if not (self.tab.stress_loaded or self.tab.force_moment_loaded):
-            return False, "No data files loaded (stress or force/moment)."
+        if not (
+            self.tab.stress_loaded
+            or self.tab.deformation_loaded
+            or self.tab.force_moment_loaded
+        ):
+            return False, "No modal result data is loaded (stress, deformation, or force/moment)."
+        try:
+            self._validate_active_modal_datasets()
+        except ValueError as exc:
+            return False, str(exc)
 
         # Frames to compute
         anim_indices = params.get('anim_indices', [])
@@ -1309,6 +1407,10 @@ class SolverAnalysisHandler:
                 "Please either:\n"
                 "• Load a deformation file using the 'Modal Deformations File' button\n"
                 "• Or uncheck 'Include Deformations' in the solver tab"
+            )
+        if params.get('compute_force_moment', False) and params.get('compute_deformation_anim', False):
+            return False, (
+                "Force/moment animation cannot use a deformation overlay with a separate node scope."
             )
 
         # Steady-state dependency
@@ -1381,10 +1483,28 @@ class SolverAnalysisHandler:
             # Deformation usage for RAM estimate
             compute_deformation_anim = params.get('compute_deformation_anim', False)
 
-            # RAM check - use the largest node set that will be processed
-            num_nodes = self.tab.stress_data.num_nodes if self.tab.stress_data else 0
-            if params.get('compute_force_moment', False) and self.tab.force_moment_data:
-                num_nodes = max(num_nodes, self.tab.force_moment_data.num_nodes)
+            is_stress_anim = any([
+                params.get('compute_von_mises', False),
+                params.get('compute_max_principal', False),
+                params.get('compute_min_principal', False),
+            ])
+            is_kinematic_anim = any([
+                params.get('compute_deformation_contour', False),
+                params.get('compute_velocity', False),
+                params.get('compute_acceleration', False),
+            ])
+
+            if params.get('compute_force_moment', False):
+                primary_data = self.tab.force_moment_data
+            elif is_stress_anim:
+                primary_data = self.tab.stress_data
+            elif is_kinematic_anim or compute_deformation_anim:
+                primary_data = self.tab.deformation_data
+            else:
+                primary_data = self.tab.stress_data or self.tab.deformation_data
+
+            # RAM check uses the node owner for the selected output.
+            num_nodes = primary_data.num_nodes if primary_data is not None else 0
             estimated_gb = display_tab._estimate_animation_ram(
                 num_nodes, num_anim_steps, compute_deformation_anim
             )
@@ -1424,7 +1544,7 @@ class SolverAnalysisHandler:
                 }
 
             modal_deformations_filtered = None
-            if compute_deformation_anim and self.tab.deformation_data:
+            if (compute_deformation_anim or is_kinematic_anim) and self.tab.deformation_data:
                 modal_deformations_filtered = (
                     self.tab.deformation_data.modal_ux[:, mode_slice],
                     self.tab.deformation_data.modal_uy[:, mode_slice],
@@ -1457,7 +1577,11 @@ class SolverAnalysisHandler:
                 modal_sxy=anim_stress_sxy, modal_syz=anim_stress_syz, modal_sxz=anim_stress_sxz,
                 modal_coord=selected_modal_coord,
                 time_values=anim_times,
-                modal_node_ids=self.tab.stress_data.node_ids if self.tab.stress_data else None,
+                modal_node_ids=(
+                    self.tab.stress_data.node_ids
+                    if self.tab.stress_data is not None
+                    else (self.tab.deformation_data.node_ids if self.tab.deformation_data is not None else None)
+                ),
                 modal_deformations=modal_deformations_filtered,
                 modal_force_moment=modal_fm_anim,
                 force_moment_node_ids=fm_node_ids_anim,
@@ -1466,17 +1590,8 @@ class SolverAnalysisHandler:
             )
 
             # Only compute stresses if stress-based outputs are selected and data is available
-            is_stress_anim = any([
-                params.get('compute_von_mises', False),
-                params.get('compute_max_principal', False),
-                params.get('compute_min_principal', False),
-            ])
             actual_sx = actual_sy = actual_sz = actual_sxy = actual_syz = actual_sxz = None
-            if self.tab.stress_data and (is_stress_anim or any([
-                params.get('compute_deformation_contour', False),
-                params.get('compute_velocity', False),
-                params.get('compute_acceleration', False),
-            ])):
+            if self.tab.stress_data and is_stress_anim:
                 print("Computing normal stresses for animation...")
                 actual_sx, actual_sy, actual_sz, actual_sxy, actual_syz, actual_sxz = \
                     temp_solver.compute_normal_stresses(0, num_nodes)
@@ -1537,14 +1652,20 @@ class SolverAnalysisHandler:
 
             # Compute deformed coordinates if requested
             precomputed_coords = None
-            if compute_deformation_anim and self.tab.deformation_data and self.tab.stress_data and num_nodes > 0:
+            if compute_deformation_anim and self.tab.deformation_data and num_nodes > 0:
                 print("Computing deformations for animation...")
                 deformations = temp_solver.compute_deformations(0, num_nodes)
                 if deformations is not None:
                     ux_anim, uy_anim, uz_anim = deformations
                     scale_factor = params.get('scale_factor', 1.0)
 
-                    original_coords_reshaped = self.tab.stress_data.node_coords[:, :, np.newaxis]
+                    if is_stress_anim and primary_data is not None:
+                        base_coordinates = primary_data.node_coords
+                    else:
+                        base_coordinates = self._deformation_display_coordinates()
+                    if base_coordinates is None:
+                        raise ValueError("Modal result coordinates are required for deformation animation.")
+                    original_coords_reshaped = base_coordinates[:, :, np.newaxis]
                     
                     # Apply zero-referencing based on user preference
                     # By default (show_absolute_deformation=False), animations show relative motion

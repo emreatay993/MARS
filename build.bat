@@ -5,39 +5,7 @@ REM Creates a portable executable that works on different Windows PCs
 REM ============================================================================
 setlocal enabledelayedexpansion
 
-echo.
-echo ============================================================
-echo   MARS - Modal Analysis Response Solver - Build Script
-echo ============================================================
-echo.
-
-REM Check for Python
-where python >nul 2>&1
-if %ERRORLEVEL% NEQ 0 (
-    echo [ERROR] Python not found in PATH. Please install Python 3.10+ and try again.
-    exit /b 1
-)
-
-REM Get Python version
-for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYVER=%%i
-echo [INFO] Found: %PYVER%
-
-REM Check for virtual environment
-if not defined VIRTUAL_ENV (
-    echo [INFO] No virtual environment active.
-    if exist "venv\Scripts\activate.bat" (
-        echo [INFO] Activating existing virtual environment...
-        call venv\Scripts\activate.bat
-    ) else (
-        echo [INFO] Creating new virtual environment...
-        python -m venv venv
-        call venv\Scripts\activate.bat
-    )
-)
-echo [INFO] Virtual environment: %VIRTUAL_ENV%
-echo.
-
-REM Parse command line arguments
+REM Parse command line arguments before touching Python so --help always works.
 set CLEAN_BUILD=0
 set SKIP_DEPS=0
 
@@ -49,6 +17,41 @@ if /i "%~1"=="--help" goto :show_help
 shift
 goto :parse_args
 :done_parsing
+
+echo.
+echo ============================================================
+echo   MARS - Modal Analysis Response Solver - Build Script
+echo ============================================================
+echo.
+
+REM Keep release dependencies separate from the developer's normal venv.
+if not exist "build_venv\Scripts\python.exe" (
+    echo [INFO] Creating dedicated Python 3.12 build environment...
+    where py >nul 2>&1
+    if !ERRORLEVEL! NEQ 0 (
+        echo [ERROR] Python Launcher not found. Install 64-bit Python 3.12.
+        exit /b 1
+    )
+    py -3.12 -m venv build_venv
+    if !ERRORLEVEL! NEQ 0 (
+        echo [ERROR] Could not create the Python 3.12 build environment.
+        exit /b 1
+    )
+)
+call build_venv\Scripts\activate.bat
+
+REM MARS release builds use exactly Python 3.12.
+python -c "import sys; raise SystemExit(0 if sys.version_info[:2] == (3, 12) else 1)"
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] build_venv is not Python 3.12.
+    echo [ERROR] Remove build_venv and rerun this script.
+    exit /b 1
+)
+
+for /f "tokens=*" %%i in ('python --version 2^>^&1') do set PYVER=%%i
+echo [INFO] Found: %PYVER%
+echo [INFO] Virtual environment: %VIRTUAL_ENV%
+echo.
 
 REM Clean previous builds if requested
 if %CLEAN_BUILD%==1 (
@@ -68,7 +71,7 @@ if %SKIP_DEPS%==0 (
     python -m pip install --upgrade pip
     
     echo [INFO] Installing dependencies...
-    pip install -r requirements-portable.txt
+    python -m pip install -r requirements-portable.txt
     
     if %ERRORLEVEL% NEQ 0 (
         echo [ERROR] Failed to install dependencies.
@@ -82,7 +85,7 @@ if %SKIP_DEPS%==0 (
 REM Build with PyInstaller
 echo [INFO] Building executable with PyInstaller...
 echo.
-pyinstaller MARS.spec --noconfirm
+python -m PyInstaller MARS.spec --noconfirm
 if %ERRORLEVEL% NEQ 0 (
     echo [ERROR] PyInstaller build failed.
     exit /b 1

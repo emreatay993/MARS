@@ -89,16 +89,21 @@ legacy/                    # Original code (preserved for reference)
    cd <project-root>
    ```
 
-2. **Create virtual environment** (recommended):
+2. **Create the Python 3.12 virtual environment** (recommended):
    ```bash
-   python -m venv venv
+   py -3.12 -m venv venv
    venv\Scripts\activate  # Windows
    ```
 
 3. **Install dependencies**:
    ```bash
-   pip install -r requirements.txt
+   python -m pip install -r requirements.txt
    ```
+
+   Direct `.rst` loading uses the pinned `ansys-dpf-core==0.16.1` client and
+   requires a compatible installed Ansys DPF runtime from Ansys 2025 R2 or
+   newer. The DPF server is not bundled with MARS. CSV workflows remain
+   available when no compatible Ansys installation is present.
 
 ### Running the Application
 
@@ -127,6 +132,17 @@ pytest tests/ --cov=src --cov-report=html
 pytest tests/test_validators.py -v
 ```
 
+### Building the Windows Application
+
+Release builds use Python 3.12 and the root `MARS.spec`:
+
+```bat
+build.bat --clean
+```
+
+The packaged application includes the PyDPF client modules and client DLLs,
+but discovers the installed Ansys DPF runtime on the target workstation.
+
 ## 📖 Usage Guide
 
 ### Basic Workflow
@@ -137,7 +153,8 @@ pytest tests/test_validators.py -v
 
 2. **Load Input Files** (Main Window tab)
    - Click "Read Modal Coordinate File (.mcf)" → Select .mcf file
-   - Click "Read Modal Stress File (.csv)" → Select stress CSV
+   - Either click "Read Modal Results File (.rst)" and choose the scope/results to import, or continue using the existing modal CSV inputs
+   - For CSV input, click "Read Modal Stress File (.csv)" → Select stress CSV
    - Optional: Check "Include Deformations" → Load deformations CSV
    - Optional: Check "Include Steady-State Stress Field" → Load steady-state TXT
 
@@ -402,6 +419,14 @@ python -m src.main
 ```bash
 pip install -r requirements.txt
 ```
+
+**Direct RST loading is unavailable**:
+- Confirm `ansys-dpf-core==0.16.1` is installed in the Python 3.12 environment.
+- Confirm Ansys 2025 R2 or newer is discoverable through an `AWP_ROOT###`
+  environment variable or standard `ANSYS Inc\v###` directory.
+- MARS can use a newer compatible runtime; it does not require an exact
+  `AWP_ROOT252` match. The workflow is also validated with Ansys 2026 R1.
+- Continue with the existing CSV loaders if an installed DPF runtime is unavailable.
 
 **Memory Errors**:
 - Reduce `RAM_PERCENT` in `utils/constants.py` or via Settings → Advanced menu

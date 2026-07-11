@@ -10,13 +10,13 @@ This guide provides comprehensive testing procedures for MARS (the refactored MS
 
 ```bash
 # Run all tests
-pytest tests/ -v
+py -3.12 -m pytest tests/ -v
 
 # Run specific test file
-pytest tests/test_validators.py -v
+py -3.12 -m pytest tests/test_validators.py -v
 
 # Run with coverage
-pytest tests/ --cov=src --cov-report=html
+py -3.12 -m pytest tests/ --cov=src --cov-report=html
 ```
 
 ### Test Coverage
@@ -39,6 +39,25 @@ pytest tests/ --cov=src --cov-report=html
 ```bash
 pytest tests/test_solver_single_node_time_axis.py tests/test_display_handlers_regressions.py -v
 ```
+
+### Direct RST Tests
+
+The fast RST service tests use fake DPF objects and must run without an Ansys
+installation. Real-file verification is environment-gated and is never part of
+ordinary test collection:
+
+```powershell
+$env:MARS_TEST_MODAL_RST = 'C:\trusted-2025R2-or-newer-case\file.rst'
+$env:MARS_TEST_MODAL_GOLDEN_DIR = 'C:\trusted-2025R2-or-newer-case'
+# Optional when the trusted exports use a named selection:
+$env:MARS_TEST_MODAL_SCOPE = 'MY_NAMED_SELECTION'
+py -3.12 -m pytest tests\test_rst_integration.py -v
+```
+
+The real fixture must come from a trusted Ansys 2025 R2 or newer workflow and
+have matching trusted CSV exports. Compare NodeIDs and mode order exactly and
+numeric arrays with `rtol=1e-5`. The local compatibility acceptance run uses
+the installed Ansys 2026 R1 DPF runtime. Do not commit a large binary RST.
 
 ### Adding New Tests
 

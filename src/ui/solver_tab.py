@@ -28,7 +28,7 @@ from core.data_models import (
     ModalData, ModalStressData, DeformationData,
     ElementNodalForceMomentData,
     SteadyStateData, TemperatureFieldData, MaterialProfileData,
-    SolverConfig
+    SolverConfig, validate_modal_input_contracts,
 )
 from utils.node_utils import get_node_index_from_id
 
@@ -123,6 +123,8 @@ class SolverTab(QWidget):
         # File controls
         self.coord_file_button = self.components['coord_file_button']
         self.coord_file_path = self.components['coord_file_path']
+        self.rst_file_button = self.components['rst_file_button']
+        self.rst_file_path = self.components['rst_file_path']
         self.stress_file_button = self.components['stress_file_button']
         self.stress_file_path = self.components['stress_file_path']
         self.steady_state_checkbox = self.components['steady_state_checkbox']
@@ -213,6 +215,7 @@ class SolverTab(QWidget):
         """Connect UI signals to their handlers."""
         # File loading
         self.coord_file_button.clicked.connect(self.file_handler.select_coord_file)
+        self.rst_file_button.clicked.connect(self.file_handler.select_modal_rst)
         self.stress_file_button.clicked.connect(self.file_handler.select_stress_file)
         self.deformations_file_button.clicked.connect(self.file_handler.select_deformations_file)
         self.force_moment_file_button.clicked.connect(self.file_handler.select_force_moment_file)
@@ -319,6 +322,7 @@ class SolverTab(QWidget):
         self.ui_handler._show_modal_coords_tab()
 
         # 6. Update all other UI states
+        self.rst_file_button.setEnabled(True)
         self.ui_handler.update_output_checkboxes_state()
         self.ui_handler._update_solve_button_state()
 
@@ -379,6 +383,63 @@ class SolverTab(QWidget):
         """Handle UI updates when force/moment file fails to load."""
         self.ui_handler.update_output_checkboxes_state()
 
+    def on_modal_rst_loaded(self, bundle, filename):
+        """Atomically replace modal field datasets with one imported RST bundle."""
+        validate_modal_input_contracts(
+            self.modal_data,
+            bundle.stress_data,
+            bundle.deformation_data,
+            bundle.force_moment_data,
+        )
+        # Commit the complete bundle before emitting widget signals. Inspection,
+        # cancellation, and extraction failures never reach this callback.
+        self.stress_data = bundle.stress_data
+        self.deformation_data = bundle.deformation_data
+        self.force_moment_data = bundle.force_moment_data
+        self.stress_loaded = self.stress_data is not None
+        self.deformation_loaded = self.deformation_data is not None
+        self.force_moment_loaded = self.force_moment_data is not None
+
+        self.rst_file_path.setText(filename)
+        self.stress_file_path.setText(filename if self.stress_loaded else "")
+
+        # These existing inclusion switches continue to gate their output groups.
+        # Let their normal signals update visibility and dependent states.
+        self.deformations_checkbox.setChecked(self.deformation_loaded)
+        self.force_moment_checkbox.setChecked(self.force_moment_loaded)
+        self.deformations_file_path.setText(filename if self.deformation_loaded else "")
+        self.force_moment_file_path.setText(filename if self.force_moment_loaded else "")
+
+        # Results from the prior modal-field bundle are no longer valid.
+        self.analysis_engine.reset()
+        self.plot_single_node_tab.clear_plot()
+        self.ui_handler._hide_plot_tabs()
+        self.ui_handler._show_modal_coords_tab()
+        try:
+            display_tab = self.window().display_tab
+            display_tab._clear_visualization()
+        except (AttributeError, RuntimeError):
+            pass
+
+        self.ui_handler._update_skip_modes_combo(self.modal_data.num_modes)
+        self.ui_handler.update_output_checkboxes_state()
+        self.ui_handler._update_solve_button_state()
+
+        loaded_names = []
+        if self.stress_loaded:
+            loaded_names.append("stress")
+        if self.deformation_loaded:
+            loaded_names.append("deformation")
+        if self.force_moment_loaded:
+            loaded_names.append("force/moment")
+        self.console_textbox.append(
+            f"✓ Modal RST imported ({', '.join(loaded_names)}) from {filename}\n"
+        )
+        for warning in bundle.warnings or ():
+            self.console_textbox.append(f"RST warning: {warning}\n")
+
+        self._check_and_emit_initial_data()
+
     def on_steady_state_file_loaded(self, steady_data, filename):
         """Handle all UI and state updates after a steady-state file is loaded."""
         # 1. Log
@@ -393,12 +454,16 @@ class SolverTab(QWidget):
         # Determine best node coords/IDs from whichever dataset is loaded
         node_coords = None
         node_ids = None
-        if self.stress_data is not None:
-            node_coords = self.stress_data.node_coords
-            node_ids = self.stress_data.node_ids
-        elif self.force_moment_data is not None:
-            node_coords = self.force_moment_data.node_coords
-            node_ids = self.force_moment_data.node_ids
+        for data_source in (
+            self.stress_data,
+            self.deformation_data,
+            self.force_moment_data,
+        ):
+            if data_source is None or getattr(data_source, 'node_coords', None) is None:
+                continue
+            node_coords = data_source.node_coords
+            node_ids = data_source.node_ids
+            break
 
         if node_coords is not None:
             initial_data = (
@@ -476,6 +541,12 @@ class SolverTab(QWidget):
             self.stress_data is not None and
             get_node_index_from_id(node_id, self.stress_data.node_ids, log_missing=False) is not None
         )
+        node_in_deformation = bool(
+            self.deformation_data is not None and
+            get_node_index_from_id(
+                node_id, self.deformation_data.node_ids, log_missing=False
+            ) is not None
+        )
         node_in_force_moment = bool(
             self.force_moment_data is not None and
             get_node_index_from_id(node_id, self.force_moment_data.node_ids, log_missing=False) is not None
@@ -492,6 +563,7 @@ class SolverTab(QWidget):
         }
 
         selected = [name for name, is_checked in outputs.items() if is_checked]
+        needs_deformation = any(outputs[name] for name in ['Deformation', 'Velocity', 'Acceleration'])
 
         if not selected:
             QMessageBox.warning(self, "No Output Selected",
@@ -510,12 +582,15 @@ class SolverTab(QWidget):
         if outputs.get('Element Nodal Forces & Moments') and not node_in_force_moment:
             QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in force/moment data.")
             return
-        if not outputs.get('Element Nodal Forces & Moments'):
-            if not node_in_stress:
-                QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in loaded data.")
-                return
+        if needs_deformation and not node_in_deformation:
+            QMessageBox.warning(
+                self, "Node Not Found", f"Node ID {node_id} not found in deformation data."
+            )
+            return
+        if not outputs.get('Element Nodal Forces & Moments') and not needs_deformation and not node_in_stress:
+            QMessageBox.warning(self, "Node Not Found", f"Node ID {node_id} not found in stress data.")
+            return
 
-        needs_deformation = any(outputs[name] for name in ['Deformation', 'Velocity', 'Acceleration'])
         if needs_deformation and not self.deformation_loaded:
             QMessageBox.warning(
                 self,

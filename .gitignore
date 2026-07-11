@@ -6,4 +6,5 @@
 /build/
 /venv_old/
 /venv/
+/build_venv/
 /src/ui/handlers/*.dat

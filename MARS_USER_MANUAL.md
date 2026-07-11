@@ -49,16 +49,17 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 
 ### Prerequisites
 
-- **Python**: Version 3.10 or higher
+- **Python**: Version 3.12 for source use and release builds
 - **Operating System**: Windows 10/11 (primary), Linux/macOS (compatible)
 - **RAM**: Minimum 8 GB; 16+ GB recommended for large models
 - **Optional (MP4 export)**: `ffmpeg` available on PATH
+- **Optional (direct RST import)**: Ansys 2025 R2 or newer with a compatible installed DPF runtime. The licensed DPF server is not bundled with MARS; CSV workflows do not require it.
 
 ### Installation Steps
 
 1. **Create a virtual environment**:
    ```bash
-   python -m venv .venv
+   py -3.12 -m venv .venv
    ```
 
 2. **Activate the virtual environment**:
@@ -67,7 +68,7 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 
 3. **Install dependencies**:
    ```bash
-   pip install -r requirements.txt
+   python -m pip install -r requirements.txt
    ```
 
 4. **Launch MARS**:
@@ -83,11 +84,14 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 
 From the project root:
 
-```bash
-pyinstaller MARS.spec
+```bat
+build.bat --clean
 ```
 
-This spec is configured for GUI distribution (`console=False`, `upx=False`) and includes required Qt/VTK/PyVista/Plotly imports and bundled resources.
+This invokes the root `MARS.spec` with Python 3.12. The specification includes
+the PyDPF client modules, package metadata, and client DLLs, but does not bundle
+the licensed Ansys DPF server. At runtime MARS discovers a compatible installed
+Ansys 2025 R2 or newer runtime; local validation also covers Ansys 2026 R1.
 
 [**Image Placeholder**: Terminal showing successful launch of MARS application]
 
@@ -148,6 +152,7 @@ The Navigator displays only these file types:
 |-----------|-------------|
 | `.mcf` | Modal Coordinate Files |
 | `.pch` | NASTRAN punch modal coordinates (supported via file dialog; not shown in Navigator) |
+| `.rst` | Ansys modal result file for direct DPF import |
 | `.csv` | Modal Stress, Deformation, Element Nodal Forces & Moments |
 | `.txt` | Steady-State Stress, Temperature Field |
 
@@ -205,7 +210,38 @@ Time  Mode1     Mode2     Mode3
 
 ---
 
-## Chapter 6 – Loading Modal Stress Files (.csv)
+## Chapter 6 – Loading Modal Results (.rst / .csv)
+
+MARS can populate modal stress, modal deformation, and combined element-nodal
+force/moment data directly from an Ansys modal `.rst`, while preserving every
+existing CSV loader.
+
+### Direct RST Loading Procedure
+
+1. Load the modal coordinate `.mcf` or `.pch` first; its mode count determines how many RST modal sets are imported.
+2. Click **Read Modal Results File (.rst)** and select the result file.
+3. Review the ordered modal sets/frequencies and any warning that extra RST modes will be ignored.
+4. Choose **All result-support nodes** or a valid named selection.
+5. Select any advertised result types: six-component stress, deformation, and/or the paired force-and-moment result.
+6. For shell stress, choose **Top**, **Bottom**, or **Mid**; Top is the default and layers are never synthetically combined.
+7. Confirm the dialog. Inspection and extraction run outside the GUI thread, and the imported datasets are applied together only after extraction succeeds.
+
+Direct RST loading requires `ansys-dpf-core==0.16.1` plus a compatible installed
+Ansys DPF runtime from Ansys 2025 R2 or newer. MARS discovers compatible
+`AWP_ROOT###` and standard `ANSYS Inc\v###` installations rather than requiring
+an exact `AWP_ROOT252`. The workflow has also been validated locally against
+Ansys 2026 R1. If no compatible runtime is installed, use the unchanged CSV
+workflows below.
+
+### RST Result and Unit Policy
+
+- Stress is imported as averaged nodal global Cartesian `XX, YY, ZZ, XY, YZ, XZ` and normalized to MPa.
+- Deformation is imported as global nodal `UX, UY, UZ` and normalized to mm.
+- Element-nodal force and moment are imported only as a complete pair, reduced to common nodes, and normalized to N and N·mm.
+- Named selections may contain unsupported entities; MARS imports only the stable node support that exists for every selected modal set.
+- RST modal sets map in stored order to the modal-coordinate rows. Files with too few modal sets are rejected; extra sets are ignored with a warning.
+
+### Existing Modal Stress CSV Workflow
 
 The modal stress file contains stress tensors for each mode at every node in your model.
 
@@ -1378,6 +1414,9 @@ This chapter provides solutions to common issues encountered while using MARS.
 | File won't load | File encoding issue | Re-save as UTF-8 CSV |
 | NodeID mismatch | Different node sets | Ensure same nodes in all files |
 | `.pch` not visible in Navigator | File filter excludes .pch | Use **Read Modal Coordinate File (.mcf / .pch)** button |
+| Direct `.rst` loading unavailable | PyDPF client or compatible installed runtime missing | Install the pinned dependencies and Ansys 2025 R2 or newer, or use the existing CSV loaders |
+| RST reports too few modes | Result file has fewer modal sets than the loaded coordinates | Use a matching modal result file or reduce the coordinate mode count at its source |
+| Named selection not offered | No supported result has a stable non-empty node intersection across all imported modes | Choose All result-support nodes or another named selection |
 
 ### Solver Issues
 
@@ -1453,6 +1492,25 @@ Time  Mode1  Mode2  Mode3 ... ModeN
 - SDISPLACEMENT output with **(SOLUTION SET)** markers
 - `$POINT ID` mode identifiers and modal point lines with **M** markers
 - Consistent time vector across modes
+
+---
+
+### Modal Results File (.rst)
+
+**Purpose**: Populate one or more currently solvable modal datasets directly
+from an Ansys modal result file.
+
+**Runtime**: `ansys-dpf-core==0.16.1` and a compatible installed Ansys 2025 R2
+or newer DPF runtime. The DPF server is external to the MARS package.
+
+**Supported normalized outputs**:
+- Global averaged-nodal stress: MPa, ordered `XX, YY, ZZ, XY, YZ, XZ`
+- Global nodal deformation: mm, ordered `UX, UY, UZ`
+- Paired element-nodal force/moment: N and N·mm
+
+**Scoping**: All result-support nodes or a named selection with stable valid
+support across all imported modes. Shell stress uses one explicit Top, Bottom,
+or Mid layer.
 
 ---
 

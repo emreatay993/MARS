@@ -27,6 +27,25 @@ COORD_FILE_BUTTON = (
 
 COORD_FILE_PATH = "Path to the currently loaded modal coordinate file."
 
+RST_FILE_BUTTON = (
+    "<b>Modal Results File</b><br>"
+    "<hr>"
+    "Imports supported modal datasets directly from an Ansys .rst file:<br>"
+    "<ul style='margin-top: 2px; margin-bottom: 0;'>"
+    "<li>Six-component averaged-nodal stress (MPa)</li>"
+    "<li>Nodal deformation (mm)</li>"
+    "<li>Paired element-nodal force and moment (N and N&middot;mm)</li>"
+    "</ul>"
+    "<br>Load the modal coordinate .mcf/.pch first. You can then choose All "
+    "result-support nodes or a valid named selection, the result types to "
+    "import, and an explicit shell layer when applicable.<br><br>"
+    "Requires ansys-dpf-core 0.16.1 and a compatible installed Ansys 2025 R2 "
+    "or newer DPF runtime. The DPF server is not bundled with MARS; existing "
+    "CSV workflows remain available without it."
+)
+
+RST_FILE_PATH = "Path to the currently loaded Ansys modal results file."
+
 STRESS_FILE_BUTTON = (
     "<b>Modal Stress File</b><br>"
     "<hr>"
@@ -105,7 +124,8 @@ DEFORMATIONS_CHECKBOX = (
     "<li>Acceleration (second time derivative)</li>"
     "<li>Deformed shape visualization and animation</li>"
     "</ul>"
-    "<br>Requires a CSV with the same node set as the stress file."
+    "<br>Can be populated from a deformation CSV or direct RST import. When "
+    "stress and deformation are both present, their node ordering must align."
 )
 
 DEFORMATIONS_FILE_BUTTON = (
@@ -116,7 +136,8 @@ DEFORMATIONS_FILE_BUTTON = (
     "<b>Example header:</b><br>"
     "<pre style='font-family: Consolas; font-size: 8pt; margin: 4px 0 0 0;'>"
     "NodeID, X, Y, Z, ux_Mode1, uy_Mode1, uz_Mode1, ..., uz_ModeN</pre>"
-    "<br>Node IDs should match the modal stress file."
+    "<br>When stress and deformation are both loaded, Node IDs and ordering "
+    "must match. Deformation-only analyses do not require a stress file."
 )
 
 DEFORMATIONS_FILE_PATH = "Path to the currently loaded modal deformations file."

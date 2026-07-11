@@ -6,7 +6,7 @@ loading data using the file_io.loaders, and updating the SolverTab's
 state and UI components.
 """
 
-from PyQt5.QtWidgets import QFileDialog, QMessageBox, QApplication
+from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 # Import your existing loaders
@@ -15,6 +15,8 @@ from file_io.loaders import (
     load_modal_deformations, load_element_nodal_forces_moments,
     load_steady_state_stress, load_temperature_field
 )
+from file_io.rst_service import inspect_modal_rst, load_modal_rst
+from ui.dialogs.rst_import_dialog import RstImportDialog
 
 
 class FileLoaderThread(QThread):
@@ -24,23 +26,25 @@ class FileLoaderThread(QThread):
     finished = pyqtSignal(object)  # Emits loaded data
     error = pyqtSignal(str)  # Emits error message
     
-    def __init__(self, loader_func, filename):
+    def __init__(self, loader_func, *args, **kwargs):
         """
         Initialize the loader thread.
         
         Args:
             loader_func: Function to call for loading (e.g., load_modal_stress)
-            filename: Path to file to load
+            *args: Positional arguments passed to the loader.
+            **kwargs: Keyword arguments passed to the loader.
         """
         super().__init__()
         self.loader_func = loader_func
-        self.filename = filename
+        self.args = args
+        self.kwargs = kwargs
     
     def run(self):
         """Run the loader in background thread."""
         try:
             # Process Qt events to allow console updates
-            data = self.loader_func(self.filename)
+            data = self.loader_func(*self.args, **self.kwargs)
             self.finished.emit(data)
         except Exception as e:
             self.error.emit(str(e))
@@ -57,6 +61,83 @@ class SolverFileHandler:
             tab (SolverTab): The parent SolverTab instance.
         """
         self.tab = tab
+
+    # --- Ansys Modal Results File ---
+
+    def select_modal_rst(self, checked=False):
+        """Inspect an RST, collect import options, then load selected result fields."""
+        if not self.tab.coord_loaded or self.tab.modal_data is None:
+            QMessageBox.warning(
+                self.tab,
+                "Modal Coordinates Required",
+                "Load the MCF/PCH modal coordinate file before importing an RST file.",
+            )
+            return
+
+        filename, _ = QFileDialog.getOpenFileName(
+            self.tab,
+            "Open Modal Results File",
+            "",
+            "Ansys Result Files (*.rst);;All Files (*)",
+        )
+        if filename:
+            self._inspect_modal_rst(filename)
+
+    def _inspect_modal_rst(self, filename):
+        self.tab.setEnabled(False)
+        self.tab.console_textbox.append("⏳ Inspecting modal RST in background...\n")
+        self.rst_inspection_thread = FileLoaderThread(
+            inspect_modal_rst,
+            filename,
+            self.tab.modal_data.num_modes,
+        )
+        self.rst_inspection_thread.finished.connect(
+            lambda metadata: self._on_rst_inspected(metadata, filename)
+        )
+        self.rst_inspection_thread.error.connect(self._on_rst_inspection_error)
+        self.rst_inspection_thread.start()
+
+    def _on_rst_inspected(self, metadata, filename):
+        self.tab.setEnabled(True)
+        dialog = RstImportDialog(metadata, self.tab)
+        if dialog.exec_() != QDialog.Accepted:
+            return
+        self._load_modal_rst(filename, dialog.get_options())
+
+    def _on_rst_inspection_error(self, error):
+        self.tab.setEnabled(True)
+        QMessageBox.warning(
+            self.tab,
+            "RST Inspection Failed",
+            f"The selected modal RST could not be inspected.\n\n{error}\n\n"
+            "Direct RST import requires ansys-dpf-core 0.16.1 and a compatible "
+            "installed Ansys 2025 R2 or newer DPF runtime.",
+        )
+
+    def _load_modal_rst(self, filename, options):
+        self.tab.setEnabled(False)
+        self.tab.console_textbox.append("⏳ Loading selected modal RST results in background...\n")
+        self.rst_loader_thread = FileLoaderThread(load_modal_rst, filename, options)
+        self.rst_loader_thread.finished.connect(
+            lambda bundle: self._on_rst_loaded(bundle, filename)
+        )
+        self.rst_loader_thread.error.connect(self._on_rst_load_error)
+        self.rst_loader_thread.start()
+
+    def _on_rst_loaded(self, bundle, filename):
+        self.tab.setEnabled(True)
+        try:
+            self.tab.on_modal_rst_loaded(bundle, filename)
+        except Exception as exc:
+            self._on_rst_load_error(str(exc))
+
+    def _on_rst_load_error(self, error):
+        self.tab.setEnabled(True)
+        QMessageBox.warning(
+            self.tab,
+            "RST Import Failed",
+            f"No existing modal result data was changed.\n\nError: {error}",
+        )
 
     # --- Modal Coordinate File ---
 

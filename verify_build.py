@@ -13,7 +13,9 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import importlib.metadata
 import os
+import re
 import sys
 from pathlib import Path
 
@@ -49,13 +51,100 @@ def print_status(name: str, status: bool, details: str = "") -> None:
 def check_python() -> bool:
     """Check Python version."""
     version = sys.version_info
-    ok = version >= (3, 9)
+    ok = version[:2] == (3, 12)
     print_status(
         f"Python {version.major}.{version.minor}.{version.micro}",
         ok,
-        "Requires Python 3.9+" if not ok else ""
+        "Release builds require Python 3.12" if not ok else ""
     )
     return ok
+
+
+def _discover_ansys_dpf_runtimes() -> list[tuple[int, Path]]:
+    """Return installed Ansys 2025 R2+ roots in newest-first order."""
+    candidates: dict[int, Path] = {}
+    for name, value in os.environ.items():
+        match = re.fullmatch(r"AWP_ROOT(\d{3})", name.upper())
+        if match and int(match.group(1)) >= 252 and Path(value).is_dir():
+            candidates[int(match.group(1))] = Path(value)
+
+    program_files = Path(os.environ.get("PROGRAMFILES", r"C:\Program Files"))
+    ansys_root = program_files / "ANSYS Inc"
+    if ansys_root.is_dir():
+        for path in ansys_root.glob("v[0-9][0-9][0-9]"):
+            try:
+                release = int(path.name[1:])
+            except ValueError:
+                continue
+            if release >= 252:
+                candidates.setdefault(release, path)
+
+    return sorted(candidates.items(), reverse=True)
+
+
+def check_dpf_environment(validate_server: bool = False) -> bool:
+    """Report whether direct RST loading dependencies are available."""
+    try:
+        client_version = importlib.metadata.version("ansys-dpf-core")
+    except importlib.metadata.PackageNotFoundError:
+        print_status(
+            "Ansys DPF RST support",
+            False,
+            "ansys-dpf-core is not installed; CSV workflows remain available",
+        )
+        return False
+
+    client_ok = client_version == "0.16.1"
+    print_status(
+        "ansys-dpf-core",
+        client_ok,
+        f"v{client_version}; expected v0.16.1" if not client_ok else f"v{client_version}",
+    )
+
+    runtimes = _discover_ansys_dpf_runtimes()
+    if runtimes:
+        release, path = runtimes[0]
+        print_status(
+            "Compatible installed DPF runtime",
+            True,
+            f"Ansys v{release}: {path}",
+        )
+    else:
+        print_status(
+            "Compatible installed DPF runtime",
+            False,
+            "Install Ansys 2025 R2 or newer for direct .rst loading; CSV workflows remain available",
+        )
+    runtime_ok = bool(runtimes)
+    server_ok = True
+    if validate_server and client_ok and runtime_ok:
+        server = None
+        try:
+            import ansys.dpf.core as dpf
+
+            server = dpf.start_local_server(
+                as_global=False,
+                use_docker_by_default=False,
+                use_pypim_by_default=False,
+                timeout=60.0,
+            )
+            server_ok = bool(server.meet_version("10.0"))
+            print_status(
+                "DPF server startup",
+                server_ok,
+                f"server v{server.version}; requires v10.0 or newer",
+            )
+        except Exception as exc:
+            server_ok = False
+            print_status("DPF server startup", False, str(exc))
+        finally:
+            if server is not None:
+                try:
+                    server.shutdown()
+                except Exception:
+                    pass
+
+    return client_ok and runtime_ok and server_ok
 
 
 def check_import(module_name: str, display_name: str = None) -> bool:
@@ -155,6 +244,12 @@ def main():
     check_import("h5py", "h5py")
     check_import("meshio", "meshio")
     check_import("plotly", "Plotly")
+
+    # Direct RST support is optional for CSV-only use, but required by --full.
+    print_header("Ansys DPF RST Support")
+    dpf_ready = check_dpf_environment(validate_server=args.full)
+    if args.full:
+        all_ok &= dpf_ready
     
     # Application modules
     print_header("Application Modules")

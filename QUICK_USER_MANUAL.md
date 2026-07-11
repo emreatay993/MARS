@@ -6,17 +6,18 @@ This guide condenses the end-to-end workflow for experienced analysts who need a
 
 ## 1. Prerequisites
 
-- Python 3.10+ with libraries from `requirements.txt`.
-- Modal coordinate file (`.mcf`), modal stress CSV, optional deformation CSV, optional steady-state TXT.
+- Python 3.12 with libraries from `requirements.txt`.
+- Modal coordinate file (`.mcf`/`.pch`) plus either a modal `.rst` or the existing modal CSV inputs.
+- Direct `.rst` loading additionally requires a compatible installed Ansys 2025 R2 or newer DPF runtime; CSV workflows do not.
 
 ---
 
 ## 2. Launch Checklist
 
 ```bash
-python -m venv .venv
+py -3.12 -m venv .venv
 source .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+python -m pip install -r requirements.txt
 python -m src.main
 ```
 
@@ -28,7 +29,7 @@ Confirm the main window shows **Main Window** and **Display** tabs, and the Navi
 
 1. **Set Project Directory**: `File → Select Project Directory` or use Navigator.
 2. **Load Modal Coordinates**: Solver tab → *Read Modal Coordinate File (.mcf)*.
-3. **Load Modal Stress**: Solver tab → *Read Modal Stress File (.csv)*.
+3. **Load Modal Results**: Use *Read Modal Results File (.rst)* to select scope and available result types, or continue with *Read Modal Stress File (.csv)* and the existing optional CSV loaders.
 4. *(Optional)* **Load Steady-State**: Check *Include Steady-State* → pick tab-delimited `.txt` with `Node Number` and `SX/SY/SZ/SXY/SYZ/SXZ` columns (also supports ANSYS Mechanical Vector Principal Stress text exports when exported with duplicate removal, node numbers/location, and tensor components enabled).
 5. *(Optional)* **Load Deformations**: Check *Include Deformations* → pick `.csv`.
 6. **Choose Outputs**: Select Von Mises / principal stress / deformation / velocity / acceleration / damage.
@@ -81,12 +82,14 @@ RAM/precision changes apply on next SOLVE. Use defaults unless experiencing perf
 
 Use the root `MARS.spec` file:
 
-```bash
-pyinstaller MARS.spec
+```bat
+build.bat --clean
 ```
 
 Notes:
 - The spec includes required hooks/hidden imports for PyQt5, VTK/PyVista, Plotly, and plotly-resampler.
+- It packages `ansys-dpf-core==0.16.1`, its metadata, and its client DLLs. The licensed DPF server remains external.
+- At runtime MARS discovers compatible Ansys 2025 R2 or newer installations; an exact `AWP_ROOT252` is not required, and the workflow is validated locally with Ansys 2026 R1.
 - It packages `resources/` and uses `resources/icons/mars_icon.ico` when available.
 - Build flags are set for desktop release behavior (`console=False`, `upx=False`).
 
@@ -113,6 +116,8 @@ Outputs default to the solver's configured directory; update it before running i
 | Issue | Fix |
 | --- | --- |
 | `Invalid MCF file` | Re-export MCF ensuring `Time` header; delete stale `_unwrapped` file. |
+| Direct `.rst` loading unavailable | Install the pinned Python dependencies and a compatible Ansys 2025 R2 or newer runtime, or use CSV input. |
+| RST has too few modes | Use an RST containing at least as many ordered modal sets as the loaded `.mcf`/`.pch`. |
 | Solver stalls at 0% | Large dataset chunking – wait for progress or reduce outputs. |
 | Blank Display | Load mesh or ensure exported CSV has `Result` column; reset camera. |
 | Time history x-axis shows indices | Re-run with current build; axis now reads from modal coordinate seconds automatically. |

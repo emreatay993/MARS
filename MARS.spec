@@ -2,7 +2,11 @@
 
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import (
+    collect_dynamic_libs,
+    collect_submodules,
+    copy_metadata,
+)
 
 
 PROJECT_ROOT = Path(SPECPATH).resolve()
@@ -22,8 +26,10 @@ def _safe_collect_submodules(package_name):
 datas = [(str(PROJECT_ROOT / "resources"), "resources")]
 if (SRC_DIR / "youngs_modulus.csv").exists():
     datas.append((str(SRC_DIR / "youngs_modulus.csv"), "."))
+datas += copy_metadata("ansys-dpf-core")
+datas += copy_metadata("ansys-tools-common")
 
-binaries = []
+binaries = collect_dynamic_libs("ansys.dpf.gatebin")
 
 hiddenimports = [
     "PyQt5.QtWebChannel",
@@ -39,6 +45,8 @@ hiddenimports = [
     "vtkmodules.all",
 ]
 hiddenimports += _safe_collect_submodules("vtkmodules")
+hiddenimports += collect_submodules("ansys.dpf")
+hiddenimports += collect_submodules("ansys.grpc.dpf")
 hiddenimports = sorted(set(hiddenimports))
 
 excludes = [

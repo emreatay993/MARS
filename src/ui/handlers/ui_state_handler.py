@@ -93,6 +93,7 @@ class SolverUIHandler:
         if not is_checked:
             self.tab.deformations_file_path.clear()
             self.tab.deformation_loaded = False
+            self.tab.deformation_data = None
 
     def toggle_force_moment_inputs(self, is_checked):
         """Show/hide element nodal forces & moments file controls."""
@@ -102,6 +103,7 @@ class SolverUIHandler:
         if not is_checked:
             self.tab.force_moment_file_path.clear()
             self.tab.force_moment_loaded = False
+            self.tab.force_moment_data = None
 
     def toggle_damage_index_checkbox_visibility(self, is_checked=None):
         """Keep damage index checkbox hidden until benchmarking completes."""
@@ -504,6 +506,7 @@ class SolverUIHandler:
         # Check if any data source is loaded that can produce results
         has_any_data = (
             self.tab.stress_loaded or
+            self.tab.deformation_loaded or
             self.tab.force_moment_loaded
         )
         if not has_any_data:

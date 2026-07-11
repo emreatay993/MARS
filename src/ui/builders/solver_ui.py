@@ -53,6 +53,17 @@ class SolverTabUIBuilder:
         coord_file_path.setStyleSheet(READONLY_INPUT_STYLE)
         coord_file_path.setToolTip(tooltips.COORD_FILE_PATH)
 
+        # Modal results file (Ansys DPF)
+        rst_file_button = QPushButton('Read Modal Results File (.rst)')
+        rst_file_button.setStyleSheet(BUTTON_STYLE)
+        rst_file_button.setFont(QFont('Arial', 8))
+        rst_file_button.setEnabled(False)
+        rst_file_button.setToolTip(tooltips.RST_FILE_BUTTON)
+        rst_file_path = QLineEdit()
+        rst_file_path.setReadOnly(True)
+        rst_file_path.setStyleSheet(READONLY_INPUT_STYLE)
+        rst_file_path.setToolTip(tooltips.RST_FILE_PATH)
+
         # Modal Stress File
         stress_file_button = QPushButton('Read Modal Stress File (.csv)')
         stress_file_button.setStyleSheet(BUTTON_STYLE)
@@ -135,21 +146,23 @@ class SolverTabUIBuilder:
         file_layout = QGridLayout()
         file_layout.addWidget(coord_file_button, 0, 0)
         file_layout.addWidget(coord_file_path, 0, 1)
-        file_layout.addWidget(stress_file_button, 1, 0)
-        file_layout.addWidget(stress_file_path, 1, 1)
-        file_layout.addWidget(steady_state_checkbox, 2, 0, 1, 2)
-        file_layout.addWidget(steady_state_file_button, 3, 0)
-        file_layout.addWidget(steady_state_file_path, 3, 1)
-        file_layout.addWidget(deformations_checkbox, 4, 0, 1, 2)
-        file_layout.addWidget(deformations_file_button, 5, 0)
-        file_layout.addWidget(deformations_file_path, 5, 1)
-        file_layout.addWidget(force_moment_checkbox, 6, 0, 1, 2)
-        file_layout.addWidget(force_moment_file_button, 7, 0)
-        file_layout.addWidget(force_moment_file_path, 7, 1)
-        file_layout.addWidget(skip_modes_label, 1, 2)
-        file_layout.addWidget(skip_modes_combo, 1, 3)
-        file_layout.addWidget(skip_last_modes_label, 1, 4)
-        file_layout.addWidget(skip_last_modes_combo, 1, 5)
+        file_layout.addWidget(rst_file_button, 1, 0)
+        file_layout.addWidget(rst_file_path, 1, 1)
+        file_layout.addWidget(stress_file_button, 2, 0)
+        file_layout.addWidget(stress_file_path, 2, 1)
+        file_layout.addWidget(steady_state_checkbox, 3, 0, 1, 2)
+        file_layout.addWidget(steady_state_file_button, 4, 0)
+        file_layout.addWidget(steady_state_file_path, 4, 1)
+        file_layout.addWidget(deformations_checkbox, 5, 0, 1, 2)
+        file_layout.addWidget(deformations_file_button, 6, 0)
+        file_layout.addWidget(deformations_file_path, 6, 1)
+        file_layout.addWidget(force_moment_checkbox, 7, 0, 1, 2)
+        file_layout.addWidget(force_moment_file_button, 8, 0)
+        file_layout.addWidget(force_moment_file_path, 8, 1)
+        file_layout.addWidget(skip_modes_label, 2, 2)
+        file_layout.addWidget(skip_modes_combo, 2, 3)
+        file_layout.addWidget(skip_last_modes_label, 2, 4)
+        file_layout.addWidget(skip_last_modes_combo, 2, 5)
         
         file_group = QGroupBox("Input Files")
         file_group.setStyleSheet(GROUP_BOX_STYLE)
@@ -158,6 +171,8 @@ class SolverTabUIBuilder:
         # Store components for external access
         self.components['coord_file_button'] = coord_file_button
         self.components['coord_file_path'] = coord_file_path
+        self.components['rst_file_button'] = rst_file_button
+        self.components['rst_file_path'] = rst_file_path
         self.components['stress_file_button'] = stress_file_button
         self.components['stress_file_path'] = stress_file_path
         self.components['steady_state_checkbox'] = steady_state_checkbox

@@ -96,3 +96,64 @@ def test_time_point_von_mises_includes_steady_state_in_mesh_and_csv(tmp_path):
     assert list(exported.columns) == ["NodeID", "X", "Y", "Z", "SVM (MPa)"]
     np.testing.assert_array_equal(exported["NodeID"].to_numpy(), node_ids)
     np.testing.assert_allclose(exported["SVM (MPa)"].to_numpy(), expected_svm)
+
+
+def test_time_point_deformation_uses_deformation_owned_nodes_without_stress():
+    node_ids = np.array([7, 9])
+    modal_ux = np.array([[2.0], [3.0]])
+    zeros = np.zeros_like(modal_ux)
+    coords = np.array([[0.0, 0.0, 0.0], [5.0, 0.0, 0.0]])
+    tab = SimpleNamespace(
+        coord_loaded=True,
+        stress_loaded=False,
+        deformation_loaded=True,
+        force_moment_loaded=False,
+        modal_data=SimpleNamespace(
+            time_values=np.array([0.0, 1.0]),
+            modal_coord=np.array([[0.0, 2.0]]),
+            num_modes=1,
+            num_time_points=2,
+        ),
+        stress_data=None,
+        deformation_data=SimpleNamespace(
+            modal_ux=modal_ux,
+            modal_uy=zeros,
+            modal_uz=zeros,
+            node_ids=node_ids,
+            node_coords=coords,
+            num_nodes=2,
+        ),
+        force_moment_data=None,
+        steady_state_data=None,
+        time_point_result_ready=_CaptureSignal(),
+    )
+
+    SolverAnalysisHandler(tab).perform_time_point_calculation(
+        selected_time=1.0,
+        options={
+            "compute_deformation_contour": True,
+            "skip_n_modes": 0,
+            "skip_last_n_modes": 0,
+            "scale_factor": 1.0,
+        },
+    )
+
+    mesh, display_name, data_min, data_max = tab.time_point_result_ready.args
+    assert display_name == "Deformation (mm)"
+    np.testing.assert_array_equal(mesh["NodeID"], node_ids)
+    np.testing.assert_allclose(mesh[display_name], [4.0, 6.0])
+    assert data_min == 4.0
+    assert data_max == 6.0
+
+
+def test_deformation_display_coordinates_fall_back_to_aligned_stress_csv():
+    node_ids = np.array([1, 2])
+    stress_coords = np.array([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
+    tab = SimpleNamespace(
+        deformation_data=SimpleNamespace(node_ids=node_ids, node_coords=None),
+        stress_data=SimpleNamespace(node_ids=node_ids, node_coords=stress_coords),
+    )
+
+    result = SolverAnalysisHandler(tab)._deformation_display_coordinates()
+
+    np.testing.assert_array_equal(result, stress_coords)

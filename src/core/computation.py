@@ -18,7 +18,8 @@ from core.plasticity import (
 from core.data_models import (
     ModalData, ModalStressData, DeformationData,
     ElementNodalForceMomentData,
-    SteadyStateData, SolverConfig, AnalysisResult, PlasticityConfig
+    SteadyStateData, SolverConfig, AnalysisResult, PlasticityConfig,
+    validate_modal_input_contracts,
 )
 from utils.node_utils import get_node_index_from_id
 
@@ -43,7 +44,7 @@ class AnalysisEngine:
     
     def configure_data(self,
                       modal_data: ModalData,
-                      stress_data: ModalStressData,
+                      stress_data: Optional[ModalStressData],
                       deformation_data: Optional[DeformationData] = None,
                       steady_state_data: Optional[SteadyStateData] = None,
                       force_moment_data: Optional[ElementNodalForceMomentData] = None):
@@ -57,6 +58,12 @@ class AnalysisEngine:
             steady_state_data: Optional steady-state stress data.
             force_moment_data: Optional element nodal force & moment data.
         """
+        validate_modal_input_contracts(
+            modal_data,
+            stress_data,
+            deformation_data,
+            force_moment_data,
+        )
         self.modal_data = modal_data
         self.stress_data = stress_data
         self.deformation_data = deformation_data
@@ -151,7 +158,11 @@ class AnalysisEngine:
             steady_syz=steady_syz,
             steady_sxz=steady_sxz,
             steady_node_ids=steady_node_ids,
-            modal_node_ids=self.stress_data.node_ids if self.stress_data else None,
+            modal_node_ids=(
+                self.stress_data.node_ids
+                if self.stress_data is not None
+                else (self.deformation_data.node_ids if self.deformation_data is not None else None)
+            ),
             output_directory=config.output_directory,
             modal_deformations=modal_deformations,
             modal_force_moment=modal_force_moment,
@@ -183,11 +194,22 @@ class AnalysisEngine:
         if self.solver is None:
             self.solver = self.create_solver(config)
         
+        kinematic_output = any((
+            config.calculate_deformation,
+            config.calculate_velocity,
+            config.calculate_acceleration,
+        ))
+        primary_data = (
+            self.deformation_data
+            if kinematic_output and self.deformation_data is not None
+            else (self.stress_data or self.deformation_data)
+        )
+
         # Run batch processing
         self.solver.process_results_in_batch(
             self.modal_data.time_values,
-            self.stress_data.node_ids if self.stress_data else None,
-            self.stress_data.node_coords if self.stress_data else None,
+            primary_data.node_ids if primary_data is not None else None,
+            primary_data.node_coords if primary_data is not None else None,
             calculate_damage=config.calculate_damage,
             calculate_von_mises=config.calculate_von_mises,
             calculate_max_principal_stress=config.calculate_max_principal_stress,
@@ -213,22 +235,26 @@ class AnalysisEngine:
         if self.solver is None:
             self.solver = self.create_solver(config)
         
-        # For force/moment, look up the node in force/moment node set
+        # Select the node owner from the requested output family.
         if config.calculate_force_moment and self.force_moment_data is not None:
-            node_idx = get_node_index_from_id(node_id, self.force_moment_data.node_ids)
-            if node_idx is None:
-                raise ValueError(f"Node ID {node_id} not found in force/moment data.")
+            primary_data = self.force_moment_data
+        elif any((config.calculate_von_mises, config.calculate_max_principal_stress,
+                  config.calculate_min_principal_stress, config.calculate_damage)):
+            primary_data = self.stress_data
         else:
-            # Get node index from stress data
-            node_idx = get_node_index_from_id(node_id, self.stress_data.node_ids)
-            if node_idx is None:
-                raise ValueError(f"Node ID {node_id} not found.")
+            primary_data = self.deformation_data or self.stress_data
+
+        if primary_data is None:
+            raise ValueError("No loaded modal dataset can produce the selected output.")
+        node_idx = get_node_index_from_id(node_id, primary_data.node_ids)
+        if node_idx is None:
+            raise ValueError(f"Node ID {node_id} not found in the selected result data.")
         
         # Run single-node processing
         time_indices, stress_values, metadata = self.solver.process_results_for_a_single_node(
             node_idx,
             node_id,
-            self.stress_data.node_ids if self.stress_data else None,
+            primary_data.node_ids,
             calculate_von_mises=config.calculate_von_mises,
             calculate_max_principal_stress=config.calculate_max_principal_stress,
             calculate_min_principal_stress=config.calculate_min_principal_stress,
