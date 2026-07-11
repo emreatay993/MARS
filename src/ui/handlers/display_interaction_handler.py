@@ -6,7 +6,6 @@ from typing import Optional
 
 import numpy as np
 import pyvista as pv
-import vtk
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtWidgets import (
     QAction,
@@ -16,6 +15,8 @@ from PyQt5.QtWidgets import (
     QMessageBox,
     QWidgetAction,
 )
+from vtkmodules.vtkCommonDataModel import vtkPolyData
+from vtkmodules.vtkRenderingCore import vtkSelectVisiblePoints
 
 from core.visualization import HotspotDetector
 from ui.handlers.display_base_handler import DisplayBaseHandler
@@ -199,7 +200,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
                 center[2] - size / 2.0, center[2] + size / 2.0,
             ]
         else:
-            box_geometry = vtk.vtkPolyData()
+            box_geometry = vtkPolyData()
             self.state.box_widget.GetPolyData(box_geometry)
             current_bounds = box_geometry.GetBounds()
 
@@ -234,7 +235,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
             )
             return
 
-        selector = vtk.vtkSelectVisiblePoints()
+        selector = vtkSelectVisiblePoints()
         selector.SetInputData(self.tab.current_mesh)
         selector.SetRenderer(self.tab.plotter.renderer)
         selector.Update()
@@ -254,7 +255,7 @@ class DisplayInteractionHandler(DisplayBaseHandler):
         if self.state.box_widget is None or self.tab.current_mesh is None:
             return
 
-        box_geometry = vtk.vtkPolyData()
+        box_geometry = vtkPolyData()
         self.state.box_widget.GetPolyData(box_geometry)
         bounds = box_geometry.GetBounds()
 

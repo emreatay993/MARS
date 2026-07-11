@@ -15,14 +15,6 @@ HOOKS_DIR = PROJECT_ROOT / "hooks"
 ICON_FILE = PROJECT_ROOT / "resources" / "icons" / "mars_icon.ico"
 
 
-def _safe_collect_submodules(package_name):
-    """Collect helper that tolerates missing optional packages."""
-    try:
-        return collect_submodules(package_name)
-    except Exception:
-        return []
-
-
 datas = [(str(PROJECT_ROOT / "resources"), "resources")]
 if (SRC_DIR / "youngs_modulus.csv").exists():
     datas.append((str(SRC_DIR / "youngs_modulus.csv"), "."))
@@ -42,21 +34,29 @@ hiddenimports = [
     "plotly.subplots",
     "plotly_resampler",
     "pyvistaqt",
-    "vtkmodules.all",
 ]
-hiddenimports += _safe_collect_submodules("vtkmodules")
 hiddenimports += collect_submodules("ansys.dpf")
 hiddenimports += collect_submodules("ansys.grpc.dpf")
 hiddenimports = sorted(set(hiddenimports))
 
 excludes = [
+    "PyQt5.Qt",
+    "PyQt5.QtOpenGL",
+    "_tkinter",
     "pytest",
     "scipy._lib.array_api_compat.cupy",
     "scipy._lib.array_api_compat.torch",
     "tensorboard",
+    "tkinter",
     "torch",
     "torchaudio",
     "torchvision",
+    "vtk",
+    "vtkmodules.vtkIOExodus",
+    "vtkmodules.vtkIOExport",
+    "vtkmodules.vtkIOExportGL2PS",
+    "vtkmodules.vtkIOImport",
+    "vtkmodules.vtkIOParallel",
 ]
 
 
@@ -67,7 +67,7 @@ a = Analysis(
     datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[str(HOOKS_DIR)],
-    hooksconfig={},
+    hooksconfig={"matplotlib": {"backends": ["QtAgg", "Agg"]}},
     runtime_hooks=[],
     excludes=excludes,
     noarchive=False,

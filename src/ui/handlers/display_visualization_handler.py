@@ -4,9 +4,9 @@ Visualization updates and rendering helpers for the Display tab.
 
 import time
 import numpy as np
-import vtk
 from PyQt5.QtCore import QTimer
 from PyQt5.QtWidgets import QApplication
+from vtkmodules.vtkRenderingCore import vtkPointPicker
 
 from ui.handlers.display_base_handler import DisplayBaseHandler
 from core.visualization import VisualizationManager
@@ -283,7 +283,7 @@ class DisplayVisualizationHandler(DisplayBaseHandler):
         self.state.hover_annotation = annotation
         self.tab.hover_annotation = annotation
 
-        picker = vtk.vtkPointPicker()
+        picker = vtkPointPicker()
         picker.SetTolerance(0.025)  # 2.5% of window diagonal for better zoom-in tolerance
 
         def hover_callback(obj, _event):
