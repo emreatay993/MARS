@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "mode": "batch",
+  "inputs": {
+    "modal_coordinates": "inputs/response.mcf",
+    "modal_stress": "inputs/modal_stress.csv",
+    "modal_deformation": "inputs/modal_deformation.csv",
+    "steady_state_stress": "inputs/steady_state.txt"
+  },
+  "outputs": [
+    "von_mises",
+    "max_principal",
+    "deformation"
+  ],
+  "settings": {
+    "skip_first_modes": 0,
+    "skip_last_modes": 0
+  },
+  "output_directory": "results"
+}

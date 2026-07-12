@@ -6,7 +6,7 @@ instantiation, configuration, and result processing.
 """
 
 import numpy as np
-from typing import Optional, Tuple
+from typing import Callable, Optional, Tuple
 
 from solver.engine import MSUPSmartSolverTransient, PlasticityRuntimeContext
 from core.plasticity import (
@@ -70,12 +70,17 @@ class AnalysisEngine:
         self.steady_state_data = steady_state_data
         self.force_moment_data = force_moment_data
     
-    def create_solver(self, config: SolverConfig) -> MSUPSmartSolverTransient:
+    def create_solver(
+        self,
+        config: SolverConfig,
+        progress_callback: Optional[Callable[[int], None]] = None,
+    ) -> MSUPSmartSolverTransient:
         """
         Create and configure a solver instance.
         
         Args:
             config: Solver configuration.
+            progress_callback: Optional batch progress observer receiving integer percentages.
         
         Returns:
             MSUPSmartSolverTransient: Configured solver instance.
@@ -167,7 +172,8 @@ class AnalysisEngine:
             modal_deformations=modal_deformations,
             modal_force_moment=modal_force_moment,
             force_moment_node_ids=fm_node_ids,
-            force_moment_node_coords=fm_node_coords
+            force_moment_node_coords=fm_node_coords,
+            progress_callback=progress_callback,
         )
         
         # Set fatigue parameters if damage calculation is enabled

@@ -75,7 +75,7 @@ a = Analysis(
 )
 pyz = PYZ(a.pure)
 
-exe = EXE(
+gui_exe = EXE(
     pyz,
     a.scripts,
     [],
@@ -93,8 +93,27 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+batch_exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="MARSBatch",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    icon=str(ICON_FILE) if ICON_FILE.exists() else None,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
 coll = COLLECT(
-    exe,
+    gui_exe,
+    batch_exe,
     a.binaries,
     a.datas,
     strip=False,

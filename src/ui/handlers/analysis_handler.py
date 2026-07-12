@@ -32,6 +32,7 @@ class SolverThread(QThread):
     # Signals
     finished = pyqtSignal(object, object)  # Emits (result, config)
     error = pyqtSignal(str)  # Emits error message
+    progress = pyqtSignal(int)
     
     def __init__(self, analysis_handler, config):
         """
@@ -52,7 +53,10 @@ class SolverThread(QThread):
             self.analysis_handler._configure_analysis_engine()
             
             # Execute analysis (computation only - no Qt widget operations)
-            result = self.analysis_handler._execute_analysis(self.config)
+            result = self.analysis_handler._execute_analysis(
+                self.config,
+                progress_callback=self.progress.emit,
+            )
             
             # Emit success signal with result and config
             self.finished.emit(result, self.config)
@@ -105,6 +109,7 @@ class SolverAnalysisHandler:
         self.solver_thread = SolverThread(self, config)
         self.solver_thread.finished.connect(self._on_solve_complete)
         self.solver_thread.error.connect(self._on_solve_error)
+        self.solver_thread.progress.connect(self.tab.update_progress_bar)
         self.solver_thread.start()
         
         return None  # Result will be handled in completion callback
@@ -511,25 +516,23 @@ class SolverAnalysisHandler:
             return stress.node_coords
         return None
 
-    def _execute_analysis(self, config):
+    def _execute_analysis(self, config, progress_callback=None):
         """
         Execute ONLY the computation (no UI updates).
         Safe to call from background thread.
 
         Args:
             config: SolverConfig with analysis settings.
+            progress_callback: Optional callback invoked with batch progress percentages.
             
         Returns:
             Result object for time history mode, None for batch mode.
         """
         # Create solver
-        self.tab.analysis_engine.create_solver(config)
-
-        # Connect progress signal (Qt signals are thread-safe)
-        if self.tab.analysis_engine.solver:
-            self.tab.analysis_engine.solver.progress_signal.connect(
-                self.tab.update_progress_bar
-            )
+        self.tab.analysis_engine.create_solver(
+            config,
+            progress_callback=progress_callback,
+        )
 
         # Run analysis (computation only - no Qt widget operations)
         if config.time_history_mode:

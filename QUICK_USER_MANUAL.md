@@ -91,9 +91,30 @@ Notes:
 - It packages `ansys-dpf-core==0.16.1`, its metadata, and its client DLLs. The licensed DPF server remains external.
 - At runtime MARS discovers compatible Ansys 2025 R2 or newer installations; an exact `AWP_ROOT252` is not required, and the workflow is validated locally with Ansys 2026 R1.
 - It packages `resources/` and uses `resources/icons/mars_icon.ico` when available.
-- Build flags are set for desktop release behavior (`console=False`, `upx=False`).
+- Build flags keep `MARS.exe` windowed (`console=False`) and
+  `MARSBatch.exe` console-enabled (`console=True`); both use `upx=False`.
 
-## 8. Plasticity Correction Quick Reference
+## 8. Headless Batch Runs
+
+Define inputs, requested outputs, settings, and the output directory in a JSON
+job file. Relative paths are resolved from the job file's directory.
+
+```powershell
+# Source checkout
+.\venv\Scripts\python.exe src\main.py batch run C:\jobs\mars-job.json
+
+# Packaged release
+.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json
+
+# Machine-readable JSON Lines for another application
+.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json --format json
+```
+
+Batch mode writes the established all-node result CSVs. Time-history mode
+writes one node-specific CSV. See `examples/headless/` for a schema example and
+a Python `subprocess` integration example.
+
+## 9. Plasticity Correction Quick Reference
 
 When enabled:
 - **Methods**: Neuber (faster) or Glinka (conservative). IBG is experimental.
@@ -102,7 +123,7 @@ When enabled:
 - **Diagnostics**: Enable to plot Δεp and εp in Time History mode.
 - **Output**: Produces `corrected_von_mises.csv` and `plastic_strain.csv`.
 
-## 9. Exports at a Glance
+## 10. Exports at a Glance
 
 - **Time Point CSV**: *Save Time Point Results* on Display tab.
 - **APDL IC Commands**: *Extract Initial Conditions* (velocity) and save to file.
@@ -111,7 +132,7 @@ When enabled:
 
 Outputs default to the solver's configured directory; update it before running if required.
 
-## 10. Quick Troubleshooting
+## 11. Quick Troubleshooting
 
 | Issue | Fix |
 | --- | --- |
@@ -130,7 +151,7 @@ Outputs default to the solver's configured directory; update it before running i
 
 Use the console log for diagnostics and re-run after correcting inputs.
 
-## 11. Need More Detail
+## 12. Need More Detail
 
 - **Full walkthrough**: `DETAILED_USER_MANUAL_20_Pages.md`
 - **Algorithm & architecture deep dive**: `DETAILED_THEORY_MANUAL.md`

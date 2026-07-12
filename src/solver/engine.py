@@ -5,15 +5,13 @@ import os
 import time
 import warnings
 from dataclasses import dataclass
-from typing import Optional
+from typing import Callable, Optional
 
 # ---- Third-Party Imports ----
 import psutil
 from numba import njit, prange
 import numpy as np
 import pandas as pd
-from PyQt5.QtCore import QObject, pyqtSignal
-from PyQt5.QtWidgets import QApplication
 
 # ---- Local Imports ----
 import utils.constants as constants
@@ -39,17 +37,16 @@ class PlasticityRuntimeContext:
     default_temperature: float = 22.0
     use_plateau: bool = False
 
-class MSUPSmartSolverTransient(QObject):
-    progress_signal = pyqtSignal(int)
-
+class MSUPSmartSolverTransient:
     def __init__(self, modal_sx=None, modal_sy=None, modal_sz=None,
                  modal_sxy=None, modal_syz=None, modal_sxz=None,
                  modal_coord=None, time_values=None,
                  steady_sx=None, steady_sy=None, steady_sz=None, steady_sxy=None, steady_syz=None, steady_sxz=None,
                  steady_node_ids=None, modal_node_ids=None, output_directory=None, modal_deformations=None,
                  modal_force_moment=None,
-                 force_moment_node_ids=None, force_moment_node_coords=None):
-        super().__init__()
+                 force_moment_node_ids=None, force_moment_node_coords=None,
+                 progress_callback: Optional[Callable[[int], None]] = None):
+        self.progress_callback = progress_callback
 
         # Initializing class attributes used
         self.total_memory = None
@@ -737,11 +734,53 @@ class MSUPSmartSolverTransient(QObject):
                 self.plasticity_warning_messages.append(message)
         return messages
 
+    def _report_progress(self, value: int) -> None:
+        """Report batch progress without coupling the solver to a UI framework."""
+        callback = getattr(self, 'progress_callback', None)
+        if callback is not None:
+            callback(int(value))
+
+    @staticmethod
+    def _cleanup_memmaps(container) -> None:
+        """Close and remove every memmap reachable from a batch job container."""
+        paths = []
+
+        def _cleanup(value):
+            if isinstance(value, np.memmap):
+                path = getattr(value, 'filename', None)
+                try:
+                    value.flush()
+                except Exception:
+                    pass
+                mmap_obj = getattr(value, '_mmap', None)
+                if mmap_obj is not None:
+                    try:
+                        mmap_obj.close()
+                    except Exception:
+                        pass
+                if path:
+                    paths.append(os.path.abspath(path))
+                return None
+            if isinstance(value, dict):
+                for key, item in value.items():
+                    value[key] = _cleanup(item)
+            elif isinstance(value, list):
+                for index, item in enumerate(value):
+                    value[index] = _cleanup(item)
+            return value
+
+        _cleanup(container)
+        for path in set(paths):
+            try:
+                os.remove(path)
+            except OSError:
+                pass
+
     # region Internal Batch Processing Helpers
     def _setup_calculation_jobs(self, calculate_von_mises, calculate_max_principal_stress,
                                 calculate_min_principal_stress, calculate_deformation,
                                 calculate_velocity, calculate_acceleration, calculate_damage,
-                                calculate_force_moment=False):
+                                calculate_force_moment=False, memmap_registry=None):
         """
         Initializes a dictionary of calculation jobs, their memmap files, and result metadata.
         This centralizes the configuration for all possible calculations.
@@ -757,7 +796,10 @@ class MSUPSmartSolverTransient(QObject):
             except OSError:
                 # If removal fails we'll still try to overwrite in memmap
                 pass
-            return np.memmap(path, dtype=constants.RESULT_DTYPE, mode='w+', shape=shape)
+            memmap = np.memmap(path, dtype=constants.RESULT_DTYPE, mode='w+', shape=shape)
+            if memmap_registry is not None:
+                memmap_registry.append(memmap)
+            return memmap
 
         jobs = {}
 
@@ -1427,116 +1469,120 @@ class MSUPSmartSolverTransient(QObject):
         print(f"Allocated for Processing: {self.allocated_memory:.2f} GB")
 
         # --- 2. Setup Calculation Jobs and Memmap Files ---
-        calculation_jobs = self._setup_calculation_jobs(
-            calculate_von_mises, calculate_max_principal_stress, calculate_min_principal_stress,
-            calculate_deformation, calculate_velocity, calculate_acceleration, calculate_damage,
-            calculate_force_moment
-        )
-
-        is_stress_needed = any(k in calculation_jobs for k in ['von_mises', 's1_max', 's3_min', 'damage'])
-        is_kinematics_needed = any(k in calculation_jobs for k in ['deformation', 'velocity', 'acceleration'])
-        is_force_moment_needed = 'force_moment' in calculation_jobs
-        is_main_loop_needed = (
-            (is_stress_needed and has_stress_data)
-            or (is_kinematics_needed and has_deformation_data)
-        )
-
-        # Estimate chunks only when stress/kinematics loop is needed
-        chunk_size = 1
-        num_iterations = 0
-        if is_main_loop_needed:
-            scalar_plasticity_active = bool(
-                self.plasticity_context and self.plasticity_context.method in {'neuber', 'glinka'}
+        calculation_jobs = {}
+        memmap_registry = []
+        try:
+            calculation_jobs = self._setup_calculation_jobs(
+                calculate_von_mises, calculate_max_principal_stress, calculate_min_principal_stress,
+                calculate_deformation, calculate_velocity, calculate_acceleration, calculate_damage,
+                calculate_force_moment, memmap_registry=memmap_registry
             )
-            chunk_size = self._estimate_chunk_size(
-                num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-                calculate_deformation, calculate_velocity, calculate_acceleration,
-                scalar_plasticity_active,
+
+            is_stress_needed = any(k in calculation_jobs for k in ['von_mises', 's1_max', 's3_min', 'damage'])
+            is_kinematics_needed = any(k in calculation_jobs for k in ['deformation', 'velocity', 'acceleration'])
+            is_force_moment_needed = 'force_moment' in calculation_jobs
+            is_main_loop_needed = (
+                (is_stress_needed and has_stress_data)
+                or (is_kinematics_needed and has_deformation_data)
             )
-            num_iterations = (num_nodes + chunk_size - 1) // chunk_size
 
-            ram_per_node = self._get_memory_per_node(
-                num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
-                calculate_deformation, calculate_velocity, calculate_acceleration,
-                scalar_plasticity_active,
-            )
-            ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
-            print(f"Processing {num_nodes} stress/deformation nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
-            print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
-            print()
+            # Estimate chunks only when stress/kinematics loop is needed
+            chunk_size = 1
+            num_iterations = 0
+            if is_main_loop_needed:
+                scalar_plasticity_active = bool(
+                    self.plasticity_context and self.plasticity_context.method in {'neuber', 'glinka'}
+                )
+                chunk_size = self._estimate_chunk_size(
+                    num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
+                    calculate_deformation, calculate_velocity, calculate_acceleration,
+                    scalar_plasticity_active,
+                )
+                num_iterations = (num_nodes + chunk_size - 1) // chunk_size
 
-        # Determine progress ranges
-        if is_main_loop_needed and is_force_moment_needed:
-            main_progress_cap = 90.0  # main loop 0-90%, force/moment 90-100%
-        elif is_main_loop_needed:
-            main_progress_cap = 100.0
-        else:
-            main_progress_cap = 0.0   # no main loop, force/moment gets full 0-100%
+                ram_per_node = self._get_memory_per_node(
+                    num_time_points, calculate_von_mises, calculate_max_principal_stress, calculate_damage,
+                    calculate_deformation, calculate_velocity, calculate_acceleration,
+                    scalar_plasticity_active,
+                )
+                ram_per_iter = self._estimate_memory_required_per_iteration(chunk_size, ram_per_node)
+                print(f"Processing {num_nodes} stress/deformation nodes in {num_iterations} iterations (chunk size: {chunk_size}).")
+                print(f"Estimated RAM per iteration: {ram_per_iter:.2f} GB")
+                print()
 
-        # --- 3. Main Processing Loop (stress / kinematics) ---
-        if is_main_loop_needed:
-            for i, start_idx in enumerate(range(0, num_nodes, chunk_size)):
-                end_idx = min(start_idx + chunk_size, num_nodes)
-                print(f"\n--- Iteration {i + 1}/{num_iterations} (Nodes {start_idx}-{end_idx - 1}) ---")
+            # Determine progress ranges
+            if is_main_loop_needed and is_force_moment_needed:
+                main_progress_cap = 90.0  # main loop 0-90%, force/moment 90-100%
+            elif is_main_loop_needed:
+                main_progress_cap = 100.0
+            else:
+                main_progress_cap = 0.0   # no main loop, force/moment gets full 0-100%
 
-                actual_stresses = None
-                if is_stress_needed:
+            # --- 3. Main Processing Loop (stress / kinematics) ---
+            if is_main_loop_needed:
+                for i, start_idx in enumerate(range(0, num_nodes, chunk_size)):
+                    end_idx = min(start_idx + chunk_size, num_nodes)
+                    print(f"\n--- Iteration {i + 1}/{num_iterations} (Nodes {start_idx}-{end_idx - 1}) ---")
+
+                    actual_stresses = None
+                    if is_stress_needed:
+                        start_time = time.time()
+                        actual_stresses = self.compute_normal_stresses(start_idx, end_idx)
+                        print(f"Elapsed time for normal stresses: {(time.time() - start_time):.3f} seconds")
+
+                    if is_stress_needed:
+                        self._process_stress_chunk(calculation_jobs, time_values, start_idx, end_idx, *actual_stresses)
+
+                    if is_kinematics_needed:
+                        self._process_kinematics_chunk(calculation_jobs, time_values, start_idx, end_idx)
+
+                    # --- Memory Management and Progress Update ---
                     start_time = time.time()
-                    actual_stresses = self.compute_normal_stresses(start_idx, end_idx)
-                    print(f"Elapsed time for normal stresses: {(time.time() - start_time):.3f} seconds")
+                    del actual_stresses
+                    gc.collect()
+                    print(f"Elapsed time for garbage collection: {(time.time() - start_time):.3f} seconds")
 
-                if is_stress_needed:
-                    self._process_stress_chunk(calculation_jobs, time_values, start_idx, end_idx, *actual_stresses)
+                    progress_percentage = ((i + 1) / num_iterations) * main_progress_cap
+                    self._report_progress(int(progress_percentage))
 
-                if is_kinematics_needed:
-                    self._process_kinematics_chunk(calculation_jobs, time_values, start_idx, end_idx)
+                    memory_status = self._get_current_memory_usage_str()
+                    print(f"Iteration {i + 1} complete. {memory_status}. Progress: {progress_percentage:.1f}%")
+            elif not is_force_moment_needed:
+                print("No stress/deformation/force/moment outputs selected.")
 
-                # --- Memory Management and Progress Update ---
-                start_time = time.time()
-                del actual_stresses
-                gc.collect()
-                print(f"Elapsed time for garbage collection: {(time.time() - start_time):.3f} seconds")
+            # --- 4. Force/Moment Processing (separate node scope) ---
+            if is_force_moment_needed:
+                n_fm_nodes = self.modal_forces_fx.shape[0]
+                # 6 components + 2 magnitudes per node per time point
+                fm_mem_per_node = 8 * num_time_points * np.dtype(constants.NP_DTYPE).itemsize
+                available_memory = self._get_available_memory()
+                fm_chunk = max(1, int(available_memory // fm_mem_per_node)) if fm_mem_per_node > 0 else n_fm_nodes
+                fm_chunk = min(fm_chunk, n_fm_nodes)
+                fm_iters = (n_fm_nodes + fm_chunk - 1) // fm_chunk
 
-                progress_percentage = ((i + 1) / num_iterations) * main_progress_cap
-                self.progress_signal.emit(int(progress_percentage))
-                QApplication.processEvents()
+                print(f"\n--- Processing forces & moments for {n_fm_nodes} nodes in {fm_iters} iteration(s) ---")
+                for qi, qs in enumerate(range(0, n_fm_nodes, fm_chunk)):
+                    qe = min(qs + fm_chunk, n_fm_nodes)
+                    self._process_force_moment_chunk(calculation_jobs, time_values, qs, qe)
+                    fm_progress = main_progress_cap + ((qi + 1) / fm_iters) * (100.0 - main_progress_cap)
+                    self._report_progress(int(fm_progress))
+                    print(f"  Force/moment iteration {qi + 1}/{fm_iters} done.")
 
-                memory_status = self._get_current_memory_usage_str()
-                print(f"Iteration {i + 1} complete. {memory_status}. Progress: {progress_percentage:.1f}%")
-        elif not is_force_moment_needed:
-            print("No stress/deformation/force/moment outputs selected.")
+                # Finalize force/moment CSVs with their own node IDs/coords
+                self._finalize_force_moment_job(
+                    calculation_jobs['force_moment'],
+                    self.force_moment_node_ids,
+                    self.force_moment_node_coords
+                )
+                del calculation_jobs['force_moment']
 
-        # --- 4. Force/Moment Processing (separate node scope) ---
-        if is_force_moment_needed:
-            n_fm_nodes = self.modal_forces_fx.shape[0]
-            # 6 components + 2 magnitudes per node per time point
-            fm_mem_per_node = 8 * num_time_points * np.dtype(constants.NP_DTYPE).itemsize
-            available_memory = self._get_available_memory()
-            fm_chunk = max(1, int(available_memory // fm_mem_per_node)) if fm_mem_per_node > 0 else n_fm_nodes
-            fm_chunk = min(fm_chunk, n_fm_nodes)
-            fm_iters = (n_fm_nodes + fm_chunk - 1) // fm_chunk
-
-            print(f"\n--- Processing forces & moments for {n_fm_nodes} nodes in {fm_iters} iteration(s) ---")
-            for qi, qs in enumerate(range(0, n_fm_nodes, fm_chunk)):
-                qe = min(qs + fm_chunk, n_fm_nodes)
-                self._process_force_moment_chunk(calculation_jobs, time_values, qs, qe)
-                fm_progress = main_progress_cap + ((qi + 1) / fm_iters) * (100.0 - main_progress_cap)
-                self.progress_signal.emit(int(fm_progress))
-                QApplication.processEvents()
-                print(f"  Force/moment iteration {qi + 1}/{fm_iters} done.")
-
-            # Finalize force/moment CSVs with their own node IDs/coords
-            self._finalize_force_moment_job(
-                calculation_jobs['force_moment'],
-                self.force_moment_node_ids,
-                self.force_moment_node_coords
-            )
-            del calculation_jobs['force_moment']
-
-        # --- 5. Finalization ---
-        print("\n--- Finalizing Results ---")
-        self._finalize_and_convert_results(calculation_jobs, df_node_ids, node_coords)
-        print("--- Batch Processing Finished ---")
+            # --- 5. Finalization ---
+            print("\n--- Finalizing Results ---")
+            self._finalize_and_convert_results(calculation_jobs, df_node_ids, node_coords)
+            print("--- Batch Processing Finished ---")
+        finally:
+            self._cleanup_memmaps(calculation_jobs)
+            self._cleanup_memmaps(memmap_registry)
 
     def process_results_for_a_single_node(self,
                                           selected_node_idx,
@@ -1700,6 +1746,7 @@ class MSUPSmartSolverTransient(QObject):
             print(f"Successfully written {csv_filename}.")
         except Exception as e:
             print(f"Error writing {csv_filename}: {e}")
+            raise
 
     @staticmethod
     def _flush_copy_close_memmap(memmap_obj):

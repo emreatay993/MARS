@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""
+r"""
 MARS Build Verification Script
 
 Run this script to verify that all dependencies are properly installed
@@ -8,6 +8,7 @@ and the application can start successfully.
 Usage:
     python verify_build.py           # Quick check
     python verify_build.py --full    # Full verification
+    python verify_build.py --package-dir dist\MARS
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ import argparse
 import importlib.metadata
 import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -194,6 +196,7 @@ def check_application_modules() -> bool:
         ("core.computation", "computation"),
         ("file_io.loaders", "loaders"),
         ("solver.engine", "engine"),
+        ("headless_runtime", "headless_runtime"),
         ("ui.application_controller", "ApplicationController"),
     ]
     
@@ -209,9 +212,92 @@ def check_application_modules() -> bool:
     return all_ok
 
 
+def check_headless_import_boundary() -> bool:
+    """Verify solver and batch imports do not load Qt in a fresh interpreter."""
+    code = (
+        "import sys; "
+        "import headless_runtime, solver.engine, core.computation; "
+        "qt = [name for name in sys.modules "
+        "if name == 'PyQt5' or name.startswith('PyQt5.')]; "
+        "print(','.join(qt)); "
+        "raise SystemExit(bool(qt))"
+    )
+    completed = subprocess.run(
+        [sys.executable, "-c", code],
+        cwd=src_path,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    ok = completed.returncode == 0
+    details = ""
+    if not ok:
+        details = completed.stdout.strip() or completed.stderr.strip()
+    print_status("Qt-free headless imports", ok, details)
+    return ok
+
+
+def check_source_batch_help() -> bool:
+    """Smoke the source batch dispatcher without starting the GUI."""
+    completed = subprocess.run(
+        [sys.executable, str(src_path / "main.py"), "batch", "--help"],
+        cwd=src_path.parent,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    output = f"{completed.stdout}\n{completed.stderr}".lower()
+    ok = completed.returncode == 0 and "usage:" in output
+    print_status(
+        "Source batch launcher",
+        ok,
+        "" if ok else output.strip(),
+    )
+    return ok
+
+
+def check_packaged_launchers(package_dir: Path) -> bool:
+    """Verify both frozen launchers and smoke the console executable."""
+    package_dir = package_dir.resolve()
+    gui_exe = package_dir / "MARS.exe"
+    batch_exe = package_dir / "MARSBatch.exe"
+    files_ok = gui_exe.is_file() and batch_exe.is_file()
+    print_status(
+        "Packaged GUI and batch launchers",
+        files_ok,
+        str(package_dir),
+    )
+    if not files_ok:
+        return False
+
+    completed = subprocess.run(
+        [str(batch_exe), "--help"],
+        cwd=package_dir,
+        capture_output=True,
+        text=True,
+        timeout=30,
+        check=False,
+    )
+    output = f"{completed.stdout}\n{completed.stderr}".lower()
+    ok = completed.returncode == 0 and "usage:" in output
+    print_status(
+        "Packaged batch launcher",
+        ok,
+        "" if ok else output.strip(),
+    )
+    return ok
+
+
 def main():
     parser = argparse.ArgumentParser(description="MARS Build Verification")
     parser.add_argument("--full", action="store_true", help="Run full verification")
+    parser.add_argument(
+        "--package-dir",
+        type=Path,
+        help="Also verify a built dist/MARS directory",
+    )
     args = parser.parse_args()
     
     print_header("MARS Build Verification")
@@ -233,6 +319,10 @@ def main():
     all_ok &= check_import("scipy", "SciPy")
     all_ok &= check_import("pandas", "Pandas")
     all_ok &= check_import("matplotlib", "Matplotlib")
+
+    print_header("Headless Runtime")
+    all_ok &= check_headless_import_boundary()
+    all_ok &= check_source_batch_help()
     
     # GUI
     print_header("GUI Libraries")
@@ -255,6 +345,10 @@ def main():
     # Application modules
     print_header("Application Modules")
     all_ok &= check_application_modules()
+
+    if args.package_dir is not None:
+        print_header("Packaged Launchers")
+        all_ok &= check_packaged_launchers(args.package_dir)
     
     # Summary
     print_header("Verification Result")

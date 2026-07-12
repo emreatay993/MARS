@@ -120,6 +120,40 @@ cd src
 python main.py
 ```
 
+### Running Headless Jobs
+
+Run a JSON job from source without starting Qt:
+
+```powershell
+.\venv\Scripts\python.exe src\main.py batch run C:\jobs\mars-job.json
+.\venv\Scripts\python.exe src\main.py batch run C:\jobs\mars-job.json --format json
+```
+
+Packaged releases provide a console launcher beside the GUI executable:
+
+```powershell
+.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json
+.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json --format json
+```
+
+Job-relative input and output paths resolve from the directory containing the
+job file. Text output is intended for interactive use; `--format json` emits
+JSON Lines for another application to consume. See
+[`examples/headless/mars-job.example.json`](examples/headless/mars-job.example.json)
+and [`examples/headless/run_mars.py`](examples/headless/run_mars.py).
+
+Callers already running in a Python environment where MARS `src` is importable
+can use the same synchronous runtime directly:
+
+```python
+from headless_runtime import MarsJob, MarsRunResult, run_job
+
+result: MarsRunResult = run_job("C:/jobs/mars-job.json", on_event=print)
+```
+
+Cross-repository applications should normally use `MARSBatch.exe` so they do
+not need to share MARS's Python dependencies.
+
 ### Running Tests
 
 ```bash
@@ -144,6 +178,11 @@ build.bat --clean
 The packaged application includes `ansys-dpf-core==0.16.1`, its metadata,
 Python modules, gRPC bindings, and client DLLs. It discovers only the licensed
 Ansys DPF server/runtime from the target workstation.
+
+The build creates both launchers in one shared onedir bundle:
+
+- `dist\MARS\MARS.exe` — windowed GUI
+- `dist\MARS\MARSBatch.exe` — console batch runner
 
 ## 📖 Usage Guide
 

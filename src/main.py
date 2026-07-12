@@ -1,7 +1,7 @@
-"""
+r"""
 Entry point for the MARS: Modal Analysis Response Solver application.
 
-Tested with Python 3.11
+Tested with Python 3.12
 
 --- You can build a frozen application by using the following command in the project terminal in PyCharm:
 .\venv\Scripts\python.exe -m PyInstaller MARS.spec --clean --noconfirm
@@ -13,23 +13,33 @@ Tested with Python 3.11
 Initialises the Qt application and launches the main window.
 """
 
-import os
 import sys
-
-from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication
-
-from ui.application_controller import ApplicationController
-from utils import constants
-from utils.app_settings import (
-    apply_solver_runtime_settings,
-    load_app_settings,
-    parse_software_opengl_env,
-)
+from pathlib import Path
 
 
-def main():
-    """Main entry point for the application."""
+def _is_batch_executable() -> bool:
+    """Return whether this frozen entry point is the console batch launcher."""
+    return bool(
+        getattr(sys, "frozen", False)
+        and Path(sys.executable).stem.casefold() == "marsbatch"
+    )
+
+
+def _run_gui(argv: list[str]) -> int:
+    """Import and launch the Qt application only for interactive runs."""
+    import os
+
+    from PyQt5.QtCore import Qt
+    from PyQt5.QtWidgets import QApplication
+
+    from ui.application_controller import ApplicationController
+    from utils import constants
+    from utils.app_settings import (
+        apply_solver_runtime_settings,
+        load_app_settings,
+        parse_software_opengl_env,
+    )
+
     app_settings = load_app_settings()
     apply_solver_runtime_settings(app_settings, constants)
 
@@ -53,15 +63,29 @@ def main():
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
 
     # Create application
-    app = QApplication(sys.argv)
+    app = QApplication([sys.argv[0], *argv])
 
     # Create and show main window
     main_window = ApplicationController()
     main_window.showMaximized()
 
-    # Run application
-    sys.exit(app.exec_())
+    return app.exec_()
 
 
-if __name__ == '__main__':
-    main()
+def main(argv: list[str] | None = None) -> int:
+    """Dispatch to the GUI or the Qt-free batch command line."""
+    args = list(sys.argv[1:] if argv is None else argv)
+    if _is_batch_executable():
+        from headless_runtime import cli_main
+
+        return cli_main(args)
+    if args[:1] == ["batch"]:
+        from headless_runtime import cli_main
+
+        return cli_main(args[1:])
+
+    return _run_gui(args)
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

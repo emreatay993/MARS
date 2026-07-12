@@ -620,6 +620,39 @@ The Console provides real-time feedback:
 - Animation controls become available; deformation controls appear only if deformations were included
 - **Plot (Max Over Time)** and **Plot (Min Over Time)** tabs appear when batch outputs are computed
 
+### Headless Batch Operation
+
+MARS can run the same solver without opening the Qt interface. A JSON job file
+defines the input files, requested outputs, solver settings, and output
+directory. Relative paths are resolved from the directory containing the job
+file, which makes a job folder portable between the command line and another
+application.
+
+Run from a source checkout:
+
+```powershell
+.\venv\Scripts\python.exe src\main.py batch run C:\jobs\mars-job.json
+```
+
+Run from a packaged release:
+
+```powershell
+.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json
+```
+
+Text output is the interactive default. Add `--format json` for JSON Lines on
+standard output; progress and log events are followed by exactly one terminal
+result record. A completed run also writes `mars_result.json` in its output
+directory. Solver/input errors return a nonzero process exit code.
+
+Batch jobs may request compatible all-node outputs. Time-history jobs require a
+node ID and exactly one supported non-damage output, and write one
+`time_history_node_<id>_<output>.csv` file. Existing targeted MARS result files
+are replaced on rerun; unrelated files in the output directory are preserved.
+
+See `examples/headless/mars-job.example.json` for the job shape and
+`examples/headless/run_mars.py` for safe Python `subprocess` integration.
+
 [**Image Placeholder**: SOLVE button with progress bar at 75%, console showing processing messages]
 
 ---

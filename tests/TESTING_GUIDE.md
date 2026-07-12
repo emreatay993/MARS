@@ -51,6 +51,19 @@ To verify that a frozen package contains the PyDPF client, set
 `pytest tests/test_packaged_dpf_client.py -v`.
 
 ```powershell
+.\build.bat --clean --skip-deps
+$env:MARS_TEST_PACKAGED_DIR = (Resolve-Path .\dist\MARS).Path
+.\venv\Scripts\python.exe -m pytest tests\test_packaged_dpf_client.py -v
+.\dist\MARS\MARSBatch.exe --help
+.\build_venv\Scripts\python.exe verify_build.py --package-dir .\dist\MARS
+```
+
+The packaged regression checks require both `MARS.exe` and `MARSBatch.exe`,
+retain the PyDPF/Qt/VTK payload contract, and launch the batch help command.
+Headless CLI integration tests separately execute synthetic batch and
+time-history jobs and validate their JSONL terminal records and CSV outputs.
+
+```powershell
 $env:MARS_TEST_MODAL_RST = 'C:\trusted-2025R2-or-newer-case\file.rst'
 $env:MARS_TEST_MODAL_GOLDEN_DIR = 'C:\trusted-2025R2-or-newer-case'
 # Optional when the trusted exports use a named selection:

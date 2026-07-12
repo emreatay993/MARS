@@ -91,17 +91,35 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
+if not exist "dist\MARS\MARS.exe" (
+    echo [ERROR] Windowed launcher was not created: dist\MARS\MARS.exe
+    exit /b 1
+)
+if not exist "dist\MARS\MARSBatch.exe" (
+    echo [ERROR] Batch launcher was not created: dist\MARS\MARSBatch.exe
+    exit /b 1
+)
+
+echo [INFO] Verifying the packaged batch launcher...
+dist\MARS\MARSBatch.exe --help >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [ERROR] MARSBatch.exe failed its help smoke test.
+    exit /b 1
+)
+
 echo.
 echo ============================================================
 echo   BUILD COMPLETE
 echo ============================================================
 echo.
 echo Output directory: dist\MARS\
-echo Executable: dist\MARS\MARS.exe
+echo GUI executable: dist\MARS\MARS.exe
+echo Batch executable: dist\MARS\MARSBatch.exe
 echo.
 echo To test the build:
 echo   cd dist\MARS
 echo   MARS.exe
+echo   MARSBatch.exe --help
 echo.
 
 goto :eof
