@@ -15,3 +15,8 @@ __pycache__/
 /build_venv/
 /src/ui/handlers/*.dat
 /src/ui/handlers/*.csv
+/IMPLEMENTATION_PLAN_DISPLAY_COMPONENT_VISUALIZATION.md
+/TORCH_REMOVAL_PLAN.md
+/code_to_implement/
+/tests/user_tests/example_inputs/cantilever_beam_with_hole/waspalloy_temp_gradient/max_von_mises_stress.csv
+/tests/user_tests/example_inputs/cantilever_beam_with_hole/waspalloy_temp_gradient/time_of_max_von_mises_stress.csv
