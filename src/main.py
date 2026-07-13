@@ -33,7 +33,7 @@ def _run_gui(argv: list[str]) -> int:
     from PyQt5.QtWidgets import QApplication
 
     from ui.application_controller import ApplicationController
-    from utils import constants
+    from mars_solver.utils import constants
     from utils.app_settings import (
         apply_solver_runtime_settings,
         load_app_settings,
@@ -76,11 +76,11 @@ def main(argv: list[str] | None = None) -> int:
     """Dispatch to the GUI or the Qt-free batch command line."""
     args = list(sys.argv[1:] if argv is None else argv)
     if _is_batch_executable():
-        from headless_runtime import cli_main
+        from mars_solver.headless_runtime import cli_main
 
         return cli_main(args)
     if args[:1] == ["batch"]:
-        from headless_runtime import cli_main
+        from mars_solver.headless_runtime import cli_main
 
         return cli_main(args[1:])
 

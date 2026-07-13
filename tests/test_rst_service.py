@@ -10,7 +10,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from file_io import rst_service as rst
+from mars_solver.file_io import rst_service as rst
 
 
 class Field:

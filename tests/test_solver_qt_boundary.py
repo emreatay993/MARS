@@ -20,8 +20,8 @@ def import_without_qt(name, *args, **kwargs):
 
 builtins.__import__ = import_without_qt
 sys.path.insert(0, {str(src_dir)!r})
-import solver.engine
-import core.computation
+import mars_solver.solver.engine
+import mars_solver.core.computation
 """
 
     completed = subprocess.run(

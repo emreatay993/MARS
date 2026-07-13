@@ -11,8 +11,8 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-import headless_runtime as runtime
-from core.data_models import AnalysisResult, DeformationData, ModalData, ModalStressData
+import mars_solver.headless_runtime as runtime
+from mars_solver.core.data_models import AnalysisResult, DeformationData, ModalData, ModalStressData
 
 
 def _modal():
@@ -189,11 +189,13 @@ def test_batch_run_streams_logs_progress_and_persists_atomic_result(tmp_path, mo
         "max_von_mises_stress.csv",
         "time_of_max_von_mises_stress.csv",
     ]
+    assert Path(result.primary_files["von_mises"]).name == "max_von_mises_stress.csv"
     assert any(event.kind == "progress" and event.percent == 35 for event in events)
     assert any(event.kind == "log" and event.message == "loader log" for event in events)
     assert any(event.kind == "log" and event.message == "solver batch log" for event in events)
     persisted = json.loads((tmp_path / "results/mars_result.json").read_text(encoding="utf-8"))
     assert persisted["status"] == "completed"
+    assert Path(persisted["primary_files"]["von_mises"]).name == "max_von_mises_stress.csv"
     assert len(_FakeEngine.instances) == 1
     assert not list((tmp_path / "results").glob(".mars_result.*.tmp"))
 
@@ -252,6 +254,7 @@ def test_real_deformation_job_runs_through_loaders_and_solver(tmp_path):
 
     assert result.status == "completed", result.error
     assert len(result.files) == 16
+    assert Path(result.primary_files["deformation"]).name == "max_deformation.csv"
     assert (tmp_path / "results/max_deformation.csv").is_file()
 
 
@@ -270,6 +273,7 @@ def test_time_history_writes_physical_time_and_vector_columns(tmp_path, fake_run
 
     assert result.status == "completed"
     path = tmp_path / "results/time_history_node_7_deformation.csv"
+    assert Path(result.primary_files["history_csv"]).name == path.name
     rows = path.read_text(encoding="utf-8").splitlines()
     assert rows[0] == "Time,Magnitude,X,Y,Z"
     assert rows[1].startswith("0.0,1.0,0.0")
@@ -362,6 +366,32 @@ def test_json_cli_stdout_contains_only_jsonl_records(tmp_path, monkeypatch, fake
     ]
     assert "loader log" in log_messages
     assert "solver batch log" in log_messages
+
+
+def test_cli_output_override_preserves_job_relative_inputs(tmp_path, fake_runtime, capsys):
+    inputs = tmp_path / "inputs"
+    inputs.mkdir()
+    _files(inputs, "response.mcf", "stress.csv")
+    job_path = tmp_path / "job.json"
+    job_path.write_text(json.dumps(_payload(tmp_path)), encoding="utf-8")
+    override = tmp_path / "sandbox" / "results"
+
+    exit_code = runtime.cli_main(
+        [
+            "run",
+            str(job_path),
+            "--format",
+            "json",
+            "--output-directory",
+            str(override),
+        ]
+    )
+    record = json.loads(capsys.readouterr().out.splitlines()[-1])
+
+    assert exit_code == 0
+    assert Path(record["result"]["output_directory"]) == override.resolve()
+    assert (override / "max_von_mises_stress.csv").is_file()
+    assert not (tmp_path / "results").exists()
 
 
 def test_cli_exit_codes_distinguish_validation_and_solver_failure(tmp_path, fake_runtime, capsys):

@@ -12,7 +12,7 @@ import pytest
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from core.data_models import (
+from mars_solver.core.data_models import (
     ModalData, ModalStressData, DeformationData,
     SteadyStateData, SolverConfig, AnalysisResult,
     validate_modal_input_contracts,

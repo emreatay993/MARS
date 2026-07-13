@@ -10,7 +10,7 @@ import numpy as np
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMessageBox
 
-from utils.constants import NP_DTYPE
+from mars_solver.utils.constants import NP_DTYPE
 from ui.handlers.display_base_handler import DisplayBaseHandler
 from core.visualization import AnimationManager
 

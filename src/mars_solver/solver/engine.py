@@ -14,8 +14,8 @@ import numpy as np
 import pandas as pd
 
 # ---- Local Imports ----
-import utils.constants as constants
-from solver.plasticity_engine import (
+from ..utils import constants
+from .plasticity_engine import (
     MaterialDB,
     apply_glinka_correction,
     apply_ibg_correction,

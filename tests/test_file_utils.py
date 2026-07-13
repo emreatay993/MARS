@@ -12,7 +12,7 @@ import pytest
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from utils.file_utils import unwrap_mcf_file
+from mars_solver.utils.file_utils import unwrap_mcf_file
 
 
 class TestFileUtils:

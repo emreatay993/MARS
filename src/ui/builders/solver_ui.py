@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import (
     QTabWidget, QVBoxLayout
 )
 
-from utils.constants import (
+from mars_solver.utils.constants import (
     WINDOW_BACKGROUND_COLOR
 )
 from ui.styles.style_constants import (

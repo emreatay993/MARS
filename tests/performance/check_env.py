@@ -32,9 +32,9 @@ if os.path.exists(src_path):
     print("src path exists")
     sys.path.append(src_path)
     try:
-        import core.computation
-        print("Successfully imported core.computation")
+        import mars_solver.core.computation
+        print("Successfully imported mars_solver.core.computation")
     except ImportError as e:
-        print(f"Error importing core.computation: {e}")
+        print(f"Error importing mars_solver.core.computation: {e}")
 else:
     print("src path does not exist")

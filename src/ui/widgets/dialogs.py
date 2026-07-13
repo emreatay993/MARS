@@ -12,7 +12,7 @@ from PyQt5.QtWidgets import (
 )
 
 # Import constants module for dynamic access to runtime values
-from utils import constants
+from mars_solver.utils import constants
 from utils.app_settings import load_app_settings, parse_software_opengl_env
 from ui.styles.style_constants import DIALOG_STYLE, DIALOG_GROUP_BOX_STYLE
 

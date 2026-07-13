@@ -9,7 +9,7 @@ import pandas as pd
 import numpy as np
 from typing import Optional, List, Dict
 
-from core.data_models import MaterialProfileData
+from mars_solver.core.data_models import MaterialProfileData
 
 
 def export_to_csv(data: pd.DataFrame, filename: str) -> None:

@@ -122,37 +122,117 @@ python main.py
 
 ### Running Headless Jobs
 
-Run a JSON job from source without starting Qt:
+The Qt-free solver is distributed as `mars-modal-response-solver` version
+`1.0.0` and supports Python 3.10 through 3.12. For development, install the
+MARS checkout into the same virtual environment as the calling application:
 
 ```powershell
-.\venv\Scripts\python.exe src\main.py batch run C:\jobs\mars-job.json
-.\venv\Scripts\python.exe src\main.py batch run C:\jobs\mars-job.json --format json
+<COREX_ROOT>\venv\Scripts\python.exe -m pip install -e C:\path\to\MARS_
 ```
 
-Packaged releases provide a console launcher beside the GUI executable:
+To install a local wheel instead:
 
 ```powershell
-.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json
-.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json --format json
+py -3.10 -m pip wheel C:\path\to\MARS_ --wheel-dir C:\temp\mars-wheel
+<COREX_ROOT>\venv\Scripts\python.exe -m pip install C:\temp\mars-wheel\mars_modal_response_solver-1.0.0-py3-none-any.whl
 ```
 
-Job-relative input and output paths resolve from the directory containing the
-job file. Text output is intended for interactive use; `--format json` emits
-JSON Lines for another application to consume. See
-[`examples/headless/mars-job.example.json`](examples/headless/mars-job.example.json)
-and [`examples/headless/run_mars.py`](examples/headless/run_mars.py).
+Both installed entry points expose the same command:
 
-Callers already running in a Python environment where MARS `src` is importable
-can use the same synchronous runtime directly:
+```powershell
+MARSBatch.exe --version
+MARSBatch.exe run C:\jobs\mars-job.json --format json
+python -m mars_solver run C:\jobs\mars-job.json --format json
+```
+
+Use `--output-directory` when each caller or COREX node needs its own result
+folder without modifying the job file. Job-relative input paths still resolve
+from the directory containing the JSON job:
+
+```powershell
+python -m mars_solver run C:\jobs\mars-job.json --format json `
+  --output-directory C:\runs\case-001
+```
+
+Packaged releases continue to provide the standalone frozen launcher at
+`.\dist\MARS\MARSBatch.exe`. Source checkout compatibility is retained through
+`.\venv\Scripts\python.exe src\main.py batch ...`.
+
+Text output is intended for interactive use. `--format json` emits JSON Lines:
+zero or more `event` records followed by exactly one terminal `result` record.
+The terminal result and `mars_result.json` contain `files` for every generated
+artifact and `primary_files` for the canonical result of each requested output:
+
+```json
+{
+  "record": "result",
+  "result": {
+    "status": "completed",
+    "output_directory": "C:\\runs\\case-001",
+    "files": ["C:\\runs\\case-001\\max_von_mises_stress.csv"],
+    "primary_files": {
+      "von_mises": "C:\\runs\\case-001\\max_von_mises_stress.csv"
+    },
+    "warnings": [],
+    "elapsed_seconds": 1.2
+  }
+}
+```
+
+The installed Python API exposes the same validated runtime:
 
 ```python
-from headless_runtime import MarsJob, MarsRunResult, run_job
+from mars_solver import MarsEvent, MarsJob, MarsRunResult, run_job
 
-result: MarsRunResult = run_job("C:/jobs/mars-job.json", on_event=print)
+job = MarsJob.from_file(
+    "C:/jobs/mars-job.json",
+    output_directory="C:/runs/case-001",
+)
+result: MarsRunResult = run_job(job, on_event=lambda event: print(event.to_dict()))
+primary_csv = result.primary_files["von_mises"]
 ```
 
-Cross-repository applications should normally use `MARSBatch.exe` so they do
-not need to share MARS's Python dependencies.
+COREX should normally keep solver execution in a subprocess. Resolve the
+pip-generated console script beside the managed Python executable so the node
+uses its pinned MARS installation without relying on `PATH`:
+
+```python
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+mars_batch = Path(sys.executable).parent / (
+    "MARSBatch.exe" if os.name == "nt" else "MARSBatch"
+)
+
+completed = subprocess.run(
+    [
+        str(mars_batch),
+        "run",
+        "C:/jobs/mars-job.json",
+        "--format",
+        "json",
+        "--output-directory",
+        "C:/runs/case-001",
+    ],
+    capture_output=True,
+    text=True,
+    encoding="utf-8",
+    check=False,
+)
+records = [json.loads(line) for line in completed.stdout.splitlines()]
+terminal = next(record["result"] for record in records if record["record"] == "result")
+if completed.returncode:
+    raise RuntimeError(terminal.get("error") or completed.stderr)
+primary_files = terminal["primary_files"]
+```
+
+See [`examples/headless/mars-job.example.json`](examples/headless/mars-job.example.json)
+for the job schema and the **Headless Batch Operation** section of
+[`MARS_USER_MANUAL.md`](MARS_USER_MANUAL.md#headless-batch-operation) for output
+keys, exit codes, and integration details.
 
 ### Running Tests
 

@@ -12,8 +12,8 @@ from typing import Iterable, Optional, Sequence
 import numpy as np
 import pandas as pd
 
-from core.data_models import MaterialProfileData, TemperatureFieldData
-from solver.plasticity_engine import MaterialDB
+from .data_models import MaterialProfileData, TemperatureFieldData
+from ..solver.plasticity_engine import MaterialDB
 
 
 class PlasticityDataError(ValueError):

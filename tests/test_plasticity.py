@@ -4,14 +4,14 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from core.data_models import MaterialProfileData, TemperatureFieldData
-from core.plasticity import (
+from mars_solver.core.data_models import MaterialProfileData, TemperatureFieldData
+from mars_solver.core.plasticity import (
     PlasticityDataError,
     build_material_db_from_profile,
     extract_poisson_ratio,
     map_temperature_field_to_nodes,
 )
-from solver.plasticity_engine import (
+from mars_solver.solver.plasticity_engine import (
     MaterialDB,
     E_of_T_njit,
     Up_of_T_sigma_njit,

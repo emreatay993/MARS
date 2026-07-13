@@ -14,8 +14,8 @@ from typing import Any, Mapping, Optional, Sequence
 
 import numpy as np
 
-from core.data_models import DeformationData, ElementNodalForceMomentData, ModalStressData
-from utils.constants import NP_DTYPE
+from ..core.data_models import DeformationData, ElementNodalForceMomentData, ModalStressData
+from ..utils.constants import NP_DTYPE
 
 
 PYDPF_VERSION = "0.16.1"

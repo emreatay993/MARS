@@ -622,36 +622,176 @@ The Console provides real-time feedback:
 
 ### Headless Batch Operation
 
-MARS can run the same solver without opening the Qt interface. A JSON job file
-defines the input files, requested outputs, solver settings, and output
-directory. Relative paths are resolved from the directory containing the job
-file, which makes a job folder portable between the command line and another
-application.
+MARS can run the same solver without opening the Qt interface. Its installable
+distribution is `mars-modal-response-solver` version `1.0.0`, supporting Python
+3.10 through 3.12. A JSON job defines the inputs, requested outputs, solver
+settings, mode, and default output directory.
 
-Run from a source checkout:
+#### Install into COREX or another application
 
-```powershell
-.\venv\Scripts\python.exe src\main.py batch run C:\jobs\mars-job.json
-```
-
-Run from a packaged release:
+During development, install the MARS checkout in editable mode using the
+calling application's interpreter:
 
 ```powershell
-.\dist\MARS\MARSBatch.exe run C:\jobs\mars-job.json
+<COREX_ROOT>\venv\Scripts\python.exe -m pip install -e C:\path\to\MARS_
 ```
 
-Text output is the interactive default. Add `--format json` for JSON Lines on
-standard output; progress and log events are followed by exactly one terminal
-result record. A completed run also writes `mars_result.json` in its output
-directory. Solver/input errors return a nonzero process exit code.
+For a fixed local artifact, build and install a wheel:
+
+```powershell
+py -3.10 -m pip wheel C:\path\to\MARS_ --wheel-dir C:\temp\mars-wheel
+<COREX_ROOT>\venv\Scripts\python.exe -m pip install C:\temp\mars-wheel\mars_modal_response_solver-1.0.0-py3-none-any.whl
+```
+
+Verify either installed entry point before connecting a node:
+
+```powershell
+<COREX_ROOT>\venv\Scripts\MARSBatch.exe --version
+<COREX_ROOT>\venv\Scripts\python.exe -m mars_solver --version
+```
+
+Both commands print `MARSBatch 1.0.0`.
+
+#### Run a job
+
+The pip-generated executable and module entry point are equivalent:
+
+```powershell
+MARSBatch.exe run C:\jobs\mars-job.json
+python -m mars_solver run C:\jobs\mars-job.json --format json
+```
+
+Packaged GUI releases also provide a standalone frozen executable at
+`.\dist\MARS\MARSBatch.exe`. Existing source checkouts may continue to use
+`.\venv\Scripts\python.exe src\main.py batch run ...`.
+
+Relative input paths and the job's own `output_directory` resolve from the
+directory containing the job file. A caller can redirect only the results with
+an absolute command-line override; this does not change input resolution:
+
+```powershell
+python -m mars_solver run C:\jobs\mars-job.json --format json `
+  --output-directory C:\runs\case-001
+```
+
+Text is the interactive default. `--format json` writes zero or more JSON Lines
+`event` records followed by exactly one terminal `result` record. A completed
+run also atomically writes the same terminal payload to `mars_result.json`.
+
+Exit codes are:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Completed successfully |
+| `1` | Solver or output-writing failure |
+| `2` | CLI, job, or input validation failure |
+| `130` | Interrupted |
+
+The result's `files` array contains every generated CSV. `primary_files` is the
+stable map applications should use instead of guessing filenames:
+
+| Job/output | `primary_files` key |
+|------------|---------------------|
+| Batch von Mises, principal stress, deformation, velocity, acceleration, or damage | Requested output name, for example `von_mises` or `deformation` |
+| Batch force/moment | `force` and `moment` |
+| Single-node time history | `history_csv` |
+
+Example terminal record:
+
+```json
+{
+  "record": "result",
+  "result": {
+    "status": "completed",
+    "output_directory": "C:\\runs\\case-001",
+    "files": [
+      "C:\\runs\\case-001\\max_von_mises_stress.csv",
+      "C:\\runs\\case-001\\time_of_max_von_mises_stress.csv"
+    ],
+    "primary_files": {
+      "von_mises": "C:\\runs\\case-001\\max_von_mises_stress.csv"
+    },
+    "warnings": [],
+    "elapsed_seconds": 1.2
+  }
+}
+```
+
+#### Python API
+
+The installed package exposes the validated job, event, and result types:
+
+```python
+from mars_solver import MarsEvent, MarsJob, MarsRunResult, run_job
+
+job = MarsJob.from_file(
+    "C:/jobs/mars-job.json",
+    output_directory="C:/runs/case-001",
+)
+result: MarsRunResult = run_job(job, on_event=lambda event: print(event.to_dict()))
+
+if result.status != "completed":
+    raise RuntimeError(result.error)
+primary_csv = result.primary_files["von_mises"]
+```
+
+The API is synchronous. GUI applications should normally use the subprocess
+interface so cancellation, memory, standard output, and solver failures remain
+isolated from the host process.
+
+#### COREX subprocess integration
+
+Resolve the pip-generated console script beside the active COREX managed Python
+executable. This selects the pinned MARS installation without relying on
+`PATH`:
+
+```python
+import json
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+
+def run_mars(job: Path, output_directory: Path) -> dict[str, str]:
+    mars_batch = Path(sys.executable).parent / (
+        "MARSBatch.exe" if os.name == "nt" else "MARSBatch"
+    )
+    completed = subprocess.run(
+        [
+            str(mars_batch),
+            "run",
+            str(job),
+            "--format",
+            "json",
+            "--output-directory",
+            str(output_directory),
+        ],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+
+    records = [json.loads(line) for line in completed.stdout.splitlines()]
+    terminal = next(
+        (record["result"] for record in records if record.get("record") == "result"),
+        None,
+    )
+    if terminal is None:
+        raise RuntimeError(completed.stderr or "MARS returned no terminal result")
+    if completed.returncode != 0:
+        raise RuntimeError(terminal.get("error") or completed.stderr)
+    return terminal["primary_files"]
+```
 
 Batch jobs may request compatible all-node outputs. Time-history jobs require a
 node ID and exactly one supported non-damage output, and write one
 `time_history_node_<id>_<output>.csv` file. Existing targeted MARS result files
 are replaced on rerun; unrelated files in the output directory are preserved.
 
-See `examples/headless/mars-job.example.json` for the job shape and
-`examples/headless/run_mars.py` for safe Python `subprocess` integration.
+See `examples/headless/mars-job.example.json` for the schema-v1 job shape.
 
 [**Image Placeholder**: SOLVE button with progress bar at 75%, console showing processing messages]
 

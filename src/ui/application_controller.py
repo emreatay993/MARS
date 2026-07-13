@@ -15,6 +15,8 @@ from PyQt5.QtWidgets import (
     QMainWindow, QMenuBar, QMessageBox, QTabWidget, QTreeView
 )
 
+from mars_solver import __version__
+
 from ui.solver_tab import SolverTab
 from ui.display_tab import DisplayTab
 from ui.widgets.dialogs import AdvancedSettingsDialog
@@ -52,7 +54,7 @@ class ApplicationController(QMainWindow):
         self.settings_handler = SettingsHandler()
 
         # Window configuration
-        self.setWindowTitle('MARS: Modal Analysis Response Solver - v0.98')
+        self.setWindowTitle(f'MARS: Modal Analysis Response Solver - v{__version__}')
         self.setGeometry(40, 40, 600, 800)
         
         # Set application icon

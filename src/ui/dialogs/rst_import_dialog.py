@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
 )
 
-from file_io.rst_service import ALL_SCOPE, RstLoadOptions
+from mars_solver.file_io.rst_service import ALL_SCOPE, RstLoadOptions
 from ui.styles.style_constants import DIALOG_STYLE
 
 

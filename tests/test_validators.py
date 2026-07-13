@@ -13,7 +13,7 @@ import pandas as pd
 import sys
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from file_io.validators import (
+from mars_solver.file_io.validators import (
     validate_mcf_file,
     validate_modal_stress_file,
     validate_deformation_file,

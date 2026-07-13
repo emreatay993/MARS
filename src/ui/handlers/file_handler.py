@@ -10,12 +10,12 @@ from PyQt5.QtWidgets import QDialog, QFileDialog, QMessageBox, QApplication
 from PyQt5.QtCore import QThread, pyqtSignal, QObject
 
 # Import your existing loaders
-from file_io.loaders import (
+from mars_solver.file_io.loaders import (
     load_modal_coordinates, load_modal_coordinates_pch, load_modal_stress,
     load_modal_deformations, load_element_nodal_forces_moments,
     load_steady_state_stress, load_temperature_field
 )
-from file_io.rst_service import inspect_modal_rst, load_modal_rst
+from mars_solver.file_io.rst_service import inspect_modal_rst, load_modal_rst
 from ui.dialogs.rst_import_dialog import RstImportDialog
 
 

@@ -14,7 +14,7 @@ import numpy as np
 from typing import Optional
 from pathlib import Path
 
-from core.data_models import (
+from ..core.data_models import (
     ModalData,
     ModalStressData,
     DeformationData,
@@ -23,7 +23,7 @@ from core.data_models import (
     TemperatureFieldData,
     MaterialProfileData,
 )
-from file_io.validators import (
+from .validators import (
     validate_mcf_file,
     validate_pch_file,
     validate_modal_stress_file,
@@ -32,8 +32,8 @@ from file_io.validators import (
     validate_steady_state_file,
     validate_material_profile_payload,
 )
-from utils.file_utils import unwrap_mcf_file, parse_nastran_pch_modal_coordinates
-from utils.constants import NP_DTYPE
+from ..utils.file_utils import unwrap_mcf_file, parse_nastran_pch_modal_coordinates
+from ..utils.constants import NP_DTYPE
 
 # Try to import tqdm for progress bars
 try:

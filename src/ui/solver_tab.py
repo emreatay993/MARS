@@ -23,14 +23,14 @@ from ui.handlers.log_handler import SolverLogHandler
 from ui.dialogs.material_profile_dialog import MaterialProfileDialog
 from ui.widgets.console import Logger
 from ui.widgets.plotting import MatplotlibWidget
-from core.computation import AnalysisEngine
-from core.data_models import (
+from mars_solver.core.computation import AnalysisEngine
+from mars_solver.core.data_models import (
     ModalData, ModalStressData, DeformationData,
     ElementNodalForceMomentData,
     SteadyStateData, TemperatureFieldData, MaterialProfileData,
     SolverConfig, validate_modal_input_contracts,
 )
-from utils.node_utils import get_node_index_from_id
+from mars_solver.utils.node_utils import get_node_index_from_id
 
 
 class SolverTab(QWidget):

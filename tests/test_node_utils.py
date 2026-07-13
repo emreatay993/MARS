@@ -12,7 +12,7 @@ import pytest
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from utils.node_utils import get_node_index_from_id
+from mars_solver.utils.node_utils import get_node_index_from_id
 
 
 class TestNodeUtils:
@@ -77,4 +77,3 @@ class TestNodeUtils:
 
 if __name__ == '__main__':
     pytest.main([__file__, '-v'])
-

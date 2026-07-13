@@ -22,8 +22,8 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-from core.data_models import MaterialProfileData
-from file_io.loaders import load_material_profile
+from mars_solver.core.data_models import MaterialProfileData
+from mars_solver.file_io.loaders import load_material_profile
 from file_io.exporters import export_material_profile
 from ui.widgets.editable_table import EditableTableWidget
 

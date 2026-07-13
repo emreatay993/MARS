@@ -8,20 +8,20 @@ instantiation, configuration, and result processing.
 import numpy as np
 from typing import Callable, Optional, Tuple
 
-from solver.engine import MSUPSmartSolverTransient, PlasticityRuntimeContext
-from core.plasticity import (
+from ..solver.engine import MSUPSmartSolverTransient, PlasticityRuntimeContext
+from .plasticity import (
     PlasticityDataError,
     build_material_db_from_profile,
     extract_poisson_ratio,
     map_temperature_field_to_nodes,
 )
-from core.data_models import (
+from .data_models import (
     ModalData, ModalStressData, DeformationData,
     ElementNodalForceMomentData,
     SteadyStateData, SolverConfig, AnalysisResult, PlasticityConfig,
     validate_modal_input_contracts,
 )
-from utils.node_utils import get_node_index_from_id
+from ..utils.node_utils import get_node_index_from_id
 
 
 class AnalysisEngine:

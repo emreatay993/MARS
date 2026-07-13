@@ -151,6 +151,8 @@ def test_frozen_batch_launcher_runs_deformation_job(tmp_path, mode):
         else "time_history_node_7_deformation.csv"
     )
     assert (tmp_path / "results" / expected).is_file()
+    primary_key = "deformation" if mode == "batch" else "history_csv"
+    assert Path(records[-1]["result"]["primary_files"][primary_key]).name == expected
 
 
 @pytest.mark.skipif(

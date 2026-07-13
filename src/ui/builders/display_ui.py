@@ -18,7 +18,7 @@ from ui.styles.style_constants import (
 )
 from ui import tooltips
 
-from utils.constants import (
+from mars_solver.utils.constants import (
     DEFAULT_POINT_SIZE, DEFAULT_BACKGROUND_COLOR, DEFAULT_ANIMATION_INTERVAL_MS
 )
 

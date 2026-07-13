@@ -4,7 +4,7 @@ Handles the application and management of advanced settings.
 
 import os
 
-import utils.constants as constants
+from mars_solver.utils import constants
 from utils.app_settings import (
     apply_solver_runtime_settings,
     save_app_settings,

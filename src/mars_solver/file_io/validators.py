@@ -7,7 +7,7 @@ Validators check input file format and content before loading.
 import os
 import pandas as pd
 from typing import Tuple, Optional
-from utils.file_utils import unwrap_mcf_file, parse_nastran_pch_modal_coordinates
+from ..utils.file_utils import unwrap_mcf_file, parse_nastran_pch_modal_coordinates
 
 
 class ValidationResult:

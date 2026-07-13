@@ -11,7 +11,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 from PyQt5.QtWidgets import QApplication, QComboBox, QMessageBox
 
-from core.data_models import DeformationData, ModalData
+from mars_solver.core.data_models import DeformationData, ModalData
 from ui.builders.solver_ui import SolverTabUIBuilder
 from ui.dialogs.rst_import_dialog import RstImportDialog
 from ui.handlers.file_handler import FileLoaderThread, SolverFileHandler

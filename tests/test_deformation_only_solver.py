@@ -9,7 +9,7 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from solver.engine import MSUPSmartSolverTransient
+from mars_solver.solver.engine import MSUPSmartSolverTransient
 
 
 def _make_solver(tmp_path, progress_callback=None):

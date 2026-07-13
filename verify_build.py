@@ -191,11 +191,12 @@ def check_vtk_pyvista() -> bool:
 def check_application_modules() -> bool:
     """Check that application modules can be imported."""
     modules = [
-        ("utils.constants", "constants"),
-        ("core.data_models", "data_models"),
-        ("core.computation", "computation"),
-        ("file_io.loaders", "loaders"),
-        ("solver.engine", "engine"),
+        ("mars_solver.utils.constants", "constants"),
+        ("mars_solver.core.data_models", "data_models"),
+        ("mars_solver.core.computation", "computation"),
+        ("mars_solver.file_io.loaders", "loaders"),
+        ("mars_solver.solver.engine", "engine"),
+        ("mars_solver", "mars_solver"),
         ("headless_runtime", "headless_runtime"),
         ("ui.application_controller", "ApplicationController"),
     ]
@@ -216,7 +217,7 @@ def check_headless_import_boundary() -> bool:
     """Verify solver and batch imports do not load Qt in a fresh interpreter."""
     code = (
         "import sys; "
-        "import headless_runtime, solver.engine, core.computation; "
+        "import headless_runtime, mars_solver.solver.engine, mars_solver.core.computation; "
         "qt = [name for name in sys.modules "
         "if name == 'PyQt5' or name.startswith('PyQt5.')]; "
         "print(','.join(qt)); "

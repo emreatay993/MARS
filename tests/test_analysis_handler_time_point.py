@@ -13,7 +13,7 @@ import pandas as pd
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from core.data_models import SteadyStateData
+from mars_solver.core.data_models import SteadyStateData
 from file_io.exporters import export_mesh_to_csv
 from ui.handlers.analysis_handler import SolverAnalysisHandler
 

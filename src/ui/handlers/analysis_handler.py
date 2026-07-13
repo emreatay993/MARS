@@ -19,10 +19,10 @@ import numpy as np
 from PyQt5.QtWidgets import QMessageBox, QApplication
 import pyvista as pv
 
-from solver import engine as solver_engine
-from utils import constants
-from utils.node_utils import get_node_index_from_id
-from core.data_models import PlasticityConfig, SolverConfig, validate_modal_input_contracts
+from mars_solver.solver import engine as solver_engine
+from mars_solver.utils import constants
+from mars_solver.utils.node_utils import get_node_index_from_id
+from mars_solver.core.data_models import PlasticityConfig, SolverConfig, validate_modal_input_contracts
 from ui.widgets.plotting import PlotlyMaxWidget
 
 

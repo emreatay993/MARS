@@ -9,12 +9,12 @@ import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
-from file_io.loaders import (
+from mars_solver.file_io.loaders import (
     load_element_nodal_forces_moments,
     load_modal_deformations,
     load_modal_stress,
 )
-from file_io.rst_service import ALL_SCOPE, RstLoadOptions, inspect_modal_rst, load_modal_rst
+from mars_solver.file_io.rst_service import ALL_SCOPE, RstLoadOptions, inspect_modal_rst, load_modal_rst
 
 
 RST_PATH = os.environ.get("MARS_TEST_MODAL_RST")

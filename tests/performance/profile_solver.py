@@ -13,9 +13,9 @@ project_root = os.path.abspath(os.path.join(current_dir, '../../'))
 sys.path.append(project_root)
 sys.path.append(os.path.join(project_root, 'src'))
 
-from core.computation import AnalysisEngine
-from core.data_models import SolverConfig
-from file_io.loaders import (
+from mars_solver.core.computation import AnalysisEngine
+from mars_solver.core.data_models import SolverConfig
+from mars_solver.file_io.loaders import (
     load_modal_coordinates,
     load_modal_stress,
     load_modal_deformations,
