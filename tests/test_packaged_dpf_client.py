@@ -39,9 +39,11 @@ def test_spec_builds_windowed_and_batch_launchers_from_one_analysis():
     spec = (PROJECT_ROOT / "MARS.spec").read_text(encoding="utf-8")
     gui_start = spec.index("gui_exe = EXE(")
     batch_start = spec.index("batch_exe = EXE(")
+    diagnostic_start = spec.index("diagnostic_exe = EXE(")
     collect_start = spec.index("coll = COLLECT(")
     gui_block = spec[gui_start:batch_start]
-    batch_block = spec[batch_start:collect_start]
+    batch_block = spec[batch_start:diagnostic_start]
+    diagnostic_block = spec[diagnostic_start:collect_start]
     collect_block = spec[collect_start:]
 
     assert spec.count("Analysis(") == 1
@@ -49,6 +51,10 @@ def test_spec_builds_windowed_and_batch_launchers_from_one_analysis():
     assert "console=False" in gui_block
     assert 'name="MARSBatch"' in batch_block
     assert "console=True" in batch_block
+    assert 'name="MARSDiagnostics"' in diagnostic_block
+    assert "console=True" in diagnostic_block
+    assert "pyz,\n    a.scripts," in diagnostic_block
+    assert "batch_exe,\n    diagnostic_exe," in collect_block
     assert "gui_exe,\n    batch_exe," in collect_block
 
 
@@ -61,6 +67,9 @@ def test_frozen_package_contains_gui_and_batch_launchers():
 
     assert (package_dir / "MARS.exe").is_file()
     assert (package_dir / "MARSBatch.exe").is_file()
+    assert (package_dir / "MARSDiagnostics.exe").is_file()
+    assert (package_dir / "diagnose.bat").is_file()
+    assert (package_dir / "runtime-inventory.json").is_file()
 
 
 @pytest.mark.skipif(

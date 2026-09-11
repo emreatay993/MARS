@@ -82,11 +82,18 @@ MARS (Modal Analysis Response Solver) is a desktop application designed for post
 
 ### Build Standalone EXE (Windows)
 
-From the project root:
+Manually activate your chosen Python 3.12 x64 environment, then run from the
+project root (replace the example environment path):
 
-```bat
-build.bat --clean
+```powershell
+& 'C:\PythonEnvironments\my release environment\Scripts\Activate.ps1'
+.\build.ps1 -Clean
 ```
+
+The script uses the activated interpreter regardless of environment folder
+name, reports full output/log paths, tests GUI startup, and waits for Enter.
+Run the packaged `diagnose.bat` to capture startup failures on another computer.
+See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) for the complete procedure.
 
 This invokes the root `MARS.spec` with Python 3.12. The specification bundles
 `ansys-dpf-core==0.16.1`, its Python modules, package metadata, gRPC bindings,

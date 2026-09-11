@@ -92,11 +92,14 @@ legacy/                    # Original code (preserved for reference)
    cd <project-root>
    ```
 
-2. **Create the Python 3.12 virtual environment** (recommended):
-   ```bash
-   py -3.12 -m venv venv
-   venv\Scripts\activate  # Windows
+2. **Activate your chosen 64-bit Python 3.12 environment** (any folder name):
+   ```powershell
+   & 'C:\PythonEnvironments\my release environment\Scripts\Activate.ps1'
+   python -c "import sys; print(sys.executable); print(sys.version)"
    ```
+
+   Replace the path with your actual environment. The
+   [installation guide](INSTALLATION_GUIDE.md) also shows how to create one.
 
 3. **Install dependencies**:
    ```bash
@@ -252,20 +255,34 @@ pytest tests/test_validators.py -v
 
 ### Building the Windows Application
 
-Release builds use Python 3.12 and the root `MARS.spec`:
+In the same terminal where you manually activated Python 3.12 x64, run:
 
-```bat
-build.bat --clean
+```powershell
+.\build.ps1 -Clean
 ```
+
+The script validates the active interpreter, installs `requirements-portable.txt`,
+builds with `MARS.spec`, and tests GUI startup. It prints full output/log paths
+and waits for Enter on success or failure. `build.bat --clean` calls the same
+pipeline. Use `-SkipDeps` to reuse dependencies and `-NoPause` for automation.
+No environment is selected by folder name or activated by the build.
 
 The packaged application includes `ansys-dpf-core==0.16.1`, its metadata,
 Python modules, gRPC bindings, and client DLLs. It discovers only the licensed
 Ansys DPF server/runtime from the target workstation.
 
-The build creates both launchers in one shared onedir bundle:
+The build creates the launchers in one shared application folder:
 
 - `dist\MARS\MARS.exe` — windowed GUI
 - `dist\MARS\MARSBatch.exe` — console batch runner
+- `dist\MARS\MARSDiagnostics.exe` — console GUI launcher for startup error capture
+- `dist\MARS\diagnose.bat` — startup test with logs, requiring no Python installation
+
+Run `diagnose.bat` on the affected computer if the executable will not open.
+The test requires GUI readiness and a successful exit, and retains bootloader
+stderr even if Python cannot start. Build logs are under `build\logs`; standalone
+diagnostic logs default to `%TEMP%\MARS-startup-logs`. See the
+[installation guide](INSTALLATION_GUIDE.md) for copied packages and log details.
 
 ## 📖 Usage Guide
 

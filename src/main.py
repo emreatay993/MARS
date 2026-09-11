@@ -25,10 +25,12 @@ def _is_batch_executable() -> bool:
     )
 
 
-def _run_gui(argv: list[str]) -> int:
+def _run_gui(argv: list[str], smoke=None) -> int:
     """Import and launch the Qt application only for interactive runs."""
     import os
 
+    if smoke:
+        smoke.phase("gui-imports")
     from PyQt5.QtCore import Qt
     from PyQt5.QtWidgets import QApplication
 
@@ -66,9 +68,13 @@ def _run_gui(argv: list[str]) -> int:
     app = QApplication([sys.argv[0], *argv])
 
     # Create and show main window
+    if smoke:
+        smoke.phase("controller-creation")
     main_window = ApplicationController()
     main_window.showMaximized()
 
+    if smoke:
+        return smoke.run_event_loop(app, main_window)
     return app.exec_()
 
 
@@ -84,6 +90,10 @@ def main(argv: list[str] | None = None) -> int:
 
         return cli_main(args[1:])
 
+    if "--smoke-test" in args or "--smoke-report" in args:
+        from startup_smoke import run_smoke
+
+        return run_smoke(args, lambda smoke: _run_gui([], smoke))
     return _run_gui(args)
 
 

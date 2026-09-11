@@ -51,12 +51,19 @@ To verify that a frozen package contains the PyDPF client, set
 `pytest tests/test_packaged_dpf_client.py -v`.
 
 ```powershell
-.\build.bat --clean --skip-deps
+& 'C:\PythonEnvironments\my release environment\Scripts\Activate.ps1'
+.\build.ps1 -Clean -SkipDeps -NoPause
 $env:MARS_TEST_PACKAGED_DIR = (Resolve-Path .\dist\MARS).Path
-.\venv\Scripts\python.exe -m pytest tests\test_packaged_dpf_client.py -v
+python -m pytest tests\test_packaged_dpf_client.py -v
 .\dist\MARS\MARSBatch.exe --help
-.\build_venv\Scripts\python.exe verify_build.py --package-dir .\dist\MARS
+python verify_build.py --package-dir .\dist\MARS
+.\build.ps1 -SmokeOnly -NoPause
 ```
+
+Replace the example activation path with the actual Python 3.12 x64 environment.
+The startup runner requires an application readiness report and successful exit;
+logs are saved beneath `build\logs`. `dist\MARS\diagnose.bat` can test a copied
+package without Python installed. See [the installation guide](../INSTALLATION_GUIDE.md).
 
 The packaged regression checks require both `MARS.exe` and `MARSBatch.exe`,
 retain the PyDPF/Qt/VTK payload contract, and launch the batch help command.

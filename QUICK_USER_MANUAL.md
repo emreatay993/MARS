@@ -80,11 +80,17 @@ RAM/precision changes apply on next SOLVE. Use defaults unless experiencing perf
 
 ## 7. Building a Windows EXE (PyInstaller)
 
-Use the root `MARS.spec` file:
+Manually activate your chosen Python 3.12 x64 environment, then build from the
+repository root. Any environment name/location is supported:
 
-```bat
-build.bat --clean
+```powershell
+& 'C:\PythonEnvironments\my release environment\Scripts\Activate.ps1'
+.\build.ps1 -Clean
 ```
+
+The build reports full output/log paths, tests GUI startup, and waits for Enter.
+For a failing copy, run `diagnose.bat` inside its complete application folder.
+See [INSTALLATION_GUIDE.md](INSTALLATION_GUIDE.md) for setup and log locations.
 
 Notes:
 - The spec includes required hooks/hidden imports for PyQt5, VTK/PyVista, Plotly, and plotly-resampler.

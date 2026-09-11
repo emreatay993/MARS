@@ -1,142 +1,199 @@
-# MARS Installation Guide (Python 3.12)
+# MARS: Windows installation and builds with Python 3.12
 
-This guide installs MARS from source and builds the Windows executable package
-with 64-bit Python 3.12. Run the commands from PowerShell in the repository
-root.
+Use an activated **64-bit Python 3.12** environment. Its name and location are
+your choice; the build uses the `python.exe` selected in the current terminal.
+It prints and validates that interpreter before installing dependencies.
 
-## Important locations
+## Script and guide locations
 
-- Installation guide: `INSTALLATION_GUIDE.md`
-- Executable build script: `build.bat`
-- PyInstaller definition: `MARS.spec`
-- GUI source entry point: `src\main.py`
-- Build verification script: `verify_build.py`
-- Packaged GUI: `dist\MARS\MARS.exe`
-- Packaged batch runner: `dist\MARS\MARSBatch.exe`
+- `INSTALLATION_GUIDE.md`: this guide.
+- `build.ps1`: the build/test entry point at the repository root.
+- `build.bat`: the compatible batch entry point.
+- `scripts\windows\diagnose.ps1`: startup diagnostic source.
+- `dist\MARS\diagnose.bat`: diagnostic launcher delivered with the package.
 
-## Requirements
+## 1. Get the repository
 
-- 64-bit Windows 10 or Windows 11
-- 64-bit Python 3.12 with the Windows `py` launcher
-- Git, if cloning instead of downloading a source archive
-- A compatible licensed Ansys DPF server/runtime for direct `.rst` loading
-  (CSV workflows do not require it)
-
-## 1. Get the source
-
-Clone the `main` branch:
+Clone the branch used for these builds, or download and extract that branch:
 
 ```powershell
 git clone --branch main --single-branch https://github.com/emreatay993/MARS.git MARS_
 Set-Location .\MARS_
 ```
 
-If you downloaded an archive, extract it and use `Set-Location` to enter the
-folder containing `build.bat` and `MARS.spec`.
+An existing checkout only needs to be opened in PowerShell at its repository
+root. PyCharm is optional; its terminal works too.
 
-## 2. Verify Python 3.12
+## 2. Activate your chosen environment
 
-```powershell
-py -3.12 -c "import struct, sys; print(sys.version); print(struct.calcsize('P') * 8, 'bit')"
-```
-
-The output must report Python `3.12.x` and `64 bit`. If `py -3.12` is not found,
-install the 64-bit Python 3.12 release from python.org and enable the Python
-launcher during installation.
-
-## 3. Install and run from source
-
-Create a project environment without changing PowerShell's execution policy:
+If you already have a Python 3.12 environment, find its actual folder and run
+its activation script in this terminal. Replace the example path:
 
 ```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install --upgrade pip
-.\.venv\Scripts\python.exe -m pip install -r .\requirements.txt
+& 'C:\PythonEnvironments\my release environment\Scripts\Activate.ps1'
+python -c "import sys, struct; print(sys.executable); print(sys.version); print(struct.calcsize('P') * 8, 'bit')"
 ```
 
-Launch the GUI:
+The output must show the Python executable in your chosen environment,
+Python `3.12.x`, and `64 bit`. Keep this terminal open for the build.
+Selecting an interpreter in PyCharm alone does not activate it in every terminal.
+
+If you need a new environment, first install 64-bit Python 3.12 with the Windows
+`py` launcher, then create and activate one. This example keeps it outside the
+repository:
 
 ```powershell
-.\.venv\Scripts\python.exe .\src\main.py
+$ReleaseEnv = Join-Path $env:USERPROFILE 'PythonEnvironments\MARS_-release-312'
+py -3.12 -m venv "$ReleaseEnv"
+& "$ReleaseEnv\Scripts\Activate.ps1"
+python --version
 ```
 
-The virtual environment does not need to be activated because these commands
-call its Python executable directly.
+Do not recreate an existing environment containing work you need. The build
+refuses absent, mismatched, or non-3.12 environments; it does not choose one by
+folder name. Activation persists when you change back to the repository root.
 
-## 4. Build the Windows executables
+## 3. Build and test the executables
 
-The checked-in wrapper creates and uses a separate `build_venv` environment. It
-requires Python 3.12, installs `requirements-portable.txt`, and invokes the root
-`MARS.spec` file.
+From the repository root, in the same activated terminal:
 
-Run a clean release build:
+```powershell
+.\build.ps1 -Clean
+```
+
+The script prints each stage, installs `requirements-portable.txt` and the required build
+tools into the active environment, runs PyInstaller, and smoke-tests the
+resulting package. It reports the full package and executable paths, the log
+folder, and the result. It waits for **Enter** before returning, on success or
+failure.
+
+To reuse already installed dependencies:
+
+```powershell
+.\build.ps1 -Clean -SkipDeps
+```
+
+Use `-NoPause` only for automation. A nonzero exit code means the build or
+startup test failed. `-Clean` removes only `build\pyinstaller-<application>`.
+Every full build replaces `dist\<application>`, including builds without
+`-Clean`. Keep valuable files outside that application output folder.
+
+The existing batch entry point remains available, using the same activated
+environment:
 
 ```powershell
 .\build.bat --clean
 ```
 
-For a repeat build after the build environment is already prepared:
+It accepts `--skip-deps`, `--no-pause`, `--smoke-only`, and `--help`.
+Double-clicking a build script without an activated environment will not select
+your Python environment automatically.
 
-```powershell
-.\build.bat --clean --skip-deps
+## 4. Run or distribute the package
+
+The application is created at:
+
+```text
+dist\MARS\MARS.exe
 ```
 
-A successful build creates the complete application folder at `dist\MARS`.
+The folder also contains `MARSBatch.exe` for headless jobs and
+`MARSDiagnostics.exe` for capturing GUI startup and bootloader errors.
 
-## 5. Verify the package
-
-Check the console launcher and run the repository's packaged-build verifier:
-
-```powershell
-.\dist\MARS\MARSBatch.exe --help
-.\build_venv\Scripts\python.exe .\verify_build.py --package-dir .\dist\MARS
-```
-
-Then launch the GUI:
+Run the application:
 
 ```powershell
 .\dist\MARS\MARS.exe
 ```
 
-The verifier should finish with `All critical checks passed!`.
+Copy or zip the **entire** `dist\MARS` folder, including `_internal` and the
+diagnostic files. Extract the whole archive on the destination machine before
+running it. Python and the build environment are not required on that machine.
+Ansys result-file workflows still require the appropriate licensed Ansys/DPF
+runtime there.
 
-## 6. Distribute MARS
+## 5. Diagnose an executable that does not open
 
-Distribute the entire `dist\MARS` folder. Do not copy only `MARS.exe` or
-`MARSBatch.exe`; both launchers require the accompanying `_internal` files and
-libraries.
-
-On another Windows machine, extract the folder and run `MARS.exe`. Python does
-not need to be installed on the target machine. Direct `.rst` loading still
-requires a compatible licensed Ansys DPF server/runtime on that machine.
-
-## Troubleshooting
-
-### The wrong Python version is reported
-
-Confirm the launcher can find Python 3.12:
+Retest the current package without rebuilding or activating Python:
 
 ```powershell
-py -0p
-py -3.12 --version
+.\build.ps1 -SmokeOnly
 ```
 
-The build wrapper deliberately stops if its generated `build_venv` is not based
-on Python 3.12.
-
-### Dependency installation cannot reach a configured package index
-
-Inspect active pip configuration:
+To test a copy in another folder:
 
 ```powershell
-py -3.12 -m pip config debug
+.\build.ps1 -SmokeOnly -PackageDir 'C:\Apps\MARS'
 ```
 
-Remove or correct an unavailable organization-specific index, or run the build
-from a network that can reach it.
+On the destination computer, double-click `diagnose.bat` inside the extracted
+application folder. It keeps the command window open until you press Enter and
+prints the full log location. No Python environment is needed. From PowerShell:
 
-### PyInstaller prints optional-module warnings
+```powershell
+& 'C:\Apps\MARS\diagnose.ps1'
+```
 
-Use the build exit code, the expected files under `dist\MARS`, the verification
-script, and a real GUI launch as the acceptance checks. Review a warning further
-if one of those checks fails or the affected optional feature is required.
+Build logs live under `build\logs\<unique run>\` in the repository. Standalone
+diagnostic logs default to `%TEMP%\MARS-startup-logs\<unique run>\`, which also
+works when the application folder is read-only. Each run keeps:
+
+- The build or diagnostic transcript and the native command exit codes.
+- `application.stdout.log` and `application.stderr.log` for console output,
+  including errors before Python starts.
+- `smoke-report.json` when Python reaches the startup test, recording its phase,
+  exception/traceback on failure, or GUI readiness on success.
+
+MARS additionally checks the real windowed `MARS.exe`, saving `MARS.stdout.log`,
+`MARS.stderr.log`, and `MARS.smoke-report.json`. It then runs `MARSBatch.exe --help`
+and saves `batch-help.stdout.log` and `batch-help.stderr.log`. All three launchers
+must pass before the overall result is successful.
+
+If no smoke report exists, read the stderr log: Python may have failed before
+it could write a report. Send the complete printed run-log folder with an error
+report. Logs may contain local paths; review them before sharing publicly.
+
+For a slow machine, the diagnostic runner accepts a longer timeout (up to
+600 seconds); its default is 90 seconds:
+
+```powershell
+& 'C:\Apps\MARS\diagnose.ps1' -TimeoutSeconds 180
+```
+
+The smoke test requires the application to acknowledge GUI initialization and
+exit successfully. A process that merely stays alive, hangs, or displays an
+error dialog does not pass. Logs distinguish startup failures, Python
+exceptions, and timeouts. This checks startup, not every solver or result-file
+workflow; exercise those with your own inputs before distributing a release.
+
+The message **Failed to start embedded python interpreter!** occurs before the
+application can handle Python exceptions. A missing or damaged
+`_internal\base_library.zip` is one possible cause, not a diagnosis from the
+popup alone. The console diagnostic captures the underlying bootloader/Python
+message. Recopy a complete matching package if files are missing; do not mix
+executables and `_internal` folders from different builds. See
+[PyInstaller startup troubleshooting](https://pyinstaller.org/en/stable/when-things-go-wrong.html).
+
+## Optional: run from source
+
+With your chosen environment still active:
+
+```powershell
+python -m pip install -r .\requirements-portable.txt
+python .\src\main.py
+```
+
+## Troubleshooting setup
+
+- **Wrong interpreter:** reactivate the intended environment and check
+  `python -c "import sys; print(sys.executable)"`. An old terminal can retain a
+  different environment.
+- **Scripts blocked by policy:** follow your organization's script-signing or
+  execution-policy requirements. These scripts do not bypass policy. Run from
+  an already open terminal to retain the error if PowerShell refuses to start.
+- **Package-index connection errors:** use `python -m pip config debug` in the
+  active environment and check the configured indexes/network. A failed
+  dependency-install stage must be resolved before building.
+- **Optional PyInstaller warnings:** read the full build log and the smoke-test
+  result. A passing startup check does not validate an optional feature you
+  have not exercised.

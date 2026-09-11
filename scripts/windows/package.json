@@ -1,0 +1,10 @@
+{
+  "name": "MARS",
+  "spec": "MARS.spec",
+  "requirements": "requirements-portable.txt",
+  "installPyInstaller": false,
+  "diagnosticExecutable": "MARSDiagnostics.exe",
+  "startupExecutables": ["MARSDiagnostics.exe", "MARS.exe"],
+  "batchExecutable": "MARSBatch.exe",
+  "executables": ["MARS.exe", "MARSBatch.exe", "MARSDiagnostics.exe"]
+}

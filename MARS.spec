@@ -111,13 +111,34 @@ batch_exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
 )
+diagnostic_exe = EXE(
+    pyz,
+    a.scripts,
+    [],
+    exclude_binaries=True,
+    name="MARSDiagnostics",
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=False,
+    console=True,
+    disable_windowed_traceback=False,
+    icon=str(ICON_FILE) if ICON_FILE.exists() else None,
+)
 coll = COLLECT(
     gui_exe,
     batch_exe,
+    diagnostic_exe,
     a.binaries,
     a.datas,
     strip=False,
     upx=False,
     upx_exclude=[],
     name="MARS",
+)
+
+# Standalone support files belong beside the launchers, outside _internal.
+import runpy
+runpy.run_path(str(PROJECT_ROOT / "scripts" / "windows" / "package_support.py"))["ship_diagnostics"](
+    coll.name, PROJECT_ROOT / "scripts" / "windows"
 )

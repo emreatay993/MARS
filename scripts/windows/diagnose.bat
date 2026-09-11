@@ -8,10 +8,8 @@ if /i "%~1"=="-NoPause" set "MARS_NO_PAUSE=1"
 shift
 goto scan
 :run
-REM The batch wrapper owns the final Enter prompt, including policy/startup errors.
-REM Never bypass or modify the user's PowerShell execution policy.
-powershell.exe -NoProfile -File "%~dp0build.ps1" %* -NoPause
+powershell.exe -NoProfile -File "%~dp0diagnose.ps1" %* -NoPause
 set "MARS_RESULT=%ERRORLEVEL%"
-echo Build exit code: %MARS_RESULT%
+echo Diagnostic exit code: %MARS_RESULT%
 if "%MARS_NO_PAUSE%"=="0" set /p "MARS_ENTER=Press Enter to close: "
 exit /b %MARS_RESULT%
