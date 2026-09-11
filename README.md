@@ -4,6 +4,9 @@
 
 MARS is the modern, modular evolution of the legacy MSUP Smart Solver for transient structural analysis using the Mode Superposition (MSUP) method.
 
+For the complete Windows setup and executable build procedure, see the
+[Python 3.12 Installation Guide](INSTALLATION_GUIDE.md).
+
 ## 🎯 Project Overview
 
 This codebase refactors the original MSUP Smart Solver into a clean, maintainable, modular architecture following Python best practices while preserving workflow parity.
